@@ -258,7 +258,7 @@ app.post('/api/webhooks/simulate', async (req, res) => {
 
 // Santé
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', server: 'Maison Al Fann Payment API', time: new Date() });
+  res.json({ status: 'ok', server: 'Les Douceurs de Lê Ci Payment API', time: new Date() });
 });
 
 // Créer une commande (avec codeReference et TTL 10 min)
@@ -368,7 +368,7 @@ app.post('/api/orders/:id/finish', async (req, res) => {
 const isDirect = !process.argv[1] || process.argv[1].includes('index.js') || process.argv[1].includes('server');
 if (isDirect && !process.argv[1].includes('api.test.js')) {
   server.listen(PORT, () => {
-    console.log(`🚀 [Maison Al Fann] Serveur de paiement démarré sur http://localhost:${PORT}`);
+    console.log(`🚀 [Les Douceurs de Lê Ci] Serveur de paiement démarré sur http://localhost:${PORT}`);
   });
 }
 
