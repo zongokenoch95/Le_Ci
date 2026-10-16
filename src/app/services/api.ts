@@ -211,3 +211,169 @@ export async function adjustLoyaltyMember(data: {
   }
   return res.json();
 }
+
+// ==========================================
+// AUTHENTIFICATION PAR CODE PIN & EMPLOYÉS
+// ==========================================
+
+export interface Employee {
+  id: number;
+  name: string;
+  role: 'admin' | 'caissier' | 'patissier' | 'employee';
+  created_at: string;
+}
+
+export interface LoyaltyReward {
+  id: number;
+  title: string;
+  description?: string;
+  points_cost: number;
+  category?: string;
+  image?: string;
+  is_active: number;
+}
+
+export interface LoyaltyCoupon {
+  id: number;
+  code: string;
+  reward_id: number;
+  reward_title: string;
+  phone: string;
+  points_spent: number;
+  status: 'ACTIVE' | 'USED' | 'EXPIRED';
+  created_at: string;
+  used_at?: string;
+  validated_by?: string;
+}
+
+export async function loginWithPin(pin: string): Promise<{ success: boolean; employee: Employee }> {
+  const res = await fetch(`${API_BASE}/auth/pin`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pin })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Code PIN incorrect');
+  }
+  return res.json();
+}
+
+export async function getEmployees(): Promise<Employee[]> {
+  const res = await fetch(`${API_BASE}/employees`);
+  if (!res.ok) throw new Error('Erreur chargement des employés');
+  return res.json();
+}
+
+export async function addEmployee(data: { name: string; pin: string; role: string }): Promise<{ success: boolean; employee: Employee }> {
+  const res = await fetch(`${API_BASE}/employees`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Erreur création employé');
+  }
+  return res.json();
+}
+
+export async function deleteEmployee(id: number): Promise<{ success: boolean }> {
+  const res = await fetch(`${API_BASE}/employees/${id}`, { method: 'DELETE' });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Erreur suppression employé');
+  }
+  return res.json();
+}
+
+// ==========================================
+// RÉCOMPENSES & COUPONS (fidelity.md)
+// ==========================================
+
+export async function getLoyaltyRewards(): Promise<LoyaltyReward[]> {
+  const res = await fetch(`${API_BASE}/loyalty/rewards`);
+  if (!res.ok) throw new Error('Erreur chargement des récompenses');
+  return res.json();
+}
+
+export async function createLoyaltyReward(data: {
+  title: string;
+  description?: string;
+  points_cost: number;
+  category?: string;
+  image?: string;
+}): Promise<{ success: boolean; reward: any }> {
+  const res = await fetch(`${API_BASE}/loyalty/rewards`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Erreur création récompense');
+  }
+  return res.json();
+}
+
+export async function deleteLoyaltyReward(id: number): Promise<{ success: boolean }> {
+  const res = await fetch(`${API_BASE}/loyalty/rewards/${id}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error('Erreur suppression récompense');
+  return res.json();
+}
+
+export async function claimRewardCoupon(data: {
+  phone: string;
+  rewardId: number;
+}): Promise<{ success: boolean; code: string; rewardTitle: string; pointsSpent: number; remainingPoints: number }> {
+  const res = await fetch(`${API_BASE}/loyalty/coupons/claim`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Erreur échange récompense');
+  }
+  return res.json();
+}
+
+export async function getMemberCoupons(phone: string): Promise<LoyaltyCoupon[]> {
+  const clean = phone.replace(/\D/g, '').slice(-8);
+  const res = await fetch(`${API_BASE}/loyalty/coupons/member/${clean}`);
+  if (!res.ok) throw new Error('Erreur lecture coupons');
+  return res.json();
+}
+
+export async function validateCouponCode(data: {
+  code: string;
+  staffName?: string;
+}): Promise<{ success: boolean; message: string; coupon: LoyaltyCoupon }> {
+  const res = await fetch(`${API_BASE}/loyalty/coupons/validate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Coupon invalide ou déjà utilisé');
+  }
+  return res.json();
+}
+
+export async function recordClientVisit(data: {
+  phone: string;
+  name?: string;
+  staffName?: string;
+}): Promise<{ success: boolean; message: string; member: LoyaltyMember }> {
+  const res = await fetch(`${API_BASE}/loyalty/record-visit`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Erreur enregistrement visite');
+  }
+  return res.json();
+}

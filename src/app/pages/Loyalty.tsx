@@ -12,9 +12,11 @@ import {
   TrendingUp, 
   Star,
   QrCode,
-  Clock
+  Clock,
+  Ticket,
+  Check
 } from 'lucide-react';
-import { getLoyaltySettings, getLoyaltyMember, LoyaltySettings, LoyaltyMember } from '../services/api';
+import { getLoyaltySettings, getLoyaltyMember, getLoyaltyRewards, claimRewardCoupon, getMemberCoupons, LoyaltySettings, LoyaltyMember, LoyaltyReward, LoyaltyCoupon } from '../services/api';
 import { useCart } from '../context/CartContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -24,6 +26,42 @@ export function Loyalty() {
   const [member, setMember] = useState<LoyaltyMember | null>(null);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [rewards, setRewards] = useState<LoyaltyReward[]>([]);
+  const [myCoupons, setMyCoupons] = useState<LoyaltyCoupon[]>([]);
+  const [claimingRewardId, setClaimingRewardId] = useState<number | null>(null);
+  const [claimSuccessMsg, setClaimSuccessMsg] = useState('');
+
+  useEffect(() => {
+    getLoyaltyRewards().then(setRewards).catch(() => []);
+  }, []);
+
+  const fetchCoupons = (phone: string) => {
+    getMemberCoupons(phone).then(setMyCoupons).catch(() => []);
+  };
+
+  const handleClaim = async (reward: LoyaltyReward) => {
+    if (!member) return;
+    if (member.points < reward.points_cost) {
+      alert(`Points insuffisants (${member.points} pts disponibles pour ${reward.points_cost} pts requis)`);
+      return;
+    }
+    if (confirm(`Échanger ${reward.points_cost} points contre "${reward.title}" ?`)) {
+      setClaimingRewardId(reward.id);
+      setClaimSuccessMsg('');
+      try {
+        const res = await claimRewardCoupon({ phone: member.phone, rewardId: reward.id });
+        setClaimSuccessMsg(`🎉 Félicitations ! Votre coupon ${res.code} pour "${res.rewardTitle}" est prêt à être utilisé en caisse !`);
+        // Actualiser le membre et les coupons
+        const updatedMember = await getLoyaltyMember(member.phone);
+        setMember(updatedMember);
+        fetchCoupons(member.phone);
+      } catch (err: any) {
+        alert(err.message || 'Erreur lors de l\'échange');
+      } finally {
+        setClaimingRewardId(null);
+      }
+    }
+  };
 
   const { openCart } = useCart();
   const navigate = useNavigate();
@@ -43,6 +81,7 @@ export function Loyalty() {
     try {
       const data = await getLoyaltyMember(phoneSearch);
       setMember(data);
+      if (data) fetchCoupons(data.phone);
     } catch (err) {
       console.error(err);
       setMember(null);
@@ -308,6 +347,105 @@ export function Loyalty() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        
+        {/* ========================================================================= */}
+        {/* SECTION CATALOGUE DE RÉCOMPENSES & COUPONS (fidelity.md §2) */}
+        {/* ========================================================================= */}
+        {member && (
+          <div className="mb-14 space-y-8">
+            
+            {claimSuccessMsg && (
+              <div className="p-4 rounded-3xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2 shadow-sm">
+                <CheckCircle2 size={18} className="text-emerald-600 flex-shrink-0" />
+                <span>{claimSuccessMsg}</span>
+              </div>
+            )}
+
+            {/* Mes Coupons Actifs */}
+            {myCoupons.filter(c => c.status === 'ACTIVE').length > 0 && (
+              <div className="bg-white p-7 rounded-3xl shadow-sm border border-gray-100">
+                <h3 className="text-base font-extrabold text-gray-900 mb-4 flex items-center gap-2">
+                  <Ticket size={20} className="text-[#D4AF37]" />
+                  <span>Mes Coupons Prêts à l'Emploi en Caisse</span>
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  {myCoupons.filter(c => c.status === 'ACTIVE').map(c => (
+                    <div key={c.id} className="p-5 rounded-2xl bg-gradient-to-br from-[#111827] to-[#1F2937] text-white border border-[#D4AF37]/40 shadow-md flex flex-col justify-between">
+                      <div>
+                        <span className="text-[10px] font-bold uppercase text-[#D4AF37]">Coupon Récompense</span>
+                        <h4 className="text-sm font-bold text-white mt-1">{c.reward_title}</h4>
+                        <div className="mt-3 p-2.5 bg-white/10 rounded-xl text-center border border-white/15">
+                          <span className="text-[10px] text-gray-300 block">Code à présenter au personnel</span>
+                          <span className="text-lg font-mono font-black text-[#D4AF37] tracking-widest">{c.code}</span>
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-emerald-400 font-semibold mt-3 text-center">
+                        Valable immédiatement chez Les Douceurs de Lê Ci
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Catalogue des Récompenses Disponibles */}
+            <div className="bg-white p-7 rounded-3xl shadow-sm border border-gray-100">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h3 className="text-lg font-extrabold text-gray-900 flex items-center gap-2">
+                    <Gift size={20} className="text-[#D4AF37]" />
+                    <span>Catalogue des Récompenses Gourmandes</span>
+                  </h3>
+                  <p className="text-xs text-gray-500">Échangez vos points contre les douceurs de votre choix</p>
+                </div>
+                <span className="text-xs font-bold text-gray-700 bg-gray-100 px-3 py-1.5 rounded-full">
+                  Votre solde : <strong className="text-[#D4AF37]">{member.points} pts</strong>
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {rewards.map(reward => {
+                  const canAfford = member.points >= reward.points_cost;
+                  const isClaiming = claimingRewardId === reward.id;
+
+                  return (
+                    <div key={reward.id} className="bg-[#FAF8F5] rounded-3xl overflow-hidden border border-gray-100 p-4 flex flex-col justify-between group hover:shadow-md transition">
+                      {reward.image && (
+                        <div className="h-36 rounded-2xl overflow-hidden mb-3 bg-gray-200">
+                          <img src={reward.image} alt={reward.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                        </div>
+                      )}
+                      <div>
+                        <span className="text-[10px] font-bold text-gray-400 uppercase">{reward.category}</span>
+                        <h4 className="text-sm font-bold text-gray-900 mt-0.5">{reward.title}</h4>
+                        {reward.description && (
+                          <p className="text-xs text-gray-500 mt-1 line-clamp-2">{reward.description}</p>
+                        )}
+                        <span className="inline-block mt-3 px-3 py-1 rounded-xl bg-[#D4AF37]/15 text-[#D4AF37] font-black text-xs">
+                          {reward.points_cost} points
+                        </span>
+                      </div>
+
+                      <button
+                        onClick={() => handleClaim(reward)}
+                        disabled={!canAfford || isClaiming}
+                        className={`mt-4 w-full py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm ${
+                          canAfford
+                            ? 'bg-[#111827] hover:bg-black text-white cursor-pointer'
+                            : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                        }`}
+                      >
+                        {isClaiming ? 'Génération...' : (canAfford ? 'Échanger mes points' : `Manque ${reward.points_cost - member.points} pts`)}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+          </div>
+        )}
 
         {/* Section Explicative : Règles définies par le Gérant */}
         <div className="mt-8">

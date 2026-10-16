@@ -652,6 +652,139 @@ app.post('/api/loyalty/adjust', async (req, res) => {
   }
 });
 
+
+// ==========================================
+// ROUTES AUTHENTIFICATION PAR CODE PIN & EMPLOYÉS
+// ==========================================
+
+// Vérification du code PIN (Connexion Admin / Personnel)
+app.post('/api/auth/pin', async (req, res) => {
+  try {
+    const { pin } = req.body;
+    if (!pin) {
+      return res.status(400).json({ success: false, error: 'Code PIN requis' });
+    }
+
+    const employee = await db.verifyStaffPin(pin);
+    if (!employee) {
+      return res.status(401).json({ success: false, error: 'Code PIN invalide' });
+    }
+
+    console.log(`🔓 [Auth PIN] Connexion réussie : ${employee.name} (Rôle: ${employee.role})`);
+    res.json({ success: true, employee });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Liste des employés
+app.get('/api/employees', async (req, res) => {
+  try {
+    const employees = await db.getAllEmployees();
+    res.json(employees);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Ajouter un employé (Réservé administrateur)
+app.post('/api/employees', async (req, res) => {
+  try {
+    const { name, pin, role } = req.body;
+    const employee = await db.addEmployee({ name, pin, role });
+    res.status(201).json({ success: true, employee });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Supprimer un employé
+app.delete('/api/employees/:id', async (req, res) => {
+  try {
+    const result = await db.deleteEmployee(req.params.id);
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// ==========================================
+// ROUTES RÉCOMPENSES & COUPONS DE FIDÉLITÉ (fidelity.md)
+// ==========================================
+
+// Liste des récompenses disponibles
+app.get('/api/loyalty/rewards', async (req, res) => {
+  try {
+    const rewards = await db.getLoyaltyRewards();
+    res.json(rewards);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Créer une nouvelle récompense (Gérant)
+app.post('/api/loyalty/rewards', async (req, res) => {
+  try {
+    const reward = await db.createLoyaltyReward(req.body);
+    res.status(201).json({ success: true, reward });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Supprimer / désactiver une récompense
+app.delete('/api/loyalty/rewards/:id', async (req, res) => {
+  try {
+    const result = await db.deleteLoyaltyReward(req.params.id);
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Échanger des points contre un coupon de récompense
+app.post('/api/loyalty/coupons/claim', async (req, res) => {
+  try {
+    const { phone, rewardId } = req.body;
+    const result = await db.claimRewardCoupon({ phone, rewardId });
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Liste des coupons d'un membre
+app.get('/api/loyalty/coupons/member/:phone', async (req, res) => {
+  try {
+    const coupons = await db.getMemberCoupons(req.params.phone);
+    res.json(coupons);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Validation d'un coupon par le personnel en caisse (fidelity.md §2 et §3)
+app.post('/api/loyalty/coupons/validate', async (req, res) => {
+  try {
+    const { code, staffName } = req.body;
+    const result = await db.validateCouponCode({ code, staffName });
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Enregistrer manuellement une visite client en caisse (fidelity.md §3)
+app.post('/api/loyalty/record-visit', async (req, res) => {
+  try {
+    const { phone, name, staffName } = req.body;
+    const member = await db.recordClientVisit({ phone, name, staffName });
+    res.json({ success: true, message: 'Visite enregistrée (+5 points)', member });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 server.listen(PORT, () => {
     console.log(`🚀 [Les Douceurs de Lê Ci] Serveur de paiement démarré sur http://localhost:${PORT}`);
     console.log(`🛡️ [Sécurité] Rate limiting actif — Webhooks: 30 req/min, API: 100 req/min`);

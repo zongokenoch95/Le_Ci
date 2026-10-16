@@ -142,7 +142,75 @@ export async function initDb() {
     )
   `);
 
-  console.log('✅ [SQLite] Base de données connectée — orders, audit_logs et tables de fidélisation prêtes.');
+    // ==========================================
+  // TABLE EMPLOYÉS & AUTHENTIFICATION PIN
+  // ==========================================
+  await run(`
+    CREATE TABLE IF NOT EXISTS employees (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      pin TEXT UNIQUE NOT NULL,
+      role TEXT NOT NULL DEFAULT 'employee', -- 'admin', 'caissier', 'patissier'
+      created_at DATETIME NOT NULL
+    )
+  `);
+
+  // Vérifier et créer le compte administrateur par défaut si aucun employé n'existe
+  const adminExists = await get("SELECT id FROM employees WHERE role = 'admin' LIMIT 1");
+  if (!adminExists) {
+    const now = new Date().toISOString();
+    await run(`
+      INSERT INTO employees (name, pin, role, created_at)
+      VALUES (?, ?, ?, ?)
+    `, ['Gérant Principal', '1234', 'admin', now]);
+    console.log('🔐 [Auth] Compte Administrateur initialisé (Code PIN par défaut: 1234)');
+  }
+
+  // ==========================================
+  // TABLES RÉCOMPENSES & COUPONS DE FIDÉLITÉ (fidelity.md)
+  // ==========================================
+  await run(`
+    CREATE TABLE IF NOT EXISTS loyalty_rewards (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      description TEXT,
+      points_cost INTEGER NOT NULL,
+      category TEXT DEFAULT 'Pâtisserie',
+      image TEXT,
+      is_active INTEGER DEFAULT 1,
+      created_at DATETIME NOT NULL
+    )
+  `);
+
+  await run(`
+    CREATE TABLE IF NOT EXISTS loyalty_coupons (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      code TEXT UNIQUE NOT NULL,
+      reward_id INTEGER NOT NULL,
+      reward_title TEXT NOT NULL,
+      phone TEXT NOT NULL,
+      points_spent INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'ACTIVE', -- 'ACTIVE', 'USED', 'EXPIRED'
+      created_at DATETIME NOT NULL,
+      used_at DATETIME,
+      validated_by TEXT
+    )
+  `);
+
+  // Insérer des récompenses par défaut si la table est vide
+  const rewardsCount = await get('SELECT COUNT(*) as count FROM loyalty_rewards');
+  if (rewardsCount && rewardsCount.count === 0) {
+    const now = new Date().toISOString();
+    await run(`
+      INSERT INTO loyalty_rewards (title, description, points_cost, category, image, created_at) VALUES
+      ('Croissant Beurre Pur Offert', 'Un délicieux croissant croustillant artisanal au pur beurre', 25, 'Viennoiserie', 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=400', ?),
+      ('Boisson Fraîche ou Café Espresso', 'Un rafraîchissement au choix ou un café de spécialité', 20, 'Boisson', 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=400', ?),
+      ('Boîte Découverte 4 Macarons', 'Assortiment de 4 macarons parisiens faits maison', 50, 'Macarons', 'https://images.unsplash.com/photo-1728566842903-59fbc50b951b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=400', ?),
+      ('Tartelette aux Fruits Frais', 'Pâte sablée dorée garnie de crème vanillée et fruits de saison', 75, 'Gâteaux', 'https://images.unsplash.com/photo-1582180834946-f3d376b18376?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=400', ?)
+    `, [now, now, now, now]);
+  }
+
+  console.log('✅ [SQLite] Base de données connectée — orders, audit_logs, fidélisation, récompenses et employés prêts.');
 }
 
 // ==========================================
@@ -794,6 +862,194 @@ export async function adjustMemberPoints({ phone, name, pointsDelta, reason }) {
   return getLoyaltyMember(cleanPhone);
 }
 
+
+// ==========================================
+// GESTION DES EMPLOYÉS & AUTHENTIFICATION PIN
+// ==========================================
+
+export async function verifyStaffPin(pin) {
+  if (!pin) return null;
+  const employee = await get('SELECT id, name, role, created_at FROM employees WHERE pin = ?', [String(pin).trim()]);
+  return employee || null;
+}
+
+export async function getAllEmployees() {
+  const employees = await all('SELECT id, name, role, created_at FROM employees ORDER BY id ASC');
+  return employees || [];
+}
+
+export async function addEmployee({ name, pin, role }) {
+  if (!name || !pin) throw new Error('Nom et code PIN obligatoires');
+  const cleanPin = String(pin).trim();
+  if (cleanPin.length < 4) throw new Error('Le code PIN doit comporter au moins 4 chiffres');
+
+  const existing = await get('SELECT id FROM employees WHERE pin = ?', [cleanPin]);
+  if (existing) throw new Error('Ce code PIN est déjà attribué à un autre employé');
+
+  const now = new Date().toISOString();
+  const validRole = ['admin', 'caissier', 'patissier', 'employee'].includes(role) ? role : 'employee';
+
+  const res = await run(
+    'INSERT INTO employees (name, pin, role, created_at) VALUES (?, ?, ?, ?)',
+    [name.trim(), cleanPin, validRole, now]
+  );
+
+  return { id: res.lastID, name: name.trim(), role: validRole, created_at: now };
+}
+
+export async function deleteEmployee(id) {
+  const employee = await get('SELECT * FROM employees WHERE id = ?', [id]);
+  if (!employee) throw new Error('Employé non trouvé');
+
+  if (employee.role === 'admin') {
+    const adminCount = await get("SELECT COUNT(*) as count FROM employees WHERE role = 'admin'");
+    if (adminCount && adminCount.count <= 1) {
+      throw new Error('Impossible de supprimer le dernier compte administrateur');
+    }
+  }
+
+  await run('DELETE FROM employees WHERE id = ?', [id]);
+  return { success: true, message: 'Employé supprimé avec succès' };
+}
+
+// ==========================================
+// RÉCOMPENSES & COUPONS DE FIDÉLITÉ (fidelity.md)
+// ==========================================
+
+export async function getLoyaltyRewards() {
+  return await all('SELECT * FROM loyalty_rewards WHERE is_active = 1 ORDER BY points_cost ASC');
+}
+
+export async function createLoyaltyReward({ title, description, points_cost, category, image }) {
+  if (!title || !points_cost) throw new Error('Titre et coût en points obligatoires');
+  const now = new Date().toISOString();
+  const res = await run(`
+    INSERT INTO loyalty_rewards (title, description, points_cost, category, image, is_active, created_at)
+    VALUES (?, ?, ?, ?, ?, 1, ?)
+  `, [title, description || '', Number(points_cost), category || 'Général', image || '', now]);
+
+  return { id: res.lastID, title, points_cost: Number(points_cost) };
+}
+
+export async function deleteLoyaltyReward(id) {
+  await run('UPDATE loyalty_rewards SET is_active = 0 WHERE id = ?', [id]);
+  return { success: true };
+}
+
+export async function claimRewardCoupon({ phone, rewardId }) {
+  const cleanPhone = String(phone).replace(/\D/g, '').slice(-8);
+  const member = await get('SELECT * FROM loyalty_members WHERE phone = ?', [cleanPhone]);
+  if (!member) throw new Error('Membre introuvable. Veuillez vous inscrire au programme.');
+
+  const reward = await get('SELECT * FROM loyalty_rewards WHERE id = ? AND is_active = 1', [rewardId]);
+  if (!reward) throw new Error('Récompense introuvable ou inactive');
+
+  if (member.points < reward.points_cost) {
+    throw new Error(`Solde de points insuffisant (${member.points} pts disponibles pour ${reward.points_cost} pts requis)`);
+  }
+
+  // Déduire les points
+  const newPoints = member.points - reward.points_cost;
+  const now = new Date().toISOString();
+  await run('UPDATE loyalty_members SET points = ?, updated_at = ? WHERE phone = ?', [newPoints, now, cleanPhone]);
+
+  // Générer un code coupon unique (ex: CPN-74892)
+  const code = 'CPN-' + Math.floor(10000 + Math.random() * 90000);
+
+  await run(`
+    INSERT INTO loyalty_coupons (code, reward_id, reward_title, phone, points_spent, status, created_at)
+    VALUES (?, ?, ?, ?, ?, 'ACTIVE', ?)
+  `, [code, reward.id, reward.title, cleanPhone, reward.points_cost, now]);
+
+  // Tracer dans l'historique
+  await run(`
+    INSERT INTO loyalty_history (phone, order_id, type, points, description, created_at)
+    VALUES (?, NULL, 'REDEEM', ?, ?, ?)
+  `, [cleanPhone, -reward.points_cost, `Échange contre récompense : ${reward.title} (Coupon: ${code})`, now]);
+
+  return {
+    success: true,
+    code,
+    rewardTitle: reward.title,
+    pointsSpent: reward.points_cost,
+    remainingPoints: newPoints
+  };
+}
+
+export async function getMemberCoupons(phone) {
+  const cleanPhone = String(phone).replace(/\D/g, '').slice(-8);
+  return await all('SELECT * FROM loyalty_coupons WHERE phone = ? ORDER BY created_at DESC', [cleanPhone]);
+}
+
+export async function validateCouponCode({ code, staffName }) {
+  if (!code) throw new Error('Code coupon manquant');
+  const cleanCode = String(code).trim().toUpperCase();
+
+  const coupon = await get('SELECT * FROM loyalty_coupons WHERE UPPER(code) = ?', [cleanCode]);
+  if (!coupon) throw new Error('Coupon inexistant');
+  if (coupon.status === 'USED') {
+    throw new Error(`Coupon déjà utilisé le ${new Date(coupon.used_at).toLocaleString('fr-FR')} (validé par ${coupon.validated_by || 'le personnel'})`);
+  }
+  if (coupon.status !== 'ACTIVE') {
+    throw new Error(`Coupon non valide (Statut : ${coupon.status})`);
+  }
+
+  const now = new Date().toISOString();
+  await run(`
+    UPDATE loyalty_coupons SET status = 'USED', used_at = ?, validated_by = ? WHERE id = ?
+  `, [now, staffName || 'Personnel', coupon.id]);
+
+  return {
+    success: true,
+    message: `Récompense validée avec succès : ${coupon.reward_title} !`,
+    coupon: {
+      ...coupon,
+      status: 'USED',
+      used_at: now,
+      validated_by: staffName || 'Personnel'
+    }
+  };
+}
+
+export async function recordClientVisit({ phone, name, staffName }) {
+  const cleanPhone = String(phone).replace(/\D/g, '').slice(-8);
+  if (!cleanPhone || cleanPhone.length < 8) throw new Error('Numéro de téléphone invalide');
+
+  const settings = await getLoyaltySettings();
+  const now = new Date().toISOString();
+  const pointsToAdd = 5; // Points par visite selon fidelity.md
+
+  let member = await get('SELECT * FROM loyalty_members WHERE phone = ?', [cleanPhone]);
+  if (!member) {
+    const welcomePts = settings.welcome_bonus_points || 50;
+    const totalPts = welcomePts + pointsToAdd;
+    await run(`
+      INSERT INTO loyalty_members (phone, name, points, tier, total_spent, orders_count, created_at, updated_at)
+      VALUES (?, ?, ?, 'BRONZE', 0, 1, ?, ?)
+    `, [cleanPhone, name || 'Client Lê Ci', totalPts, now, now]);
+
+    await run(`
+      INSERT INTO loyalty_history (phone, order_id, type, points, description, created_at)
+      VALUES (?, NULL, 'BONUS', ?, 'Bonus de bienvenue Club Privilège', ?)
+    `, [cleanPhone, welcomePts, now]);
+  } else {
+    await run(`
+      UPDATE loyalty_members SET
+        points = points + ?,
+        orders_count = orders_count + 1,
+        updated_at = ?
+      WHERE phone = ?
+    `, [pointsToAdd, now, cleanPhone]);
+  }
+
+  await run(`
+    INSERT INTO loyalty_history (phone, order_id, type, points, description, created_at)
+    VALUES (?, NULL, 'EARN', ?, ?, ?)
+  `, [cleanPhone, pointsToAdd, `Visite enregistrée par ${staffName || 'la caisse'}`, now]);
+
+  return getLoyaltyMember(cleanPhone);
+}
+
 export default {
   initDb,
   createOrder,
@@ -815,5 +1071,16 @@ export default {
   getAllLoyaltyMembers,
   creditOrderPoints,
   redeemPoints,
-  adjustMemberPoints
+  adjustMemberPoints,
+  verifyStaffPin,
+  getAllEmployees,
+  addEmployee,
+  deleteEmployee,
+  getLoyaltyRewards,
+  createLoyaltyReward,
+  deleteLoyaltyReward,
+  claimRewardCoupon,
+  getMemberCoupons,
+  validateCouponCode,
+  recordClientVisit
 };
