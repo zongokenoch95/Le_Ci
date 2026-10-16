@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, ShieldCheck } from 'lucide-react';
+import { Menu, X, ShoppingBag } from 'lucide-react';
+import { useCart } from '../context/CartContext';
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
+  const { openCart, totalItems } = useCart();
 
   const isHome = location.pathname === '/';
 
@@ -72,7 +74,7 @@ export function Header() {
                   to={item.path}
                   className={`text-sm font-semibold tracking-wide transition-all duration-200 relative py-1 ${
                     isActive(item.path)
-                      ? (isHome && !scrolled ? 'text-[#D4AF37]' : 'text-[#D4AF37]')
+                      ? 'text-[#D4AF37]'
                       : (isHome && !scrolled ? 'text-white/90 hover:text-white' : 'text-gray-700 hover:text-gray-900')
                   }`}
                 >
@@ -83,6 +85,25 @@ export function Header() {
                 </Link>
               ))}
 
+              {/* Bouton Panier */}
+              <button
+                onClick={openCart}
+                className={`relative flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-bold transition-all shadow-md ${
+                  isHome && !scrolled
+                    ? 'bg-white/10 hover:bg-white/20 text-white border border-white/20'
+                    : 'bg-[#111827] hover:bg-black text-white'
+                }`}
+                aria-label="Voir mon panier"
+              >
+                <ShoppingBag size={17} className="text-[#D4AF37]" />
+                <span>Panier</span>
+                {totalItems > 0 && (
+                  <span className="ml-1 bg-[#D4AF37] text-white text-[11px] font-black rounded-full h-5 min-w-5 px-1.5 flex items-center justify-center animate-bounce">
+                    {totalItems}
+                  </span>
+                )}
+              </button>
+
               <Link
                 to="/catalogue"
                 className="px-5 py-2.5 rounded-full text-xs font-bold transition-all shadow-md bg-[#D4AF37] hover:bg-[#c29d2b] text-white"
@@ -91,16 +112,33 @@ export function Header() {
               </Link>
             </nav>
 
-            {/* Mobile Menu Button */}
-            <button
-              className={`md:hidden p-2 rounded-xl transition ${
-                isHome && !scrolled ? 'text-white' : 'text-gray-900'
-              }`}
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-label="Menu"
-            >
-              {mobileMenuOpen ? <X size={26} /> : <Menu size={26} />}
-            </button>
+            {/* Actions Mobiles : Panier + Menu Burger */}
+            <div className="flex md:hidden items-center gap-3">
+              <button
+                onClick={openCart}
+                className={`relative p-2 rounded-xl transition ${
+                  isHome && !scrolled ? 'text-white' : 'text-gray-900'
+                }`}
+                aria-label="Voir mon panier"
+              >
+                <ShoppingBag size={24} />
+                {totalItems > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-[#D4AF37] text-white text-[10px] font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                    {totalItems}
+                  </span>
+                )}
+              </button>
+
+              <button
+                className={`p-2 rounded-xl transition ${
+                  isHome && !scrolled ? 'text-white' : 'text-gray-900'
+                }`}
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                aria-label="Menu"
+              >
+                {mobileMenuOpen ? <X size={26} /> : <Menu size={26} />}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -120,13 +158,25 @@ export function Header() {
                   {item.name}
                 </Link>
               ))}
-              <Link
-                to="/catalogue"
-                className="mt-2 w-full text-center py-3 rounded-xl bg-[#D4AF37] text-white font-bold text-sm shadow-lg"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Commander maintenant
-              </Link>
+              <div className="pt-2 flex flex-col gap-2">
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    openCart();
+                  }}
+                  className="w-full text-center py-3 rounded-xl bg-white/10 text-white font-bold text-sm flex items-center justify-center gap-2 border border-white/10"
+                >
+                  <ShoppingBag size={18} className="text-[#D4AF37]" />
+                  <span>Mon Panier ({totalItems} articles)</span>
+                </button>
+                <Link
+                  to="/catalogue"
+                  className="w-full text-center py-3 rounded-xl bg-[#D4AF37] text-white font-bold text-sm shadow-lg"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Explorer le Catalogue
+                </Link>
+              </div>
             </nav>
           </div>
         )}

@@ -1,5 +1,7 @@
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
+import { useCart } from '../context/CartContext';
+import { ShoppingBag } from 'lucide-react';
 import { ArrowRight, Sparkles, ShieldCheck, Heart, Clock } from 'lucide-react';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 
@@ -11,10 +13,10 @@ const categories = [
 ];
 
 const featuredProducts = [
-  { id: 1, name: 'Fraisier Signature', price: '75 FCFA', image: 'https://images.unsplash.com/photo-1582180834946-f3d376b18376?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080' },
-  { id: 2, name: 'Opéra Chocolat & Café', price: '65 FCFA', image: 'https://images.unsplash.com/photo-1640794334523-b299f14d28db?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080' },
-  { id: 3, name: 'Macarons Assortis', price: '45 FCFA', image: 'https://images.unsplash.com/photo-1728566842903-59fbc50b951b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080' },
-  { id: 4, name: 'Entremet Pistache Royale', price: '80 FCFA', image: 'https://images.unsplash.com/photo-1761594606868-1c577b10f69e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080' },
+  { id: 101, name: 'Croissant Beurre Pur Artisanal', price: '500 FCFA', numericPrice: 500, image: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080' },
+  { id: 3, name: 'Macarons Assortis (Boîte Découverte)', price: '1 500 FCFA', numericPrice: 1500, image: 'https://images.unsplash.com/photo-1728566842903-59fbc50b951b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080' },
+  { id: 2, name: 'Opéra Classique Chocolat & Café', price: '3 000 FCFA', numericPrice: 3000, image: 'https://images.unsplash.com/photo-1640794334523-b299f14d28db?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080' },
+  { id: 1, name: 'Fraisier Signature Prestige', price: '3 500 FCFA', numericPrice: 3500, image: 'https://images.unsplash.com/photo-1582180834946-f3d376b18376?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080' },
 ];
 
 const testimonials = [
@@ -24,6 +26,7 @@ const testimonials = [
 ];
 
 export function Home() {
+  const { addToCart, openCart } = useCart();
   return (
     <div className="min-h-screen">
       {/* Hero Section avec Tarte rose et blanche sur marbre.png dès le haut */}
