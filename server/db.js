@@ -8,6 +8,13 @@ const dbPath = process.env.DATABASE_PATH || path.join(__dirname, 'maison.db');
 
 const db = new sqlite3.Database(dbPath);
 
+// ==========================================
+// SEUIL MONTANT ÉLEVÉ (configurable via env)
+// Au-delà de ce seuil, le paiement nécessite
+// une vérification manuelle du caissier
+// ==========================================
+const HIGH_VALUE_THRESHOLD = parseInt(process.env.HIGH_VALUE_THRESHOLD || '25000', 10);
+
 export const run = (sql, params = []) => {
   return new Promise((resolve, reject) => {
     db.run(sql, params, function (err) {
@@ -56,8 +63,128 @@ export async function initDb() {
       paid_at DATETIME
     )
   `);
-  console.log('✅ [SQLite] Base de données Maison Al Fann connectée et table orders prête.');
+
+  // ==========================================
+  // TABLE JOURNAL D'AUDIT PAIEMENTS
+  // Traçabilité complète de chaque tentative
+  // ==========================================
+  await run(`
+    CREATE TABLE IF NOT EXISTS payment_audit_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      event_type TEXT NOT NULL,
+      order_id TEXT,
+      ip_address TEXT,
+      raw_payload TEXT,
+      parsed_amount INTEGER,
+      parsed_phone TEXT,
+      parsed_code_ref TEXT,
+      parsed_tx_ref TEXT,
+      matched_by TEXT,
+      result TEXT,
+      details TEXT,
+      created_at DATETIME NOT NULL
+    )
+  `);
+
+  console.log('✅ [SQLite] Base de données Les Douceurs de Lê Ci connectée — tables orders + payment_audit_logs prêtes.');
 }
+
+// ==========================================
+// JOURNAL D'AUDIT — Fonctions
+// ==========================================
+
+/**
+ * Enregistre un événement dans le journal d'audit
+ */
+export async function logAuditEvent({
+  eventType,
+  orderId = null,
+  ipAddress = null,
+  rawPayload = null,
+  parsedAmount = null,
+  parsedPhone = null,
+  parsedCodeRef = null,
+  parsedTxRef = null,
+  matchedBy = null,
+  result = null,
+  details = null
+}) {
+  try {
+    await run(`
+      INSERT INTO payment_audit_logs (event_type, order_id, ip_address, raw_payload, parsed_amount, parsed_phone, parsed_code_ref, parsed_tx_ref, matched_by, result, details, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      eventType,
+      orderId,
+      ipAddress,
+      typeof rawPayload === 'string' ? rawPayload.slice(0, 2000) : JSON.stringify(rawPayload)?.slice(0, 2000) || null,
+      parsedAmount,
+      parsedPhone,
+      parsedCodeRef,
+      parsedTxRef,
+      matchedBy,
+      result,
+      details,
+      new Date().toISOString()
+    ]);
+  } catch (err) {
+    // Ne jamais bloquer le flux principal à cause d'un échec de log
+    console.error("⚠️ [Audit] Erreur d'écriture du log :", err.message);
+  }
+}
+
+/**
+ * Récupère les logs d'audit avec filtres optionnels
+ */
+export async function getAuditLogs({ eventType, result, orderId, limit = 100, offset = 0 } = {}) {
+  let query = 'SELECT * FROM payment_audit_logs WHERE 1=1';
+  const params = [];
+
+  if (eventType) {
+    query += ' AND event_type = ?';
+    params.push(eventType);
+  }
+  if (result) {
+    query += ' AND result = ?';
+    params.push(result);
+  }
+  if (orderId) {
+    query += ' AND order_id = ?';
+    params.push(orderId);
+  }
+
+  query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+  params.push(limit, offset);
+
+  return await all(query, params);
+}
+
+/**
+ * Statistiques d'audit résumées (pour le dashboard admin)
+ */
+export async function getAuditStats() {
+  const total = await get('SELECT COUNT(*) as count FROM payment_audit_logs');
+  const byType = await all('SELECT event_type, COUNT(*) as count FROM payment_audit_logs GROUP BY event_type ORDER BY count DESC');
+  const byResult = await all('SELECT result, COUNT(*) as count FROM payment_audit_logs GROUP BY result ORDER BY count DESC');
+  const last24h = await get(
+    "SELECT COUNT(*) as count FROM payment_audit_logs WHERE created_at >= datetime('now', '-24 hours')"
+  );
+  const rejectedLast1h = await get(
+    "SELECT COUNT(*) as count FROM payment_audit_logs WHERE result = 'REJECTED' AND created_at >= datetime('now', '-1 hour')"
+  );
+
+  return {
+    total: total?.count || 0,
+    last24h: last24h?.count || 0,
+    rejectedLastHour: rejectedLast1h?.count || 0,
+    byType,
+    byResult
+  };
+}
+
+// ==========================================
+// FONCTIONS COMMANDES (existantes)
+// ==========================================
 
 function generateCodeReference() {
   const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -128,7 +255,7 @@ export async function createOrder(data) {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `, [
     id,
-    data.customerName || 'Client Maison Al Fann',
+    data.customerName || 'Client Les Douceurs de Lê Ci',
     data.customerPhone || '',
     data.customerEmail || '',
     itemsJson,
@@ -172,19 +299,95 @@ export async function finishOrder(id) {
   return getOrderById(id);
 }
 
+/**
+ * Approuve un paiement de montant élevé marqué EN_VERIFICATION_MANUELLE
+ * Le caissier valide manuellement → passage en EN_PREPARATION
+ */
+export async function approveHighValue(id) {
+  const order = await get('SELECT * FROM orders WHERE id = ?', [id]);
+  if (!order) throw new Error('Commande non trouvée');
+  if (order.statut !== 'EN_VERIFICATION_MANUELLE') {
+    throw new Error(`Commande ${id} n'est pas en vérification manuelle (statut actuel : ${order.statut})`);
+  }
+
+  const now = new Date().toISOString();
+  await run(
+    `UPDATE orders SET statut = 'EN_PREPARATION', paid_at = ? WHERE id = ?`,
+    [now, id]
+  );
+
+  await logAuditEvent({
+    eventType: 'HIGH_VALUE_APPROVED',
+    orderId: id,
+    parsedAmount: order.montant_total,
+    result: 'SUCCESS',
+    details: `Montant élevé ${order.montant_total} FCFA approuvé manuellement par le caissier`
+  });
+
+  return getOrderById(id);
+}
+
+/**
+ * Rejette un paiement de montant élevé marqué EN_VERIFICATION_MANUELLE
+ */
+export async function rejectHighValue(id) {
+  const order = await get('SELECT * FROM orders WHERE id = ?', [id]);
+  if (!order) throw new Error('Commande non trouvée');
+  if (order.statut !== 'EN_VERIFICATION_MANUELLE') {
+    throw new Error(`Commande ${id} n'est pas en vérification manuelle (statut actuel : ${order.statut})`);
+  }
+
+  await run(`UPDATE orders SET statut = 'ANNULEE' WHERE id = ?`, [id]);
+
+  await logAuditEvent({
+    eventType: 'HIGH_VALUE_REJECTED',
+    orderId: id,
+    parsedAmount: order.montant_total,
+    result: 'REJECTED',
+    details: `Montant élevé ${order.montant_total} FCFA rejeté par le caissier`
+  });
+
+  return getOrderById(id);
+}
+
+// ==========================================
+// RÉCONCILIATION WEBHOOK PAIEMENT
+// (avec seuil montant élevé et audit)
+// ==========================================
+
 export async function reconcilePaymentWebhook({
   rawMessage = '',
   senderPhone = null,
   amount = null,
   transactionRef = null,
-  codeReference = null
+  codeReference = null,
+  ipAddress = null
 }) {
   await checkAndExpireOrders();
+
+  // Données de base pour l'audit
+  const auditBase = {
+    ipAddress,
+    rawPayload: rawMessage,
+    parsedAmount: amount,
+    parsedPhone: senderPhone,
+    parsedCodeRef: codeReference,
+    parsedTxRef: transactionRef
+  };
 
   // 1. Contrôle Idempotence
   if (transactionRef) {
     const existing = await get('SELECT * FROM orders WHERE transaction_ref = ?', [transactionRef]);
     if (existing) {
+      await logAuditEvent({
+        ...auditBase,
+        eventType: 'DUPLICATE_REJECTED',
+        orderId: existing.id,
+        matchedBy: 'transaction_ref',
+        result: 'REJECTED',
+        details: `Transaction ${transactionRef} déjà enregistrée pour la commande ${existing.id}`
+      });
+
       return {
         success: true,
         duplicate: true,
@@ -207,12 +410,19 @@ export async function reconcilePaymentWebhook({
   const pendingOrders = await all(query, params);
 
   if (!pendingOrders || pendingOrders.length === 0) {
+    await logAuditEvent({
+      ...auditBase,
+      eventType: 'MATCH_FAILED',
+      result: 'REJECTED',
+      details: `Aucune commande en attente pour le montant ${amount || 'non spécifié'} FCFA`
+    });
+
     return {
       success: true,
       duplicate: false,
       matched: false,
       order: null,
-      message: `Aucune commande en attente ne correspond au montant ${amount || 'non spécifié'} FCFA/DT`
+      message: `Aucune commande en attente ne correspond au montant ${amount || 'non spécifié'} FCFA`
     };
   }
 
@@ -257,12 +467,33 @@ export async function reconcilePaymentWebhook({
     }
   }
 
-  // Validation
+  // ==========================================
+  // SEUIL MONTANT ÉLEVÉ
+  // Si le montant dépasse HIGH_VALUE_THRESHOLD,
+  // on ne valide pas automatiquement → statut
+  // EN_VERIFICATION_MANUELLE pour contrôle caissier
+  // ==========================================
+  const finalAmount = Number(chosenOrder.montant_total);
+  const isHighValue = finalAmount > HIGH_VALUE_THRESHOLD;
+  const newStatut = isHighValue ? 'EN_VERIFICATION_MANUELLE' : 'EN_PREPARATION';
+
   const now = new Date().toISOString();
   await run(
-    `UPDATE orders SET statut = 'EN_PREPARATION', paid_at = ?, transaction_ref = ? WHERE id = ?`,
-    [now, transactionRef || null, chosenOrder.id]
+    `UPDATE orders SET statut = ?, paid_at = ?, transaction_ref = ? WHERE id = ?`,
+    [newStatut, now, transactionRef || null, chosenOrder.id]
   );
+
+  // Log d'audit — succès ou flaggé
+  await logAuditEvent({
+    ...auditBase,
+    eventType: isHighValue ? 'HIGH_VALUE_FLAGGED' : 'MATCH_SUCCESS',
+    orderId: chosenOrder.id,
+    matchedBy,
+    result: isHighValue ? 'FLAGGED' : 'SUCCESS',
+    details: isHighValue
+      ? `⚠️ Montant élevé ${finalAmount} FCFA (seuil : ${HIGH_VALUE_THRESHOLD}) — En attente de vérification manuelle`
+      : `Commande ${chosenOrder.id} validée automatiquement (${matchedBy})`
+  });
 
   const updatedOrder = await getOrderById(chosenOrder.id);
   return {
@@ -270,8 +501,11 @@ export async function reconcilePaymentWebhook({
     duplicate: false,
     matched: true,
     matchedBy,
+    highValue: isHighValue,
     order: updatedOrder,
-    message: `Commande ${chosenOrder.id} validée automatiquement avec succès (${matchedBy})`
+    message: isHighValue
+      ? `⚠️ Commande ${chosenOrder.id} — Montant élevé (${finalAmount} FCFA). En attente de vérification manuelle du caissier.`
+      : `Commande ${chosenOrder.id} validée automatiquement avec succès (${matchedBy})`
   };
 }
 
@@ -284,5 +518,10 @@ export default {
   validateOrder,
   finishOrder,
   checkAndExpireOrders,
-  reconcilePaymentWebhook
+  reconcilePaymentWebhook,
+  logAuditEvent,
+  getAuditLogs,
+  getAuditStats,
+  approveHighValue,
+  rejectHighValue
 };

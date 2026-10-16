@@ -1,0 +1,140 @@
+{
+  "globalVariables": [],
+  "macro": {
+    "aiGenerated": 0,
+    "breakpoints": [],
+    "disabledTimestamp": 0,
+    "exportedActionBlocks": [],
+    "exportedSharedScenes": [],
+    "forceEvenIfNotEnabledTimestamp": 0,
+    "isActionBlock": false,
+    "isExtra": false,
+    "isFavourite": false,
+    "lastEditedTimestamp": 1792150173551,
+    "localVariables": [
+      {
+        "dictionary": {
+          "entries": [],
+          "isArray": false,
+          "variableType": 4,
+          "type": "Dictionary"
+        },
+        "isActionBlockWorkingVar": true,
+        "isLocalVar": true,
+        "isSecure": false,
+        "m_booleanValue": false,
+        "m_decimalValue": 200,
+        "m_intValue": 200,
+        "m_name": "http_status",
+        "m_stringValue": "",
+        "m_type": 1,
+        "supportsInput": false,
+        "supportsOutput": true
+      }
+    ],
+    "localVarsAlphabetical": true,
+    "loggingLevel": 0,
+    "m_GUID": -6202377957489522000,
+    "m_actionList": [
+      {
+        "requestConfig": {
+          "allFilesAccessPath": "",
+          "allowAnyCertificate": false,
+          "basicAuthEnabled": false,
+          "basicAuthPassword": "",
+          "basicAuthUsername": "",
+          "blockNextAction": true,
+          "clientCertEnabled": false,
+          "clientCertKeyStoreDisplayName": "",
+          "clientCertKeyStoreUri": "",
+          "clientCertPassword": "",
+          "contentBodyDynamicFileName": "",
+          "contentBodyFileDisplayName": "",
+          "contentBodyFileUri": "",
+          "contentBodyFolderDisplayName": "",
+          "contentBodyFolderUri": "",
+          "contentBodySource": 0,
+          "contentBodyText": "{\"message\": \"[sms_body]\", \"sender\": \"[sms_number]\"}",
+          "contentType": "application/json",
+          "followRedirects": false,
+          "headerParams": [
+            {
+              "paramName": "Content-Type",
+              "paramValue": "application/json"
+            },
+            {
+              "paramName": "x-webhook-secret",
+              "paramValue": "resto_secret_2026"
+            }
+          ],
+          "localFileUri": "",
+          "maxTotalDurationSeconds": 3600,
+          "prettifyJson": false,
+          "proxyEnabled": false,
+          "proxyHost": "",
+          "proxyPort": 8080,
+          "proxyType": 0,
+          "queryParams": [],
+          "requestTimeOutSeconds": 30,
+          "requestType": 1,
+          "returnCodeVariableName": "http_status",
+          "saveResponseAllFilesAccessPath": "",
+          "saveResponseFileName": "",
+          "saveResponseFolderPathDisplayName": "",
+          "saveResponseFolderPathUri": "",
+          "saveResponseType": 0,
+          "saveResponseUseAllFilesAccess": false,
+          "saveReturnCodeToVariable": true,
+          "saveReturnHeadersToVariable": false,
+          "urlToOpen": "https://leci-production.up.railway.app/api/webhooks/orange-money",
+          "useAllFilesAccess": false,
+          "useLocalFileUri": false,
+          "useStaticContentBodyFile": true
+        },
+        "disableLogging": false,
+        "m_SIGUID": -8024977194924874000,
+        "m_classType": "HttpRequestAction",
+        "m_comment": "",
+        "m_constraintList": [],
+        "m_isDisabled": false,
+        "m_isOrCondition": false
+      }
+    ],
+    "m_category": "Non Classée",
+    "m_completed": true,
+    "m_constraintList": [],
+    "m_description": "",
+    "m_descriptionOpen": false,
+    "m_enabled": true,
+    "m_excludeLog": false,
+    "m_headingColor": 0,
+    "m_isOrCondition": false,
+    "m_name": "SaasResto 2",
+    "m_triggerList": [
+      {
+        "enableRegex": false,
+        "enableRegexPhoneNumber": false,
+        "ignoreCase": true,
+        "isExcludeContact": false,
+        "m_exactMatch": false,
+        "m_excludes": false,
+        "m_groupIdList": [],
+        "m_groupNameList": [],
+        "m_option": 2,
+        "m_smsContent": "recu",
+        "m_smsFromList": [],
+        "m_smsNumber": "OrangeMoney",
+        "m_smsNumberExclude": false,
+        "subscriptionId": -1,
+        "disableLogging": false,
+        "m_SIGUID": -6520865195132013000,
+        "m_classType": "IncomingSMSTrigger",
+        "m_comment": "",
+        "m_constraintList": [],
+        "m_isDisabled": false,
+        "m_isOrCondition": false
+      }
+    ]
+  },
+  "macroExportVersion": 1
+}
