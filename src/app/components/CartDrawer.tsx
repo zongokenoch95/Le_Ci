@@ -1,9 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { ShoppingBag, X, Plus, Minus, Trash2, ArrowRight, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { 
+  ShoppingBag, 
+  X, 
+  Plus, 
+  Minus, 
+  Trash2, 
+  ArrowRight, 
+  ShieldCheck, 
+  Crown, 
+  Gift, 
+  CheckCircle2, 
+  Sparkles 
+} from 'lucide-react';
 import { useCart } from '../context/CartContext';
-import { createOrder } from '../services/api';
+import { createOrder, getLoyaltyMember, redeemLoyaltyPoints, LoyaltyMember } from '../services/api';
 
 export const CartDrawer: React.FC = () => {
   const { items, isOpen, closeCart, removeFromCart, updateQuantity, clearCart, totalItems, totalAmount } = useCart();
@@ -14,6 +26,51 @@ export const CartDrawer: React.FC = () => {
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Fidélité & Réduction
+  const [memberInfo, setMemberInfo] = useState<LoyaltyMember | null>(null);
+  const [useLoyaltyPoints, setUseLoyaltyPoints] = useState(false);
+  const [pointsToUse, setPointsToUse] = useState(0);
+
+  // Recherche automatique des points dès que 8 chiffres sont saisis
+  useEffect(() => {
+    const cleanPhone = customerPhone.replace(/\D/g, '').slice(-8);
+    if (cleanPhone.length === 8) {
+      getLoyaltyMember(cleanPhone)
+        .then((m) => {
+          setMemberInfo(m);
+          if (m && m.name && !customerName) {
+            setCustomerName(m.name);
+          }
+          if (m && m.settings && m.points >= (m.settings.min_points_to_redeem || 50)) {
+            // Nombre max de points utilisables (plafonné au total du panier)
+            const maxPointsByTotal = Math.floor(totalAmount / (m.settings.point_value_fcfa || 1));
+            const availablePoints = Math.min(m.points, maxPointsByTotal);
+            setPointsToUse(availablePoints);
+          } else {
+            setUseLoyaltyPoints(false);
+            setPointsToUse(0);
+          }
+        })
+        .catch(() => setMemberInfo(null));
+    } else {
+      setMemberInfo(null);
+      setUseLoyaltyPoints(false);
+    }
+  }, [customerPhone, totalAmount]);
+
+  // Calcul réduction et montant final
+  const pointValue = memberInfo?.settings?.point_value_fcfa || 1;
+  const loyaltyDiscount = useLoyaltyPoints ? pointsToUse * pointValue : 0;
+  
+  // Remise permanente de palier (ex: 5% Argent, 10% Or)
+  const tierDiscountPercent = memberInfo?.tier === 'GOLD' 
+    ? (memberInfo.settings?.gold_discount_percent || 10) 
+    : (memberInfo?.tier === 'SILVER' ? (memberInfo.settings?.silver_discount_percent || 5) : 0);
+  
+  const tierDiscountAmount = Math.round((totalAmount * tierDiscountPercent) / 100);
+  const totalDiscount = loyaltyDiscount + tierDiscountAmount;
+  const finalAmountToPay = Math.max(0, totalAmount - totalDiscount);
 
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,6 +87,7 @@ export const CartDrawer: React.FC = () => {
     setErrorMsg('');
 
     try {
+      // 1. Créer la commande
       const order = await createOrder({
         customerName: customerName.trim(),
         customerPhone: customerPhone.trim(),
@@ -40,10 +98,27 @@ export const CartDrawer: React.FC = () => {
           quantity: item.quantity,
           image: item.image
         })),
-        montantTotal: totalAmount,
+        montantTotal: finalAmountToPay,
         modePaiement: 'orange_money',
-        notes: notes.trim() || 'Commande depuis le panier'
+        notes: [
+          notes.trim(),
+          useLoyaltyPoints ? `Fidélité: -${loyaltyDiscount} FCFA (${pointsToUse} pts)` : '',
+          tierDiscountPercent > 0 ? `Remise VIP ${memberInfo?.tier}: -${tierDiscountAmount} FCFA` : ''
+        ].filter(Boolean).join(' | ') || 'Commande depuis le panier'
       });
+
+      // 2. Déduire les points fidélité si activé
+      if (useLoyaltyPoints && pointsToUse > 0) {
+        try {
+          await redeemLoyaltyPoints({
+            phone: customerPhone.trim(),
+            pointsToRedeem: pointsToUse,
+            orderId: order.id
+          });
+        } catch (e) {
+          console.warn('Erreur déduction points (non bloquante):', e);
+        }
+      }
 
       clearCart();
       closeCart();
@@ -180,29 +255,16 @@ export const CartDrawer: React.FC = () => {
                     >
                       Vider le panier
                     </button>
-                    <span>Paiement direct à la livraison ou en ligne</span>
+                    <span>Paiement direct sans commission</span>
                   </div>
                 </>
               )}
             </div>
 
-            {/* Footer with Checkout Form */}
+            {/* Footer with Checkout Form & Loyalty Integration */}
             {items.length > 0 && (
               <div className="p-5 border-t border-gray-100 bg-white">
-                {/* Récapitulatif Total */}
-                <div className="bg-[#FAF8F5] p-3 rounded-2xl border border-gray-200 mb-4 space-y-1.5">
-                  <div className="flex justify-between items-center text-xs text-gray-600">
-                    <span>Nombre d'articles</span>
-                    <span className="font-semibold text-gray-900">{totalItems}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm font-extrabold text-gray-900 pt-1 border-t border-gray-200">
-                    <span>Total à payer</span>
-                    <span className="text-base text-[#D4AF37] font-black">
-                      {totalAmount.toLocaleString('fr-FR')} FCFA
-                    </span>
-                  </div>
-                </div>
-
+                
                 {/* Formulaire de Commande */}
                 <form onSubmit={handleCheckout} className="space-y-3">
                   {errorMsg && (
@@ -210,6 +272,20 @@ export const CartDrawer: React.FC = () => {
                       {errorMsg}
                     </div>
                   )}
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                      Numéro WhatsApp / Orange Money *
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      placeholder="Ex: 70123456"
+                      value={customerPhone}
+                      onChange={(e) => setCustomerPhone(e.target.value)}
+                      className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D4AF37] bg-white shadow-sm font-semibold"
+                    />
+                  </div>
 
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1">
@@ -225,21 +301,60 @@ export const CartDrawer: React.FC = () => {
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">
-                      Numéro WhatsApp / Orange Money *
-                    </label>
-                    <input
-                      type="tel"
-                      required
-                      placeholder="Ex: 70123456"
-                      value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D4AF37] bg-white shadow-sm"
-                    />
-                    <p className="text-[10px] text-gray-500 mt-1">
-                      Validation automatique instantanée dès réception du SMS Orange Money.
-                    </p>
+                  {/* Encadré Fidélité Détecté */}
+                  {memberInfo && (
+                    <div className="p-3 rounded-2xl bg-gradient-to-r from-amber-500/10 via-[#D4AF37]/15 to-amber-500/10 border border-[#D4AF37]/30 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-xs font-extrabold text-[#D4AF37]">
+                          <Crown size={15} />
+                          <span>Club Privilège ({memberInfo.tier})</span>
+                        </div>
+                        <span className="text-xs font-black text-gray-900">
+                          {memberInfo.points} points
+                        </span>
+                      </div>
+
+                      {tierDiscountPercent > 0 && (
+                        <p className="text-[11px] text-emerald-700 font-bold flex items-center gap-1">
+                          <CheckCircle2 size={13} />
+                          <span>Remise VIP {memberInfo.tier} (-{tierDiscountPercent}%) : -{tierDiscountAmount} FCFA</span>
+                        </p>
+                      )}
+
+                      {pointsToUse >= (memberInfo.settings?.min_points_to_redeem || 50) && (
+                        <label className="flex items-center gap-2 cursor-pointer pt-1 border-t border-[#D4AF37]/20 text-xs font-bold text-gray-800">
+                          <input
+                            type="checkbox"
+                            checked={useLoyaltyPoints}
+                            onChange={(e) => setUseLoyaltyPoints(e.target.checked)}
+                            className="w-4 h-4 rounded text-[#D4AF37] focus:ring-[#D4AF37]"
+                          />
+                          <span>Déduire {pointsToUse} points (-{loyaltyDiscount} FCFA)</span>
+                        </label>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Récapitulatif Total */}
+                  <div className="bg-[#FAF8F5] p-3 rounded-2xl border border-gray-200 space-y-1.5">
+                    <div className="flex justify-between items-center text-xs text-gray-600">
+                      <span>Sous-total ({totalItems} articles)</span>
+                      <span className="font-semibold text-gray-900">{totalAmount.toLocaleString('fr-FR')} FCFA</span>
+                    </div>
+
+                    {totalDiscount > 0 && (
+                      <div className="flex justify-between items-center text-xs text-emerald-600 font-bold">
+                        <span>Réductions fidélité appliquées</span>
+                        <span>-{totalDiscount.toLocaleString('fr-FR')} FCFA</span>
+                      </div>
+                    )}
+
+                    <div className="flex justify-between items-center text-sm font-extrabold text-gray-900 pt-1 border-t border-gray-200">
+                      <span>Net à payer</span>
+                      <span className="text-base text-[#D4AF37] font-black">
+                        {finalAmountToPay.toLocaleString('fr-FR')} FCFA
+                      </span>
+                    </div>
                   </div>
 
                   <button
@@ -248,10 +363,10 @@ export const CartDrawer: React.FC = () => {
                     className="w-full py-3 px-4 rounded-xl bg-[#D4AF37] hover:bg-[#c29d2b] text-white font-extrabold text-sm shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     {isSubmitting ? (
-                      <span>Création de la commande...</span>
+                      <span>Validation en cours...</span>
                     ) : (
                       <>
-                        <span>Commander & Payer ({totalAmount.toLocaleString('fr-FR')} FCFA)</span>
+                        <span>Commander & Payer ({finalAmountToPay.toLocaleString('fr-FR')} FCFA)</span>
                         <ArrowRight size={16} />
                       </>
                     )}
@@ -259,7 +374,7 @@ export const CartDrawer: React.FC = () => {
 
                   <div className="flex items-center justify-center gap-1.5 text-[11px] text-emerald-600 font-semibold pt-1">
                     <ShieldCheck size={14} />
-                    <span>Paiement sécurisé et vérifié par Orange Money</span>
+                    <span>Paiement direct & instantané via Orange Money</span>
                   </div>
                 </form>
               </div>

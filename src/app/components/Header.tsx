@@ -15,6 +15,7 @@ export function Header() {
     { name: 'Accueil', path: '/' },
     { name: 'Nos Créations', path: '/catalogue' },
     { name: 'Sur Commande', path: '/sur-commande' },
+    { name: 'Club Privilège', path: '/fidelite' },
     { name: 'À propos', path: '/a-propos' },
     { name: 'Contact', path: '/contact' },
     { name: 'Administration', path: '/admin' },

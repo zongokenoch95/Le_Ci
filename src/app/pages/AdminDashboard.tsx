@@ -9,15 +9,92 @@ import {
   RefreshCw,
   Send,
   Sparkles,
-  Zap
+  Zap,
+  Crown,
+  Award,
+  Gift,
+  Settings,
+  Save,
+  Plus,
+  Sliders,
+  Users
 } from 'lucide-react';
-import { getAdminOrders, validateOrder, finishOrder, simulateWebhook, Order } from '../services/api';
+import { getAdminOrders, validateOrder, finishOrder, simulateWebhook, Order, getLoyaltySettings, updateLoyaltySettings, getAllLoyaltyMembers, adjustLoyaltyMember, LoyaltySettings, LoyaltyMember } from '../services/api';
 import { getSocket, joinAdmin } from '../services/socket';
 
 export function AdminDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'preparing' | 'ready'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'preparing' | 'ready' | 'loyalty'>('all');
+
+  // État Fidélisation
+  const [loyaltySettings, setLoyaltySettings] = useState<LoyaltySettings | null>(null);
+  const [loyaltyMembers, setLoyaltyMembers] = useState<LoyaltyMember[]>([]);
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
+  
+  // Ajustement manuel de points
+  const [adjustPhone, setAdjustPhone] = useState('');
+  const [adjustName, setAdjustName] = useState('');
+  const [adjustPoints, setAdjustPoints] = useState('50');
+  const [adjustReason, setAdjustReason] = useState('Geste commercial gérant');
+  const [adjusting, setAdjusting] = useState(false);
+  const [adjustMsg, setAdjustMsg] = useState('');
+
+  const fetchLoyaltyData = async () => {
+    try {
+      const [s, m] = await Promise.all([getLoyaltySettings(), getAllLoyaltyMembers()]);
+      setLoyaltySettings(s);
+      setLoyaltyMembers(m);
+    } catch (e) {
+      console.error('Erreur chargement fidélité', e);
+    }
+  };
+
+  useEffect(() => {
+    fetchLoyaltyData();
+  }, []);
+
+  const handleSaveSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!loyaltySettings) return;
+    setSavingSettings(true);
+    setSaveSuccessMsg('');
+    try {
+      const res = await updateLoyaltySettings(loyaltySettings);
+      setLoyaltySettings(res.settings);
+      setSaveSuccessMsg('✅ Paramètres de fidélité mis à jour avec succès !');
+      setTimeout(() => setSaveSuccessMsg(''), 4000);
+    } catch (err: any) {
+      alert(err.message || 'Erreur sauvegarde');
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
+  const handleAdjustPoints = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adjustPhone.trim() || !adjustPoints) return;
+    setAdjusting(true);
+    setAdjustMsg('');
+    try {
+      await adjustLoyaltyMember({
+        phone: adjustPhone.trim(),
+        name: adjustName.trim() || undefined,
+        pointsDelta: Number(adjustPoints),
+        reason: adjustReason.trim()
+      });
+      setAdjustMsg('✅ Points ajustés avec succès !');
+      setAdjustPhone('');
+      setAdjustName('');
+      setTimeout(() => setAdjustMsg(''), 4000);
+      fetchLoyaltyData();
+    } catch (err: any) {
+      alert(err.message || 'Erreur ajustement');
+    } finally {
+      setAdjusting(false);
+    }
+  };
 
   // Formulaire Simulation SMS Test Webhook
   const [testAmount, setTestAmount] = useState('75');

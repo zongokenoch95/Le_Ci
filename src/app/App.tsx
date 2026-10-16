@@ -12,6 +12,7 @@ import { About } from './pages/About';
 import { Contact } from './pages/Contact';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { Payment } from './pages/Payment';
+import { Loyalty } from './pages/Loyalty';
 import '../styles/index.css';
 
 export default function App() {
@@ -30,6 +31,7 @@ export default function App() {
               <Route path="/a-propos" element={<About />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/fidelite" element={<Loyalty />} />
               <Route path="/paiement/:orderId" element={<Payment />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

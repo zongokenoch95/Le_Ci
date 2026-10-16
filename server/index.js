@@ -316,6 +316,15 @@ async function handleWebhook(req, res) {
         // Validation normale
         console.log(`✅ [Webhook] Commande ${reconciliation.order.id} validée ! Diffusion temps réel...`);
         emitOrderValidated(reconciliation.order);
+        // Crédit automatique des points de fidélité
+        try {
+          const credited = await db.creditOrderPoints(reconciliation.order);
+          if (credited) {
+            console.log(`🎁 [Fidélité] Points crédités pour ${credited.name} (${credited.phone}) : Total ${credited.points} pts (Palier ${credited.tier})`);
+          }
+        } catch (e) {
+          console.error('[Fidélité] Erreur crédit points:', e);
+        }
       }
     }
 
@@ -456,6 +465,9 @@ app.post('/api/orders/:id/validate', async (req, res) => {
   try {
     const order = await db.validateOrder(req.params.id);
     emitOrderValidated(order);
+    try {
+      await db.creditOrderPoints(order);
+    } catch (e) {}
     res.json({ success: true, message: 'Commande validée manuellement', order });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -482,6 +494,9 @@ app.post('/api/orders/:id/approve-high-value', async (req, res) => {
   try {
     const order = await db.approveHighValue(req.params.id);
     emitOrderValidated(order);
+    try {
+      await db.creditOrderPoints(order);
+    } catch (e) {}
     res.json({
       success: true,
       message: `Commande ${order.id} approuvée manuellement (montant élevé : ${order.montantTotal} FCFA)`,
@@ -562,7 +577,82 @@ if (fs.existsSync(distPath)) {
 
 const isDirect = !process.argv[1] || process.argv[1].includes('index.js') || process.argv[1].includes('server');
 if (isDirect && !process.argv[1].includes('api.test.js')) {
-  server.listen(PORT, () => {
+  
+// ==========================================
+// ROUTES PROGRAMME DE FIDÉLISATION (Paramétrable par le gérant)
+// ==========================================
+
+// Obtenir la configuration actuelle du programme
+app.get('/api/loyalty/settings', async (req, res) => {
+  try {
+    const settings = await db.getLoyaltySettings();
+    res.json(settings);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Mettre à jour la configuration du programme (Gérant)
+app.put('/api/loyalty/settings', async (req, res) => {
+  try {
+    const updated = await db.updateLoyaltySettings(req.body);
+    res.json({ success: true, message: 'Paramètres de fidélité enregistrés', settings: updated });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Consulter le solde et statut d'un membre par téléphone
+app.get('/api/loyalty/member/:phone', async (req, res) => {
+  try {
+    const member = await db.getLoyaltyMember(req.params.phone);
+    if (!member) {
+      return res.status(404).json({ error: 'Membre non trouvé' });
+    }
+    res.json(member);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Obtenir tous les membres (Espace Gérant)
+app.get('/api/loyalty/members', async (req, res) => {
+  try {
+    const members = await db.getAllLoyaltyMembers();
+    res.json(members);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Utiliser des points pour une réduction (Panier)
+app.post('/api/loyalty/redeem', async (req, res) => {
+  try {
+    const { phone, pointsToRedeem, orderId } = req.body;
+    const result = await db.redeemPoints({ phone, pointsToRedeem: Number(pointsToRedeem), orderId });
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Ajustement manuel de points par le gérant
+app.post('/api/loyalty/adjust', async (req, res) => {
+  try {
+    const { phone, name, pointsDelta, reason } = req.body;
+    const member = await db.adjustMemberPoints({
+      phone,
+      name,
+      pointsDelta: Number(pointsDelta),
+      reason
+    });
+    res.json({ success: true, message: 'Points ajustés avec succès', member });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+server.listen(PORT, () => {
     console.log(`🚀 [Les Douceurs de Lê Ci] Serveur de paiement démarré sur http://localhost:${PORT}`);
     console.log(`🛡️ [Sécurité] Rate limiting actif — Webhooks: 30 req/min, API: 100 req/min`);
     console.log(`📋 [Audit] Journal d'audit actif — GET /api/audit-logs pour consulter`);

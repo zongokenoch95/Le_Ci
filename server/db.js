@@ -86,7 +86,63 @@ export async function initDb() {
     )
   `);
 
-  console.log('✅ [SQLite] Base de données Les Douceurs de Lê Ci connectée — tables orders + payment_audit_logs prêtes.');
+    // ==========================================
+  // TABLES PROGRAMME DE FIDÉLISATION
+  // Entièrement paramétrable par le gérant
+  // ==========================================
+  await run(`
+    CREATE TABLE IF NOT EXISTS loyalty_settings (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      enabled INTEGER DEFAULT 1,
+      fcfa_per_point INTEGER DEFAULT 100,
+      point_value_fcfa INTEGER DEFAULT 1,
+      min_points_to_redeem INTEGER DEFAULT 50,
+      welcome_bonus_points INTEGER DEFAULT 50,
+      silver_min_points INTEGER DEFAULT 500,
+      silver_discount_percent INTEGER DEFAULT 5,
+      gold_min_points INTEGER DEFAULT 1500,
+      gold_discount_percent INTEGER DEFAULT 10,
+      updated_at DATETIME
+    )
+  `);
+
+  // Insérer les paramètres par défaut si inexistant
+  const existingSettings = await get('SELECT id FROM loyalty_settings WHERE id = 1');
+  if (!existingSettings) {
+    await run(`
+      INSERT INTO loyalty_settings (id, enabled, fcfa_per_point, point_value_fcfa, min_points_to_redeem, welcome_bonus_points, silver_min_points, silver_discount_percent, gold_min_points, gold_discount_percent, updated_at)
+      VALUES (1, 1, 100, 1, 50, 50, 500, 5, 1500, 10, ?)
+    `, [new Date().toISOString()]);
+  }
+
+  // Membres du programme de fidélité
+  await run(`
+    CREATE TABLE IF NOT EXISTS loyalty_members (
+      phone TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      points INTEGER DEFAULT 0,
+      tier TEXT DEFAULT 'BRONZE',
+      total_spent INTEGER DEFAULT 0,
+      orders_count INTEGER DEFAULT 0,
+      created_at DATETIME NOT NULL,
+      updated_at DATETIME NOT NULL
+    )
+  `);
+
+  // Historique des points (gains, déductions, bonus)
+  await run(`
+    CREATE TABLE IF NOT EXISTS loyalty_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      phone TEXT NOT NULL,
+      order_id TEXT,
+      type TEXT NOT NULL,
+      points INTEGER NOT NULL,
+      description TEXT,
+      created_at DATETIME NOT NULL
+    )
+  `);
+
+  console.log('✅ [SQLite] Base de données connectée — orders, audit_logs et tables de fidélisation prêtes.');
 }
 
 // ==========================================
@@ -509,6 +565,235 @@ export async function reconcilePaymentWebhook({
   };
 }
 
+
+// ==========================================
+// PROGRAMME DE FIDÉLISATION — Gestion & Paramétrage
+// ==========================================
+
+export async function getLoyaltySettings() {
+  const settings = await get('SELECT * FROM loyalty_settings WHERE id = 1');
+  return settings || {
+    id: 1,
+    enabled: 1,
+    fcfa_per_point: 100,
+    point_value_fcfa: 1,
+    min_points_to_redeem: 50,
+    welcome_bonus_points: 50,
+    silver_min_points: 500,
+    silver_discount_percent: 5,
+    gold_min_points: 1500,
+    gold_discount_percent: 10
+  };
+}
+
+export async function updateLoyaltySettings(data) {
+  const now = new Date().toISOString();
+  await run(`
+    UPDATE loyalty_settings SET
+      enabled = ?,
+      fcfa_per_point = ?,
+      point_value_fcfa = ?,
+      min_points_to_redeem = ?,
+      welcome_bonus_points = ?,
+      silver_min_points = ?,
+      silver_discount_percent = ?,
+      gold_min_points = ?,
+      gold_discount_percent = ?,
+      updated_at = ?
+    WHERE id = 1
+  `, [
+    data.enabled ? 1 : 0,
+    Number(data.fcfa_per_point) || 100,
+    Number(data.point_value_fcfa) || 1,
+    Number(data.min_points_to_redeem) || 50,
+    Number(data.welcome_bonus_points) || 50,
+    Number(data.silver_min_points) || 500,
+    Number(data.silver_discount_percent) || 5,
+    Number(data.gold_min_points) || 1500,
+    Number(data.gold_discount_percent) || 10,
+    now
+  ]);
+
+  return getLoyaltySettings();
+}
+
+function calculateTier(points, settings) {
+  if (points >= (settings.gold_min_points || 1500)) return 'GOLD';
+  if (points >= (settings.silver_min_points || 500)) return 'SILVER';
+  return 'BRONZE';
+}
+
+export async function getLoyaltyMember(rawPhone) {
+  if (!rawPhone) return null;
+  const cleanPhone = String(rawPhone).replace(/\D/g, '').slice(-8);
+  if (!cleanPhone) return null;
+
+  const member = await get('SELECT * FROM loyalty_members WHERE phone = ?', [cleanPhone]);
+  if (!member) return null;
+
+  const history = await all(
+    'SELECT * FROM loyalty_history WHERE phone = ? ORDER BY created_at DESC LIMIT 20',
+    [cleanPhone]
+  );
+
+  const settings = await getLoyaltySettings();
+
+  return {
+    ...member,
+    history: history || [],
+    settings
+  };
+}
+
+export async function getAllLoyaltyMembers() {
+  const members = await all('SELECT * FROM loyalty_members ORDER BY points DESC');
+  return members || [];
+}
+
+export async function creditOrderPoints(order) {
+  if (!order || !order.customerPhone) return null;
+  const settings = await getLoyaltySettings();
+  if (!settings.enabled) return null;
+
+  const cleanPhone = String(order.customerPhone).replace(/\D/g, '').slice(-8);
+  if (!cleanPhone || cleanPhone.length < 8) return null;
+
+  const now = new Date().toISOString();
+  const amount = Number(order.montantTotal || order.montant_total) || 0;
+  const pointsEarned = Math.floor(amount / (settings.fcfa_per_point || 100));
+
+  let member = await get('SELECT * FROM loyalty_members WHERE phone = ?', [cleanPhone]);
+  let isNew = false;
+
+  if (!member) {
+    isNew = true;
+    const initialPoints = (settings.welcome_bonus_points || 50) + pointsEarned;
+    const tier = calculateTier(initialPoints, settings);
+
+    await run(`
+      INSERT INTO loyalty_members (phone, name, points, tier, total_spent, orders_count, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, 1, ?, ?)
+    `, [
+      cleanPhone,
+      order.customerName || order.customer_name || 'Client Lê Ci',
+      initialPoints,
+      tier,
+      amount,
+      now,
+      now
+    ]);
+
+    // Historique bonus de bienvenue
+    if (settings.welcome_bonus_points > 0) {
+      await run(`
+        INSERT INTO loyalty_history (phone, order_id, type, points, description, created_at)
+        VALUES (?, ?, 'BONUS', ?, 'Bonus de bienvenue Club Privilège', ?)
+      `, [cleanPhone, order.id, settings.welcome_bonus_points, now]);
+    }
+  } else {
+    const newPoints = member.points + pointsEarned;
+    const newTotalSpent = member.total_spent + amount;
+    const newOrdersCount = member.orders_count + 1;
+    const newTier = calculateTier(newPoints, settings);
+
+    await run(`
+      UPDATE loyalty_members SET
+        name = COALESCE(?, name),
+        points = ?,
+        tier = ?,
+        total_spent = ?,
+        orders_count = ?,
+        updated_at = ?
+      WHERE phone = ?
+    `, [
+      order.customerName || order.customer_name,
+      newPoints,
+      newTier,
+      newTotalSpent,
+      newOrdersCount,
+      now,
+      cleanPhone
+    ]);
+  }
+
+  // Historique gain commande
+  if (pointsEarned > 0) {
+    await run(`
+      INSERT INTO loyalty_history (phone, order_id, type, points, description, created_at)
+      VALUES (?, ?, 'EARN', ?, ?, ?)
+    `, [cleanPhone, order.id, pointsEarned, `Points gagnés sur commande ${order.id} (${amount} FCFA)`, now]);
+  }
+
+  return getLoyaltyMember(cleanPhone);
+}
+
+export async function redeemPoints({ phone, pointsToRedeem, orderId }) {
+  const cleanPhone = String(phone).replace(/\D/g, '').slice(-8);
+  const member = await get('SELECT * FROM loyalty_members WHERE phone = ?', [cleanPhone]);
+  if (!member) throw new Error('Membre non trouvé');
+
+  const settings = await getLoyaltySettings();
+  if (pointsToRedeem < (settings.min_points_to_redeem || 50)) {
+    throw new Error(`Seuil minimal d'utilisation : ${settings.min_points_to_redeem} points`);
+  }
+  if (member.points < pointsToRedeem) {
+    throw new Error(`Solde de points insuffisant (${member.points} points disponibles)`);
+  }
+
+  const discountAmount = pointsToRedeem * (settings.point_value_fcfa || 1);
+  const newPoints = member.points - pointsToRedeem;
+  const now = new Date().toISOString();
+  const newTier = calculateTier(newPoints, settings);
+
+  await run(`
+    UPDATE loyalty_members SET points = ?, tier = ?, updated_at = ? WHERE phone = ?
+  `, [newPoints, newTier, now, cleanPhone]);
+
+  await run(`
+    INSERT INTO loyalty_history (phone, order_id, type, points, description, created_at)
+    VALUES (?, ?, 'REDEEM', ?, ?, ?)
+  `, [cleanPhone, orderId || null, -pointsToRedeem, `Utilisation de ${pointsToRedeem} points pour une réduction de ${discountAmount} FCFA`, now]);
+
+  return {
+    success: true,
+    discountAmount,
+    remainingPoints: newPoints,
+    tier: newTier
+  };
+}
+
+export async function adjustMemberPoints({ phone, name, pointsDelta, reason }) {
+  const cleanPhone = String(phone).replace(/\D/g, '').slice(-8);
+  const now = new Date().toISOString();
+  const settings = await getLoyaltySettings();
+
+  let member = await get('SELECT * FROM loyalty_members WHERE phone = ?', [cleanPhone]);
+  if (!member) {
+    const pts = Math.max(0, pointsDelta);
+    await run(`
+      INSERT INTO loyalty_members (phone, name, points, tier, total_spent, orders_count, created_at, updated_at)
+      VALUES (?, ?, ?, ?, 0, 0, ?, ?)
+    `, [cleanPhone, name || 'Membre Lê Ci', pts, calculateTier(pts, settings), now, now]);
+  } else {
+    const newPoints = Math.max(0, member.points + pointsDelta);
+    await run(`
+      UPDATE loyalty_members SET
+        points = ?,
+        tier = ?,
+        name = COALESCE(?, name),
+        updated_at = ?
+      WHERE phone = ?
+    `, [newPoints, calculateTier(newPoints, settings), name, now, cleanPhone]);
+  }
+
+  await run(`
+    INSERT INTO loyalty_history (phone, order_id, type, points, description, created_at)
+    VALUES (?, NULL, 'MANUAL_ADJUST', ?, ?, ?)
+  `, [cleanPhone, pointsDelta, reason || 'Ajustement gérant', now]);
+
+  return getLoyaltyMember(cleanPhone);
+}
+
 export default {
   initDb,
   createOrder,
@@ -523,5 +808,12 @@ export default {
   getAuditLogs,
   getAuditStats,
   approveHighValue,
-  rejectHighValue
+  rejectHighValue,
+  getLoyaltySettings,
+  updateLoyaltySettings,
+  getLoyaltyMember,
+  getAllLoyaltyMembers,
+  creditOrderPoints,
+  redeemPoints,
+  adjustMemberPoints
 };
