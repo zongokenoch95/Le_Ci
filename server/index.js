@@ -365,6 +365,28 @@ app.post('/api/orders/:id/finish', async (req, res) => {
   }
 });
 
+
+// ==========================================
+// DISTRIBUTION DU FRONTEND (SPA VITE/REACT) EN PRODUCTION
+// ==========================================
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const distPath = path.resolve(__dirname, '../dist');
+
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+  app.use((req, res, next) => {
+    if (req.method === 'GET' && !req.path.startsWith('/api') && !req.path.startsWith('/socket.io')) {
+      return res.sendFile(path.join(distPath, 'index.html'));
+    }
+    next();
+  });
+}
+
 const isDirect = !process.argv[1] || process.argv[1].includes('index.js') || process.argv[1].includes('server');
 if (isDirect && !process.argv[1].includes('api.test.js')) {
   server.listen(PORT, () => {
