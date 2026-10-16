@@ -713,6 +713,61 @@ export async function getLoyaltyMember(rawPhone) {
   };
 }
 
+
+export async function registerLoyaltyMember({ phone, name }) {
+  if (!phone || !name) throw new Error('Nom et numéro de téléphone obligatoires');
+  const cleanPhone = String(phone).replace(/\D/g, '').slice(-8);
+  if (cleanPhone.length < 8) throw new Error('Numéro de téléphone invalide (8 chiffres requis)');
+
+  const settings = await getLoyaltySettings();
+  let existing = await get('SELECT * FROM loyalty_members WHERE phone = ?', [cleanPhone]);
+  const now = new Date().toISOString();
+
+  if (existing) {
+    if (name && name.trim()) {
+      await run('UPDATE loyalty_members SET name = ?, updated_at = ? WHERE phone = ?', [name.trim(), now, cleanPhone]);
+    }
+    return getLoyaltyMember(cleanPhone);
+  }
+
+  const welcomePts = settings.welcome_bonus_points || 50;
+  await run(`
+    INSERT INTO loyalty_members (phone, name, points, tier, total_spent, orders_count, created_at, updated_at)
+    VALUES (?, ?, ?, 'BRONZE', 0, 0, ?, ?)
+  `, [cleanPhone, name.trim(), welcomePts, now, now]);
+
+  if (welcomePts > 0) {
+    await run(`
+      INSERT INTO loyalty_history (phone, order_id, type, points, description, created_at)
+      VALUES (?, NULL, 'BONUS', ?, 'Bonus de bienvenue Club Fidélisation', ?)
+    `, [cleanPhone, welcomePts, now]);
+  }
+
+  return getLoyaltyMember(cleanPhone);
+}
+
+export async function loginLoyaltyMember({ phone, name }) {
+  if (!phone) throw new Error('Numéro de téléphone requis');
+  const cleanPhone = String(phone).replace(/\D/g, '').slice(-8);
+  if (cleanPhone.length < 8) throw new Error('Numéro de téléphone invalide (8 chiffres requis)');
+
+  let member = await getLoyaltyMember(cleanPhone);
+  if (!member) {
+    if (name && name.trim()) {
+      return registerLoyaltyMember({ phone: cleanPhone, name: name.trim() });
+    }
+    return null;
+  }
+
+  if (name && name.trim() && name.trim() !== member.name) {
+    const now = new Date().toISOString();
+    await run('UPDATE loyalty_members SET name = ?, updated_at = ? WHERE phone = ?', [name.trim(), now, cleanPhone]);
+    member = await getLoyaltyMember(cleanPhone);
+  }
+
+  return member;
+}
+
 export async function getAllLoyaltyMembers() {
   const members = await all('SELECT * FROM loyalty_members ORDER BY points DESC');
   return members || [];
@@ -1068,6 +1123,8 @@ export default {
   getLoyaltySettings,
   updateLoyaltySettings,
   getLoyaltyMember,
+  registerLoyaltyMember,
+  loginLoyaltyMember,
   getAllLoyaltyMembers,
   creditOrderPoints,
   redeemPoints,

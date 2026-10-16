@@ -32,6 +32,7 @@ export default function App() {
               <Route path="/contact" element={<Contact />} />
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/fidelite" element={<Loyalty />} />
+              <Route path="/fidelisation" element={<Loyalty />} />
               <Route path="/paiement/:orderId" element={<Payment />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

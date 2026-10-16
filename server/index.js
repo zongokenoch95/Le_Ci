@@ -582,6 +582,32 @@ if (isDirect && !process.argv[1].includes('api.test.js')) {
 // ROUTES PROGRAMME DE FIDÉLISATION (Paramétrable par le gérant)
 // ==========================================
 
+
+// Inscription au programme de fidélité (Portail 1 après commande ou Portail 2)
+app.post('/api/loyalty/register', async (req, res) => {
+  try {
+    const { phone, name } = req.body;
+    const member = await db.registerLoyaltyMember({ phone, name });
+    res.status(201).json({ success: true, member, message: 'Inscription au programme de fidélité réussie !' });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// Connexion à l'espace fidélité client (Portail 2 avec Nom + Téléphone)
+app.post('/api/loyalty/login', async (req, res) => {
+  try {
+    const { phone, name } = req.body;
+    const member = await db.loginLoyaltyMember({ phone, name });
+    if (!member) {
+      return res.status(404).json({ success: false, error: 'Aucun compte fidélité trouvé pour ce numéro.' });
+    }
+    res.json({ success: true, member });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
 // Obtenir la configuration actuelle du programme
 app.get('/api/loyalty/settings', async (req, res) => {
   try {

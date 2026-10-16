@@ -15,9 +15,13 @@ import {
   ArrowLeft,
   XCircle,
   Sparkles,
-  ExternalLink
+  ExternalLink,
+  Crown,
+  Gift,
+  UserCheck,
+  ArrowRight
 } from 'lucide-react';
-import { getOrder, getOrderStatus, cancelOrder, Order } from '../services/api';
+import { getOrder, getOrderStatus, cancelOrder, registerLoyaltyMember, getLoyaltyMember, getLoyaltySettings, Order, LoyaltyMember, LoyaltySettings } from '../services/api';
 import { getSocket, joinOrder, leaveOrder } from '../services/socket';
 
 export function Payment() {
@@ -31,6 +35,58 @@ export function Payment() {
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
   const [selectedOperator, setSelectedOperator] = useState<'orange' | 'wave' | 'moov'>('orange');
   const [remainingSeconds, setRemainingSeconds] = useState(600);
+
+  // État Portail 1 Fidélité
+  const [loyaltyMember, setLoyaltyMember] = useState<LoyaltyMember | null>(null);
+  const [loyaltySettings, setLoyaltySettings] = useState<LoyaltySettings | null>(null);
+  const [enrolling, setEnrolling] = useState(false);
+  const [enrolledSuccess, setEnrolledSuccess] = useState(false);
+  const [enrollName, setEnrollName] = useState('');
+  const [enrollPhone, setEnrollPhone] = useState('');
+
+  // Vérifier statut fidélité dès que la commande est payée
+  useEffect(() => {
+    if (order && (order.statut === 'EN_PREPARATION' || order.statut === 'PAYEE') && order.customerPhone) {
+      setEnrollName(order.customerName || '');
+      setEnrollPhone(order.customerPhone || '');
+      
+      getLoyaltySettings().then(setLoyaltySettings).catch(() => null);
+      getLoyaltyMember(order.customerPhone)
+        .then((m) => {
+          setLoyaltyMember(m);
+        })
+        .catch(() => setLoyaltyMember(null));
+    }
+  }, [order?.statut, order?.customerPhone]);
+
+  const handleEnrollLoyalty = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!enrollName.trim() || !enrollPhone.trim()) return;
+    setEnrolling(true);
+    try {
+      const res = await registerLoyaltyMember({
+        name: enrollName.trim(),
+        phone: enrollPhone.trim()
+      });
+      setLoyaltyMember(res.member);
+      setEnrolledSuccess(true);
+      // Sauvegarder dans la session client
+      localStorage.setItem('le_ci_customer_loyalty', JSON.stringify({
+        phone: res.member.phone,
+        name: res.member.name
+      }));
+      confetti({
+        particleCount: 70,
+        spread: 60,
+        origin: { y: 0.7 },
+        colors: ['#D4AF37', '#10B981', '#F59E0B']
+      });
+    } catch (err: any) {
+      alert(err.message || 'Erreur lors de l\'inscription');
+    } finally {
+      setEnrolling(false);
+    }
+  };
   const hasTriggeredConfetti = useRef(false);
 
   // Détection navigateurs in-app (TikTok, Instagram, Facebook, etc.)
@@ -259,6 +315,98 @@ export function Payment() {
               <p className="text-gray-600 max-w-lg mx-auto mb-8">
                 Merci <span className="font-semibold text-gray-900">{order.customerName}</span>. Votre commande est validée et nos chefs pâtissiers ont déjà commencé sa préparation.
               </p>
+
+              
+              {/* ========================================================================= */}
+              {/* PORTAIL 1 : INSCRIPTION / CONSULTATION PROGRAMME DE FIDÉLITÉ SUR LA MÊME PAGE */}
+              {/* ========================================================================= */}
+              <div className="max-w-lg mx-auto mb-8">
+                {loyaltyMember ? (
+                  /* Cas A : Le client est déjà membre ou vient de s'inscrire */
+                  <div className="bg-gradient-to-br from-[#111827] to-[#1F2937] text-white p-6 rounded-3xl border border-[#D4AF37]/40 shadow-xl text-left relative overflow-hidden">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2 text-[#D4AF37] font-bold text-xs uppercase tracking-wider">
+                        <Crown size={16} />
+                        <span>Club Fidélisation ({loyaltyMember.tier})</span>
+                      </div>
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-[#D4AF37] text-black">
+                        Membre Actif
+                      </span>
+                    </div>
+
+                    <h3 className="text-lg font-black text-white mb-1">
+                      {enrolledSuccess ? '🎉 Inscription Réussie !' : 'Vos Points ont été Crédités !'}
+                    </h3>
+                    <p className="text-xs text-gray-300 mb-4">
+                      Votre solde actuel est de <strong className="text-[#D4AF37] text-sm">{loyaltyMember.points} points</strong>. Échangez-les contre des pâtisseries offertes ou des remises sur vos prochaines commandes.
+                    </p>
+
+                    <button
+                      onClick={() => {
+                        localStorage.setItem('le_ci_customer_loyalty', JSON.stringify({
+                          phone: loyaltyMember.phone,
+                          name: loyaltyMember.name
+                        }));
+                        navigate('/fidelite');
+                      }}
+                      className="w-full py-2.5 px-4 rounded-xl bg-[#D4AF37] hover:bg-[#c29d2b] text-white font-extrabold text-xs shadow-md transition flex items-center justify-center gap-2"
+                    >
+                      <Gift size={16} />
+                      <span>Accéder à mon Espace Fidélité</span>
+                      <ArrowRight size={15} />
+                    </button>
+                  </div>
+                ) : (
+                  /* Cas B : Le client n'est pas encore membre → Proposition d'inscription immédiate */
+                  <div className="bg-white p-6 rounded-3xl border-2 border-[#D4AF37]/30 shadow-xl text-left relative overflow-hidden">
+                    <div className="flex items-center gap-2 text-[#D4AF37] font-extrabold text-xs uppercase tracking-wider mb-2">
+                      <Gift size={18} />
+                      <span>Portail Fidélité RestoBoost</span>
+                    </div>
+
+                    <h3 className="text-lg font-black text-gray-900 mb-1">
+                      Rejoignez le Programme de Fidélité !
+                    </h3>
+                    <p className="text-xs text-gray-600 mb-4">
+                      Cette commande vous rapporte des points de fidélité + <strong className="text-[#D4AF37]">{loyaltySettings?.welcome_bonus_points || 50} points de bienvenue</strong> offerts immédiatement à l'inscription.
+                    </p>
+
+                    <form onSubmit={handleEnrollLoyalty} className="space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Votre Nom</label>
+                          <input
+                            type="text"
+                            required
+                            value={enrollName}
+                            onChange={(e) => setEnrollName(e.target.value)}
+                            className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#D4AF37]"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Numéro Mobile / WhatsApp</label>
+                          <input
+                            type="tel"
+                            required
+                            value={enrollPhone}
+                            onChange={(e) => setEnrollPhone(e.target.value)}
+                            className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#D4AF37]"
+                          />
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={enrolling}
+                        className="w-full py-3 px-4 rounded-xl bg-[#D4AF37] hover:bg-[#c29d2b] text-white font-extrabold text-xs shadow-md transition flex items-center justify-center gap-2"
+                      >
+                        <UserCheck size={16} />
+                        <span>{enrolling ? 'Inscription en cours...' : `M'inscrire & Récupérer mes points offerts`}</span>
+                      </button>
+                    </form>
+                  </div>
+                )}
+              </div>
 
               {/* Récapitulatif ticket */}
               <div className="bg-[#FAF8F5] rounded-2xl p-6 border border-gray-100 text-left max-w-lg mx-auto mb-8 space-y-3">

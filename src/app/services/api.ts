@@ -377,3 +377,35 @@ export async function recordClientVisit(data: {
   }
   return res.json();
 }
+
+export async function registerLoyaltyMember(data: {
+  phone: string;
+  name: string;
+}): Promise<{ success: boolean; member: LoyaltyMember; message: string }> {
+  const res = await fetch(`${API_BASE}/loyalty/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Erreur lors de l\'inscription au programme de fidélité');
+  }
+  return res.json();
+}
+
+export async function loginLoyaltyMember(data: {
+  phone: string;
+  name?: string;
+}): Promise<{ success: boolean; member: LoyaltyMember }> {
+  const res = await fetch(`${API_BASE}/loyalty/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Compte introuvable');
+  }
+  return res.json();
+}
