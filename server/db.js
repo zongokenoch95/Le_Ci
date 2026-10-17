@@ -210,7 +210,52 @@ export async function initDb() {
     `, [now, now, now, now]);
   }
 
-  console.log('✅ [SQLite] Base de données connectée — orders, audit_logs, fidélisation, récompenses et employés prêts.');
+    // ==========================================
+  // TABLE PRODUITS / PLATS DU MENU
+  // Gérable entièrement par l'administrateur
+  // ==========================================
+  await run(`
+    CREATE TABLE IF NOT EXISTS products (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT 'Gâteaux',
+      price INTEGER NOT NULL,
+      description TEXT,
+      image TEXT,
+      is_available INTEGER DEFAULT 1,
+      created_at DATETIME NOT NULL,
+      updated_at DATETIME NOT NULL
+    )
+  `);
+
+  // Seeding initial du catalogue si vide
+  const prodCount = await get('SELECT COUNT(*) as count FROM products');
+  if (prodCount && prodCount.count === 0) {
+    const now = new Date().toISOString();
+    const initialProducts = [
+      ['Croissant Beurre Pur Artisanal', 'Viennoiseries', 500, 'Croissant doré pur beurre feuilleté à la main chaque matin.', 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080'],
+      ['Pain au Chocolat Feuilleté', 'Viennoiseries', 600, 'Pâte feuilletée croustillante avec deux barres de chocolat intense.', 'https://images.unsplash.com/photo-1530610476181-d83430b64dcd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080'],
+      ['Macarons Assortis (Boîte Découverte)', 'Macarons', 1500, 'Assortiment de 4 macarons parfumés : vanille, pistache, caramel et framboise.', 'https://images.unsplash.com/photo-1728566842903-59fbc50b951b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080'],
+      ['Macarons Chocolat Intense', 'Macarons', 1800, 'Coffret gourmand de macarons ganache grand cru chocolat noir.', 'https://images.unsplash.com/photo-1728566842903-59fbc50b951b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080'],
+      ['Baklava Premium Miel & Pistache', 'Traditionnels', 2000, 'Feuilleté traditionnel oriental aux pistaches concassées et miel pur.', 'https://images.unsplash.com/photo-1701357462333-4924d0ad6132?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080'],
+      ['Tarte aux Fruits Frais', 'Gâteaux', 2500, 'Pâte sablée dorée, crème pâtissière onctueuse et fruits frais de saison.', 'https://images.unsplash.com/photo-1582180834946-f3d376b18376?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080'],
+      ['Opéra Classique Chocolat & Café', 'Gâteaux', 3000, 'Biscuit Joconde imbibé de café, ganache chocolat et crème au beurre café.', 'https://images.unsplash.com/photo-1640794334523-b299f14d28db?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080'],
+      ['Forêt Noire Grand Cru', 'Gâteaux', 3200, 'Génoise cacao imbibée, crème chantilly légère et cerises griottes.', 'https://images.unsplash.com/photo-1640794334523-b299f14d28db?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080'],
+      ['Fraisier Signature Prestige', 'Gâteaux', 3500, 'Fraises fraîches sélectionnées, génoise aérée et crème mousseline vanillée.', 'https://images.unsplash.com/photo-1582180834946-f3d376b18376?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080'],
+      ['Entremet Pistache Royale', 'Gâteaux', 4000, 'Mousse onctueuse à la pistache d\'Iran, cœur coulant fruits rouges et croustillant praliné.', 'https://images.unsplash.com/photo-1761594606868-1c577b10f69e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080'],
+      ['Gâteau de Mariage Pièce Montée', 'Mariage', 15000, 'Pièce montée d\'exception réalisée sur mesure pour vos réceptions et mariages.', 'https://images.unsplash.com/photo-1696236927117-d7041454d199?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080']
+    ];
+
+    for (const p of initialProducts) {
+      await run(`
+        INSERT INTO products (name, category, price, description, image, is_available, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, 1, ?, ?)
+      `, [p[0], p[1], p[2], p[3], p[4], now, now]);
+    }
+    console.log('🥐 [Catalogue] Plats et pâtisseries initialisés dans SQLite.');
+  }
+
+  console.log('✅ [SQLite] Base de données connectée — orders, audit_logs, fidélisation, récompenses, employés et plats prêts.');
 }
 
 // ==========================================
@@ -1105,6 +1150,215 @@ export async function recordClientVisit({ phone, name, staffName }) {
   return getLoyaltyMember(cleanPhone);
 }
 
+
+// ==========================================
+// GESTION DES PRODUITS / PLATS (CRUD GÉRANT)
+// ==========================================
+
+export async function getAllProducts({ onlyAvailable = false } = {}) {
+  let query = 'SELECT * FROM products';
+  if (onlyAvailable) {
+    query += ' WHERE is_available = 1';
+  }
+  query += ' ORDER BY id ASC';
+  return await all(query);
+}
+
+export async function getProductById(id) {
+  return await get('SELECT * FROM products WHERE id = ?', [id]);
+}
+
+export async function createProduct({ name, category, price, description, image, is_available = 1 }) {
+  if (!name || !price) throw new Error('Le nom et le prix du plat sont obligatoires');
+  const now = new Date().toISOString();
+  const numPrice = Math.max(500, Number(price)); // Minimum 500 FCFA
+
+  const res = await run(`
+    INSERT INTO products (name, category, price, description, image, is_available, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `, [
+    name.trim(),
+    category ? category.trim() : 'Gâteaux',
+    numPrice,
+    description ? description.trim() : '',
+    image ? image.trim() : 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=1080',
+    is_available ? 1 : 0,
+    now,
+    now
+  ]);
+
+  return getProductById(res.lastID);
+}
+
+export async function updateProduct(id, { name, category, price, description, image, is_available }) {
+  const prod = await getProductById(id);
+  if (!prod) throw new Error('Plat introuvable');
+
+  const now = new Date().toISOString();
+  const numPrice = price !== undefined ? Math.max(500, Number(price)) : prod.price;
+
+  await run(`
+    UPDATE products SET
+      name = COALESCE(?, name),
+      category = COALESCE(?, category),
+      price = ?,
+      description = COALESCE(?, description),
+      image = COALESCE(?, image),
+      is_available = COALESCE(?, is_available),
+      updated_at = ?
+    WHERE id = ?
+  `, [
+    name ? name.trim() : prod.name,
+    category ? category.trim() : prod.category,
+    numPrice,
+    description !== undefined ? description.trim() : prod.description,
+    image !== undefined ? image.trim() : prod.image,
+    is_available !== undefined ? (is_available ? 1 : 0) : prod.is_available,
+    now,
+    id
+  ]);
+
+  return getProductById(id);
+}
+
+export async function deleteProduct(id) {
+  const prod = await getProductById(id);
+  if (!prod) throw new Error('Plat introuvable');
+
+  await run('DELETE FROM products WHERE id = ?', [id]);
+  return { success: true, message: `Plat "${prod.name}" supprimé avec succès` };
+}
+
+// ==========================================
+// STATISTIQUES DÉTAILLÉES & RAPPORTS GÉRANCE
+// ==========================================
+
+export async function getAdminDetailedStats() {
+  const orders = await all('SELECT * FROM orders ORDER BY created_at DESC');
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+
+  // 7 jours en arrière
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+  let totalRevenue = 0;
+  let todayRevenue = 0;
+  let weekRevenue = 0;
+  let paidOrdersCount = 0;
+  let pendingOrdersCount = 0;
+  let preparingOrdersCount = 0;
+  let readyOrdersCount = 0;
+  let cancelledOrdersCount = 0;
+
+  // Ventes par jour sur les 7 derniers jours
+  const dailySalesMap = {};
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+    const dateKey = d.toISOString().slice(0, 10);
+    dailySalesMap[dateKey] = { date: dateKey, revenue: 0, orders: 0 };
+  }
+
+  // Top plats vendus
+  const productSalesMap = {};
+
+  for (const o of orders) {
+    const amount = Number(o.montant_total) || 0;
+    const isPaid = ['EN_PREPARATION', 'PRETE', 'LIVREE', 'PAYEE'].includes(o.statut);
+    const orderDateStr = (o.created_at || '').slice(0, 10);
+    const orderDate = new Date(o.created_at);
+
+    if (o.statut === 'EN_ATTENTE_DE_PAIEMENT') pendingOrdersCount++;
+    else if (o.statut === 'EN_PREPARATION') preparingOrdersCount++;
+    else if (o.statut === 'PRETE') readyOrdersCount++;
+    else if (o.statut === 'ANNULEE') cancelledOrdersCount++;
+
+    if (isPaid) {
+      paidOrdersCount++;
+      totalRevenue += amount;
+
+      if (orderDateStr === todayStr) {
+        todayRevenue += amount;
+      }
+
+      if (orderDate >= sevenDaysAgo) {
+        weekRevenue += amount;
+      }
+
+      if (dailySalesMap[orderDateStr]) {
+        dailySalesMap[orderDateStr].revenue += amount;
+        dailySalesMap[orderDateStr].orders += 1;
+      }
+
+      // Analyser les articles pour le top des ventes
+      try {
+        const items = JSON.parse(o.items || '[]');
+        if (Array.isArray(items)) {
+          for (const item of items) {
+            const name = item.name || 'Plat inconnu';
+            const qty = Number(item.quantity) || 1;
+            const price = Number(item.price) || 0;
+
+            if (!productSalesMap[name]) {
+              productSalesMap[name] = {
+                name,
+                image: item.image || '',
+                quantitySold: 0,
+                totalRevenue: 0
+              };
+            }
+            productSalesMap[name].quantitySold += qty;
+            productSalesMap[name].totalRevenue += (price * qty);
+          }
+        }
+      } catch (e) {}
+    }
+  }
+
+  const averageOrderValue = paidOrdersCount > 0 ? Math.round(totalRevenue / paidOrdersCount) : 0;
+
+  // Trier les top plats par quantité vendue
+  const topProducts = Object.values(productSalesMap)
+    .sort((a, b) => b.quantitySold - a.quantitySold)
+    .slice(0, 5);
+
+  // Statistiques de fidélité
+  const members = await all('SELECT * FROM loyalty_members');
+  const totalPoints = members.reduce((sum, m) => sum + (m.points || 0), 0);
+  const goldCount = members.filter(m => m.tier === 'GOLD').length;
+  const silverCount = members.filter(m => m.tier === 'SILVER').length;
+  const bronzeCount = members.filter(m => m.tier === 'BRONZE').length;
+
+  const coupons = await all('SELECT * FROM loyalty_coupons');
+  const activeCoupons = coupons.filter(c => c.status === 'ACTIVE').length;
+  const usedCoupons = coupons.filter(c => c.status === 'USED').length;
+
+  return {
+    kpis: {
+      totalRevenue,
+      todayRevenue,
+      weekRevenue,
+      paidOrdersCount,
+      pendingOrdersCount,
+      preparingOrdersCount,
+      readyOrdersCount,
+      cancelledOrdersCount,
+      totalOrdersCount: orders.length,
+      averageOrderValue
+    },
+    dailySales: Object.values(dailySalesMap),
+    topProducts,
+    loyaltyStats: {
+      totalMembers: members.length,
+      totalPoints,
+      goldCount,
+      silverCount,
+      bronzeCount,
+      activeCoupons,
+      usedCoupons
+    }
+  };
+}
+
 export default {
   initDb,
   createOrder,
@@ -1139,5 +1393,11 @@ export default {
   claimRewardCoupon,
   getMemberCoupons,
   validateCouponCode,
-  recordClientVisit
+  recordClientVisit,
+  getAllProducts,
+  getProductById,
+  createProduct,
+  updateProduct,
+  deleteProduct,
+  getAdminDetailedStats
 };

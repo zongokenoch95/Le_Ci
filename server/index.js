@@ -680,6 +680,76 @@ app.post('/api/loyalty/adjust', async (req, res) => {
 
 
 // ==========================================
+
+// ==========================================
+// ROUTES PRODUITS / PLATS (CRUD GÉRANCE)
+// ==========================================
+
+// Liste des plats (avec filtre disponible)
+app.get('/api/products', async (req, res) => {
+  try {
+    const onlyAvailable = req.query.available === 'true';
+    const products = await db.getAllProducts({ onlyAvailable });
+    res.json(products);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Détail d'un plat
+app.get('/api/products/:id', async (req, res) => {
+  try {
+    const product = await db.getProductById(req.params.id);
+    if (!product) return res.status(404).json({ error: 'Plat introuvable' });
+    res.json(product);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Ajouter un nouveau plat
+app.post('/api/products', async (req, res) => {
+  try {
+    const product = await db.createProduct(req.body);
+    res.status(201).json({ success: true, product, message: 'Plat ajouté au menu avec succès !' });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Modifier un plat existant
+app.put('/api/products/:id', async (req, res) => {
+  try {
+    const product = await db.updateProduct(req.params.id, req.body);
+    res.json({ success: true, product, message: 'Plat mis à jour avec succès !' });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Supprimer un plat
+app.delete('/api/products/:id', async (req, res) => {
+  try {
+    const result = await db.deleteProduct(req.params.id);
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// ==========================================
+// ROUTES STATISTIQUES ADMINISTRATEUR
+// ==========================================
+
+app.get('/api/admin/detailed-stats', async (req, res) => {
+  try {
+    const stats = await db.getAdminDetailedStats();
+    res.json(stats);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ROUTES AUTHENTIFICATION PAR CODE PIN & EMPLOYÉS
 // ==========================================
 

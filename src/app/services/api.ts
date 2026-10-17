@@ -409,3 +409,109 @@ export async function loginLoyaltyMember(data: {
   }
   return res.json();
 }
+
+// ==========================================
+// GESTION DES PLATS / PRODUITS (CRUD GÉRANCE)
+// ==========================================
+
+export interface Product {
+  id: number;
+  name: string;
+  category: string;
+  price: number;
+  description?: string;
+  image?: string;
+  is_available: number | boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface AdminDetailedStats {
+  kpis: {
+    totalRevenue: number;
+    todayRevenue: number;
+    weekRevenue: number;
+    paidOrdersCount: number;
+    pendingOrdersCount: number;
+    preparingOrdersCount: number;
+    readyOrdersCount: number;
+    cancelledOrdersCount: number;
+    totalOrdersCount: number;
+    averageOrderValue: number;
+  };
+  dailySales: Array<{
+    date: string;
+    revenue: number;
+    orders: number;
+  }>;
+  topProducts: Array<{
+    name: string;
+    image: string;
+    quantitySold: number;
+    totalRevenue: number;
+  }>;
+  loyaltyStats: {
+    totalMembers: number;
+    totalPoints: number;
+    goldCount: number;
+    silverCount: number;
+    bronzeCount: number;
+    activeCoupons: number;
+    usedCoupons: number;
+  };
+}
+
+export async function getProducts(options?: { available?: boolean }): Promise<Product[]> {
+  const url = options?.available ? `${API_BASE}/products?available=true` : `${API_BASE}/products`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Erreur chargement des plats');
+  return res.json();
+}
+
+export async function createProduct(data: {
+  name: string;
+  category: string;
+  price: number;
+  description?: string;
+  image?: string;
+  is_available?: boolean | number;
+}): Promise<{ success: boolean; product: Product; message: string }> {
+  const res = await fetch(`${API_BASE}/products`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Erreur lors de la création du plat');
+  }
+  return res.json();
+}
+
+export async function updateProduct(id: number, data: Partial<Product>): Promise<{ success: boolean; product: Product; message: string }> {
+  const res = await fetch(`${API_BASE}/products/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Erreur lors de la modification du plat');
+  }
+  return res.json();
+}
+
+export async function deleteProduct(id: number): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(`${API_BASE}/products/${id}`, { method: 'DELETE' });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Erreur lors de la suppression du plat');
+  }
+  return res.json();
+}
+
+export async function getAdminDetailedStats(): Promise<AdminDetailedStats> {
+  const res = await fetch(`${API_BASE}/admin/detailed-stats`);
+  if (!res.ok) throw new Error('Erreur lecture des statistiques');
+  return res.json();
+}
