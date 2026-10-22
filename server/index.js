@@ -1,3 +1,5 @@
+import path from 'path';
+import { fileURLToPath } from 'url';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import express from 'express';
@@ -609,26 +611,7 @@ app.get('/api/audit-stats', async (req, res) => {
 });
 
 
-// ==========================================
-// DISTRIBUTION DU FRONTEND (SPA VITE/REACT) EN PRODUCTION
-// ==========================================
-import path from 'path';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const distPath = path.resolve(__dirname, '../dist');
-
-if (fs.existsSync(distPath)) {
-  app.use(express.static(distPath));
-  app.use((req, res, next) => {
-    if (req.method === 'GET' && !req.path.startsWith('/api') && !req.path.startsWith('/socket.io')) {
-      return res.sendFile(path.join(distPath, 'index.html'));
-    }
-    next();
-  });
-}
+// Frontend static distribution handled at bottom
 
 const isDirect = !process.argv[1] || process.argv[1].includes('index.js') || process.argv[1].includes('server');
 if (isDirect && !process.argv[1].includes('api.test.js')) {
@@ -1038,6 +1021,28 @@ app.post('/api/loyalty/record-visit', async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 });
+
+
+// ==========================================
+// DISTRIBUTION DU FRONTEND (SPA VITE/REACT) EN PRODUCTION
+// ==========================================
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const distPath = path.resolve(__dirname, '../dist');
+
+if (fs.existsSync(distPath)) {
+  console.log('📦 [Static] Distribution du build frontend depuis :', distPath);
+  app.use(express.static(distPath));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) {
+      return next();
+    }
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+} else {
+  console.warn('⚠️ [Static] Dossier dist introuvable ! Exécutez npm run build.');
+}
 
 server.listen(PORT, () => {
     console.log(`🚀 [Les Douceurs de Lê Ci] Serveur de paiement démarré sur http://localhost:${PORT}`);
