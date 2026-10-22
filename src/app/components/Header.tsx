@@ -169,7 +169,7 @@ export function Header() {
             </div>
 
             {/* Liens de Droite Desktop : Gâteaux personnalisés & Carte de fidélité + Panier + Bouton Commander une douceur */}
-            <div className="hidden md:flex items-center gap-6 flex-1 justify-start pl-10">
+            <div className="hidden md:flex items-center gap-8 flex-1 justify-start pl-10">
               <nav className="flex items-center gap-7">
                 {rightNavItems.map((item) => (
                   <Link
@@ -208,14 +208,7 @@ export function Header() {
                 )}
               </button>
 
-              {/* Bouton "Commander une douceur" */}
-              <Link
-                to="/nos-douceurs"
-                className="px-4 py-2.5 rounded-full text-xs font-black transition-all shadow-lg shadow-[#D4AF37]/20 bg-[#D4AF37] hover:bg-[#c29d2b] text-black hover:text-white flex items-center gap-1.5 transform hover:-translate-y-0.5"
-              >
-                <span>Commander une douceur</span>
-                <ArrowRight size={14} />
-              </Link>
+              
             </div>
           </div>
         </div>
@@ -238,14 +231,7 @@ export function Header() {
               ))}
 
               <div className="pt-3 flex flex-col gap-2.5 border-t border-white/10">
-                <Link
-                  to="/nos-douceurs"
-                  className="w-full text-center py-3.5 rounded-2xl bg-[#D4AF37] hover:bg-[#c29d2b] text-black font-extrabold text-sm shadow-xl flex items-center justify-center gap-2"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <span>Commander une douceur</span>
-                  <ArrowRight size={16} />
-                </Link>
+                
 
                 <button
                   onClick={() => {

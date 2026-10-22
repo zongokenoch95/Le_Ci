@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, ShoppingBag, Check, Zap, ShieldCheck, Loader2 } from 'lucide-react';
+import { ShoppingBag, Check, Zap, ShieldCheck, Loader2 } from 'lucide-react';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { useCart } from '../context/CartContext';
 import { getProducts, Product } from '../services/api';
@@ -257,7 +257,7 @@ export function Catalogue() {
   const [productsList, setProductsList] = useState<any[]>(fallbackProducts);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('Tous');
-  const [searchQuery, setSearchQuery] = useState('');
+  
   const [addedProductId, setAddedProductId] = useState<number | null>(null);
 
   const { addToCart, openCart } = useCart();
@@ -269,12 +269,12 @@ export function Catalogue() {
         if (Array.isArray(data) && data.length > 0) {
           const formatted = data.map((p: Product) => ({
             id: p.id,
-            name: "p.name",
+            name: p.name,
             category: p.category || 'Gâteaux',
             price: `${p.price.toLocaleString('fr-FR')} FCFA`,
             numericPrice: p.price,
             image: p.image || '/products/gateau_1.jpeg',
-            description: "p.description",
+            description: p.description || "",
           }));
           setProductsList(formatted);
         }
@@ -288,15 +288,13 @@ export function Catalogue() {
   }, []);
 
   const filteredProducts = productsList.filter(product => {
-    const matchesCategory = selectedCategory === 'Tous' || product.category === selectedCategory;
-    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
+    return selectedCategory === 'Tous' || product.category === selectedCategory;
   });
 
   const handleAddToCart = (product: any, openDrawer = false) => {
     addToCart({
       id: product.id,
-      name: "product.name",
+      name: product.name,
       price: product.price,
       numericPrice: product.numericPrice,
       image: product.image,
@@ -328,19 +326,8 @@ export function Catalogue() {
           </div>
         </motion.div>
 
-        {/* Barre de Recherche et Filtres par Catégorie */}
-        <div className="mb-10 space-y-6">
-          <div className="max-w-md mx-auto relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Rechercher une douceur, un gâteau, un paquet..."
-              className="w-full pl-11 pr-4 py-3.5 bg-white rounded-2xl border border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#D4AF37] focus:border-transparent text-sm"
-            />
-          </div>
-
+        {/* Filtres par Catégorie */}
+        <div className="mb-10">
           {/* 4 Boutons de Catégories + Tous */}
           <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
             {categories.map((category) => (
@@ -407,29 +394,31 @@ export function Catalogue() {
                     <div className="p-5 pt-0 flex gap-2">
                       <button
                         onClick={() => handleAddToCart(product, false)}
-                        className={`flex-1 py-3 px-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                        className={`flex-1 py-3 px-3 rounded-2xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                           isAdded
                             ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-                            : 'bg-gray-900 hover:bg-black text-white shadow-md'
+                            : 'bg-white hover:bg-gray-100 text-gray-900 border border-gray-300 shadow-sm'
                         }`}
+                        title="Ajouter au panier"
                       >
                         {isAdded ? (
                           <>
-                            <Check size={16} /> Ajouté !
+                            <Check size={15} /> Ajouté !
                           </>
                         ) : (
                           <>
-                            <ShoppingBag size={15} /> Commander une douceur
+                            <ShoppingBag size={15} /> Ajouter au panier
                           </>
                         )}
                       </button>
 
                       <button
                         onClick={() => handleAddToCart(product, true)}
-                        className="py-3 px-3.5 rounded-2xl font-bold text-xs bg-[#D4AF37] hover:bg-[#c29d2b] text-white flex items-center justify-center shadow-md shadow-[#D4AF37]/20 cursor-pointer"
-                        title="Commander tout de suite"
+                        className="flex-1 py-3 px-3 rounded-2xl font-extrabold text-xs bg-[#D4AF37] hover:bg-[#c29d2b] text-black shadow-md shadow-[#D4AF37]/25 transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                        title="Commander immédiatement"
                       >
                         <Zap size={15} />
+                        <span>Commander</span>
                       </button>
                     </div>
                   </motion.div>
@@ -443,7 +432,7 @@ export function Catalogue() {
           <div className="text-center py-16 bg-white rounded-3xl border border-gray-100 p-8">
             <p className="text-gray-500 font-medium mb-4">Aucune douceur ne correspond à votre recherche.</p>
             <button
-              onClick={() => { setSelectedCategory('Tous'); setSearchQuery(''); }}
+              onClick={() => setSelectedCategory('Tous')}
               className="px-6 py-2.5 bg-gray-900 text-white rounded-xl text-xs font-bold hover:bg-black transition cursor-pointer"
             >
               Réinitialiser les filtres

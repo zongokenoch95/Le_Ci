@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
-import { ShoppingBag, ArrowRight, ShieldCheck, Heart, Clock } from 'lucide-react';
+import { ShoppingBag, ArrowRight, ShieldCheck, Heart, Clock, Zap, Check } from 'lucide-react';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 
 // Les 4 catégories issues des dossiers du dossier img/
@@ -71,6 +72,7 @@ const testimonials = [
 
 export function Home() {
   const { addToCart, openCart } = useCart();
+  const [addedId, setAddedId] = useState<number | null>(null);
 
   return (
     <div className="min-h-screen">
@@ -213,25 +215,61 @@ export function Home() {
                   <h3 className="font-bold text-gray-900 text-sm mt-2 mb-1">{p.name}</h3>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-gray-200/60 flex items-center justify-between gap-2">
-                  <span className="text-sm font-black text-[#D4AF37]">{p.price}</span>
-                  <button
-                    onClick={() => {
-                      addToCart({
-                        id: p.id,
-                        name: p.name,
-                        price: p.price,
-                        numericPrice: p.numericPrice,
-                        image: p.image,
-                        category: p.category
-                      }, 1);
-                      openCart();
-                    }}
-                    className="px-3.5 py-2 rounded-xl bg-gray-900 hover:bg-black text-white text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
-                  >
-                    <ShoppingBag size={13} />
-                    <span>Commander une douceur</span>
-                  </button>
+                <div className="mt-4 pt-3 border-t border-gray-200/60 flex flex-col gap-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500 font-medium">Prix</span>
+                    <span className="text-sm font-black text-[#D4AF37]">{p.price}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        addToCart({
+                          id: p.id,
+                          name: p.name,
+                          price: p.price,
+                          numericPrice: p.numericPrice,
+                          image: p.image,
+                          category: p.category
+                        }, 1);
+                        setAddedId(p.id);
+                        setTimeout(() => setAddedId(null), 1500);
+                      }}
+                      className={`flex-1 py-2.5 px-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                        addedId === p.id
+                          ? 'bg-emerald-600 text-white shadow-sm'
+                          : 'bg-white hover:bg-gray-100 text-gray-900 border border-gray-200 shadow-sm'
+                      }`}
+                      title="Ajouter au panier"
+                    >
+                      {addedId === p.id ? (
+                        <>
+                          <Check size={14} /> Ajouté !
+                        </>
+                      ) : (
+                        <>
+                          <ShoppingBag size={14} /> Ajouter au panier
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => {
+                        addToCart({
+                          id: p.id,
+                          name: p.name,
+                          price: p.price,
+                          numericPrice: p.numericPrice,
+                          image: p.image,
+                          category: p.category
+                        }, 1);
+                        openCart();
+                      }}
+                      className="flex-1 py-2.5 px-2 rounded-xl bg-[#D4AF37] hover:bg-[#c29d2b] text-black font-extrabold text-xs transition shadow-md shadow-[#D4AF37]/20 flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                      title="Commander immédiatement"
+                    >
+                      <Zap size={14} />
+                      <span>Commander</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
