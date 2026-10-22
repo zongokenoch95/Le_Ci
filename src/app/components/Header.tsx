@@ -13,12 +13,9 @@ export function Header() {
 
   const navItems = [
     { name: 'Accueil', path: '/' },
-    { name: 'Nos Créations', path: '/catalogue' },
+    { name: 'Nos produits', path: '/catalogue' },
     { name: 'Sur Commande', path: '/sur-commande' },
     { name: 'Fidélisation', path: '/fidelite' },
-    { name: 'À propos', path: '/a-propos' },
-    { name: 'Contact', path: '/contact' },
-    { name: 'Administration', path: '/admin' },
   ];
 
   const isActive = (path: string) => location.pathname === path;
@@ -105,12 +102,7 @@ export function Header() {
                 )}
               </button>
 
-              <Link
-                to="/catalogue"
-                className="px-5 py-2.5 rounded-full text-xs font-bold transition-all shadow-md bg-[#D4AF37] hover:bg-[#c29d2b] text-white"
-              >
-                Commander
-              </Link>
+
             </nav>
 
             {/* Actions Mobiles : Panier + Menu Burger */}

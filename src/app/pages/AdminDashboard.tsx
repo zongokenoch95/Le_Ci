@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ShoppingBag, 
@@ -39,7 +40,12 @@ import {
   Eye,
   EyeOff,
   Flame,
-  Layers
+  Layers,
+  ChefHat,
+  Ban,
+  UserCheck,
+  AlertTriangle,
+  KeyRound
 } from 'lucide-react';
 import { 
   getAdminOrders, 
@@ -48,11 +54,14 @@ import {
   cancelOrder, 
   simulateWebhook, 
   Order, 
-  loginWithPin, 
-  getEmployees, 
-  addEmployee, 
-  deleteEmployee, 
-  Employee,
+  getStoredAdminUser,
+  getAuthToken,
+  removeAuthToken,
+  AdminUser,
+  getAdminUsers,
+  createAdminUser,
+  updateAdminUserStatus,
+  deleteAdminUser,
   getLoyaltySettings, 
   updateLoyaltySettings, 
   getAllLoyaltyMembers, 
@@ -76,1440 +85,1074 @@ import {
 import { getSocket, joinAdmin } from '../services/socket';
 
 export function AdminDashboard() {
-  // Session & Auth PIN
-  const [currentStaff, setCurrentStaff] = useState<Employee | null>(() => {
-    try {
-      const saved = localStorage.getItem('le_ci_staff_session');
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  });
+  const navigate = useNavigate();
 
-  const [pinInput, setPinInput] = useState('');
-  const [pinError, setPinError] = useState('');
-  const [pinLoading, setPinLoading] = useState(false);
+  // Session & Auth RBAC
+  const [currentUser, setCurrentUser] = useState<AdminUser | null>(getStoredAdminUser());
+  const isGerant = currentUser?.role === 'gerant';
 
-  // Navigation Sidebar
-  const [activeNav, setActiveNav] = useState<'orders' | 'menu' | 'stats' | 'fidelity' | 'employees' | 'simulator'>('orders');
-
-  // Commandes KDS
+  const [activeTab, setActiveTab] = useState<'orders' | 'menu' | 'stats' | 'loyalty' | 'team' | 'simulator'>('orders');
   const [orders, setOrders] = useState<Order[]>([]);
-  const [loadingOrders, setLoadingOrders] = useState(true);
-  const [orderStatusFilter, setOrderStatusFilter] = useState<'all' | 'pending' | 'preparing' | 'ready' | 'cancelled'>('all');
-  const [orderSearch, setOrderSearch] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [filterStatus, setFilterStatus] = useState<string>('ALL');
 
-  // Gestion des Plats / Menu
+  // État Gestion de l'équipe (RBAC)
+  const [teamUsers, setTeamUsers] = useState<AdminUser[]>([]);
+  const [loadingTeam, setLoadingTeam] = useState(false);
+  const [newUserForm, setNewUserForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+    role: 'employe' as 'gerant' | 'employe'
+  });
+  const [teamMessage, setTeamMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // État Gestion des Plats
   const [products, setProducts] = useState<Product[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
   const [productCategoryFilter, setProductCategoryFilter] = useState('Tous');
   const [productSearch, setProductSearch] = useState('');
-  const [showProductModal, setShowProductModal] = useState(false);
-  const [editingProductId, setEditingProductId] = useState<number | null>(null);
-  const [formProdName, setFormProdName] = useState('');
-  const [formProdCategory, setFormProdCategory] = useState('Gâteaux');
-  const [formProdPrice, setFormProdPrice] = useState('2500');
-  const [formProdDesc, setFormProdDesc] = useState('');
-  const [formProdImage, setFormProdImage] = useState('');
-  const [formProdAvailable, setFormProdAvailable] = useState(true);
-  const [savingProduct, setSavingProduct] = useState(false);
-  const [productSuccessMsg, setProductSuccessMsg] = useState('');
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [productFormData, setProductFormData] = useState({
+    name: '',
+    category: 'Gâteaux',
+    price: 1500,
+    description: '',
+    image: '',
+    is_available: true
+  });
 
-  // Statistiques Administrateur
-  const [stats, setStats] = useState<AdminDetailedStats | null>(null);
+  // État Statistiques Ventes Détaillées
+  const [detailedStats, setDetailedStats] = useState<AdminDetailedStats | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
 
-  // Employés
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [newEmpName, setNewEmpName] = useState('');
-  const [newEmpPin, setNewEmpPin] = useState('');
-  const [newEmpRole, setNewEmpRole] = useState<'employee' | 'caissier' | 'patissier' | 'admin'>('caissier');
-  const [empLoading, setEmpLoading] = useState(false);
-  const [empSuccess, setEmpSuccess] = useState('');
+  // Simulation Webhook OM
+  const [simPhone, setSimPhone] = useState('70123456');
+  const [simAmount, setSimAmount] = useState('1500');
+  const [simCodeRef, setSimCodeRef] = useState('');
+  const [simResult, setSimResult] = useState<any>(null);
+  const [simulating, setSimulating] = useState(false);
 
-  // Fidélité & Récompenses (fidelity.md)
+  // Fidélité
   const [loyaltySettings, setLoyaltySettings] = useState<LoyaltySettings | null>(null);
   const [loyaltyMembers, setLoyaltyMembers] = useState<LoyaltyMember[]>([]);
-  const [rewards, setRewards] = useState<LoyaltyReward[]>([]);
-  const [fidelitySubTab, setFidelitySubTab] = useState<'validate_coupon' | 'rewards' | 'members'>('validate_coupon');
-  
-  // Validation de coupon
+  const [loyaltyRewards, setLoyaltyRewards] = useState<LoyaltyReward[]>([]);
   const [couponCodeInput, setCouponCodeInput] = useState('');
-  const [couponValidating, setCouponValidating] = useState(false);
-  const [couponResult, setCouponResult] = useState<any>(null);
+  const [couponValidationResult, setCouponValidationResult] = useState<any>(null);
 
-  // Nouvelle récompense
-  const [newRewardTitle, setNewRewardTitle] = useState('');
-  const [newRewardCost, setNewRewardCost] = useState('25');
-  const [newRewardCategory, setNewRewardCategory] = useState('Pâtisserie');
-
-  // Simulation Webhook OM
-  const [testAmount, setTestAmount] = useState('75');
-  const [testPhone, setTestPhone] = useState('70123456');
-  const [testCodeRef, setTestCodeRef] = useState('');
-  const [simulating, setSimulating] = useState(false);
-  const [simResult, setSimResult] = useState<any>(null);
-
-  // Sauvegarde session staff
-  const handleLogin = async (pinToTry: string) => {
-    setPinLoading(true);
-    setPinError('');
-    try {
-      const res = await loginWithPin(pinToTry);
-      setCurrentStaff(res.employee);
-      localStorage.setItem('le_ci_staff_session', JSON.stringify(res.employee));
-      setPinInput('');
-    } catch (err: any) {
-      setPinError(err.message || 'Code PIN incorrect');
-      setPinInput('');
-    } finally {
-      setPinLoading(false);
+  // Contrôle de session au montage
+  useEffect(() => {
+    const token = getAuthToken();
+    const stored = getStoredAdminUser();
+    if (!token || !stored) {
+      navigate('/admin/login', { replace: true });
+      return;
     }
-  };
+    setCurrentUser(stored);
+  }, [navigate]);
 
+  // Si un employé tente d'accéder à un onglet réservé au gérant, on le force sur les commandes
+  useEffect(() => {
+    if (!isGerant && ['menu', 'stats', 'team', 'simulator'].includes(activeTab)) {
+      setActiveTab('orders');
+    }
+  }, [isGerant, activeTab]);
+
+  // Déconnexion
   const handleLogout = () => {
-    setCurrentStaff(null);
-    localStorage.removeItem('le_ci_staff_session');
+    removeAuthToken();
+    navigate('/admin/login', { replace: true });
   };
 
-  const handlePinDigit = (digit: string) => {
-    if (pinInput.length < 6) {
-      const next = pinInput + digit;
-      setPinInput(next);
-      if (next.length === 4) {
-        handleLogin(next);
+  // Chargement des commandes
+  const loadOrders = async () => {
+    try {
+      setLoading(true);
+      const data = await getAdminOrders();
+      setOrders(data);
+    } catch (err: any) {
+      if (err.message && err.message.includes('expiré')) {
+        handleLogout();
       }
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handlePinDelete = () => {
-    setPinInput((prev) => prev.slice(0, -1));
-    setPinError('');
+  // Chargement de l'équipe (Gérant uniquement)
+  const loadTeam = async () => {
+    if (!isGerant) return;
+    try {
+      setLoadingTeam(true);
+      const list = await getAdminUsers();
+      setTeamUsers(list);
+    } catch (err: any) {
+      if (err.message && err.message.includes('expiré')) {
+        handleLogout();
+      }
+    } finally {
+      setLoadingTeam(false);
+    }
   };
 
-  // Chargement des données globales
-  const fetchAllData = async () => {
+  // Chargement des plats
+  const loadProducts = async () => {
+    if (!isGerant) return;
     try {
-      const [ord, prods, st, emp, set, mem, rew] = await Promise.all([
-        getAdminOrders(),
-        getProducts().catch(() => []),
-        getAdminDetailedStats().catch(() => null),
-        getEmployees().catch(() => []),
+      setLoadingProducts(true);
+      const list = await getProducts();
+      setProducts(list);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingProducts(false);
+    }
+  };
+
+  // Chargement des stats détaillées
+  const loadDetailedStats = async () => {
+    if (!isGerant) return;
+    try {
+      setLoadingStats(true);
+      const stats = await getAdminDetailedStats();
+      setDetailedStats(stats);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
+
+  // Chargement fidélité
+  const loadLoyaltyData = async () => {
+    try {
+      const [s, m, r] = await Promise.all([
         getLoyaltySettings().catch(() => null),
         getAllLoyaltyMembers().catch(() => []),
         getLoyaltyRewards().catch(() => [])
       ]);
-      setOrders(ord);
-      setProducts(prods);
-      setStats(st);
-      setEmployees(emp);
-      setLoyaltySettings(set);
-      setLoyaltyMembers(mem);
-      setRewards(rew);
+      if (s) setLoyaltySettings(s);
+      setLoyaltyMembers(m);
+      setLoyaltyRewards(r);
     } catch (err) {
-      console.error('Erreur chargement données', err);
-    } finally {
-      setLoadingOrders(false);
+      console.error(err);
     }
   };
 
   useEffect(() => {
-    if (currentStaff) {
-      fetchAllData();
-      joinAdmin();
-      const socket = getSocket();
+    if (!currentUser) return;
+    loadOrders();
 
-      const handleNewOrder = (newOrder: Order) => {
-        setOrders((prev) => [newOrder, ...prev.filter((o) => o.id !== newOrder.id)]);
-      };
-      const handleValidated = (valOrder: Order) => {
-        setOrders((prev) => prev.map((o) => (o.id === valOrder.id ? valOrder : o)));
-      };
-      const handleReady = (readyOrder: Order) => {
-        setOrders((prev) => prev.map((o) => (o.id === readyOrder.id ? readyOrder : o)));
-      };
-      const handleCancelled = (cancOrder: Order) => {
-        setOrders((prev) => prev.map((o) => (o.id === cancOrder.id ? cancOrder : o)));
-      };
-
-      socket.on('order:created', handleNewOrder);
-      socket.on('order:new', handleNewOrder);
-      socket.on('order:validated', handleValidated);
-      socket.on('order:ready', handleReady);
-      socket.on('order:cancelled', handleCancelled);
-
-      return () => {
-        socket.off('order:created', handleNewOrder);
-        socket.off('order:new', handleNewOrder);
-        socket.off('order:validated', handleValidated);
-        socket.off('order:ready', handleReady);
-        socket.off('order:cancelled', handleCancelled);
-      };
+    if (isGerant) {
+      loadTeam();
+      loadProducts();
+      loadDetailedStats();
     }
-  }, [currentStaff]);
+    loadLoyaltyData();
+
+    // Connexion WebSocket pour notifications temps réel
+    const socket = getSocket();
+    joinAdmin();
+
+    const handleOrderEvent = () => {
+      loadOrders();
+      if (isGerant) loadDetailedStats();
+    };
+
+    socket.on('order:created', handleOrderEvent);
+    socket.on('order:status_changed', handleOrderEvent);
+    socket.on('order:validated', handleOrderEvent);
+
+    return () => {
+      socket.off('order:created', handleOrderEvent);
+      socket.off('order:status_changed', handleOrderEvent);
+      socket.off('order:validated', handleOrderEvent);
+    };
+  }, [currentUser, isGerant]);
 
   // Actions Commandes
-  const handleValidateOrder = async (order: Order) => {
+  const handleValidateOrder = async (id: string) => {
     try {
-      if (order.statut === 'EN_ATTENTE_DE_PAIEMENT') {
-        const res = await validateOrder(order.id);
-        setOrders((prev) => prev.map((o) => (o.id === order.id ? res.order : o)));
-      } else if (order.statut === 'EN_PREPARATION') {
-        const res = await finishOrder(order.id);
-        setOrders((prev) => prev.map((o) => (o.id === order.id ? res.order : o)));
-      }
-    } catch (e: any) {
-      alert(e.message || 'Erreur validation');
+      await validateOrder(id);
+      loadOrders();
+      if (isGerant) loadDetailedStats();
+    } catch (err: any) {
+      alert(err.message || 'Erreur validation commande');
     }
   };
 
-  const handleCancelOrder = async (orderId: string) => {
-    if (confirm('Voulez-vous vraiment annuler ou rejeter cette commande ?')) {
-      try {
-        const res = await cancelOrder(orderId);
-        setOrders((prev) => prev.map((o) => (o.id === orderId ? res.order : o)));
-      } catch (e: any) {
-        alert(e.message || 'Erreur annulation');
-      }
+  const handleFinishOrder = async (id: string) => {
+    try {
+      await finishOrder(id);
+      loadOrders();
+    } catch (err: any) {
+      alert(err.message || 'Erreur');
     }
   };
 
-  // ==========================================
-  // ACTIONS PLATS / PRODUITS
-  // ==========================================
+  // Actions Gestion de l'équipe (RBAC)
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newUserForm.name || !newUserForm.email || !newUserForm.password) {
+      setTeamMessage({ type: 'error', text: 'Tous les champs sont requis.' });
+      return;
+    }
+    if (newUserForm.password.length < 8) {
+      setTeamMessage({ type: 'error', text: 'Le mot de passe doit comporter au moins 8 caractères.' });
+      return;
+    }
+
+    try {
+      await createAdminUser(newUserForm);
+      setTeamMessage({ type: 'success', text: `Accès créé pour ${newUserForm.name} (${newUserForm.email})` });
+      setNewUserForm({ name: '', email: '', password: '', role: 'employe' });
+      loadTeam();
+    } catch (err: any) {
+      setTeamMessage({ type: 'error', text: err.message || 'Erreur création compte' });
+    }
+  };
+
+  const handleToggleUserStatus = async (user: AdminUser) => {
+    const newStatus = user.status === 'active' ? 'blocked' : 'active';
+    const actionText = newStatus === 'blocked' ? 'bloquer' : 'débloquer';
+    if (!confirm(`Voulez-vous vraiment ${actionText} l'accès de ${user.name} ?`)) return;
+
+    try {
+      await updateAdminUserStatus(user.id, newStatus);
+      loadTeam();
+    } catch (err: any) {
+      alert(err.message || 'Erreur');
+    }
+  };
+
+  const handleDeleteUser = async (user: AdminUser) => {
+    if (user.id === currentUser?.id) {
+      alert('Vous ne pouvez pas supprimer votre propre compte connecté.');
+      return;
+    }
+    if (!confirm(`ATTENTION : Supprimer définitivement le compte de ${user.name} (${user.email}) ?`)) return;
+
+    try {
+      await deleteAdminUser(user.id);
+      loadTeam();
+    } catch (err: any) {
+      alert(err.message || 'Erreur suppression');
+    }
+  };
+
+  // Actions Gestion des Plats
   const handleOpenAddProduct = () => {
-    setEditingProductId(null);
-    setFormProdName('');
-    setFormProdCategory('Gâteaux');
-    setFormProdPrice('2500');
-    setFormProdDesc('');
-    setFormProdImage('https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=1080');
-    setFormProdAvailable(true);
-    setShowProductModal(true);
+    setEditingProduct(null);
+    setProductFormData({
+      name: '',
+      category: 'Gâteaux',
+      price: 1500,
+      description: '',
+      image: 'https://images.unsplash.com/photo-1582180834946-f3d376b18376?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080',
+      is_available: true
+    });
+    setIsProductModalOpen(true);
   };
 
-  const handleOpenEditProduct = (prod: Product) => {
-    setEditingProductId(prod.id);
-    setFormProdName(prod.name);
-    setFormProdCategory(prod.category);
-    setFormProdPrice(String(prod.price));
-    setFormProdDesc(prod.description || '');
-    setFormProdImage(prod.image || '');
-    setFormProdAvailable(Boolean(prod.is_available));
-    setShowProductModal(true);
+  const handleOpenEditProduct = (p: Product) => {
+    setEditingProduct(p);
+    setProductFormData({
+      name: p.name,
+      category: p.category || 'Gâteaux',
+      price: p.price,
+      description: p.description || '',
+      image: p.image || '',
+      is_available: Boolean(p.is_available)
+    });
+    setIsProductModalOpen(true);
   };
 
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formProdName.trim() || !formProdPrice) return;
-    setSavingProduct(true);
-    setProductSuccessMsg('');
-
     try {
-      const priceNum = Math.max(500, Number(formProdPrice));
-      if (editingProductId) {
-        // Modification
-        const res = await updateProduct(editingProductId, {
-          name: formProdName.trim(),
-          category: formProdCategory,
-          price: priceNum,
-          description: formProdDesc.trim(),
-          image: formProdImage.trim() || 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=1080',
-          is_available: formProdAvailable ? 1 : 0
-        });
-        setProducts((prev) => prev.map((p) => (p.id === editingProductId ? res.product : p)));
-        setProductSuccessMsg('✅ Plat mis à jour avec succès !');
+      if (editingProduct) {
+        await updateProduct(editingProduct.id, productFormData);
       } else {
-        // Ajout
-        const res = await createProduct({
-          name: formProdName.trim(),
-          category: formProdCategory,
-          price: priceNum,
-          description: formProdDesc.trim(),
-          image: formProdImage.trim() || 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=1080',
-          is_available: formProdAvailable ? 1 : 0
-        });
-        setProducts((prev) => [...prev, res.product]);
-        setProductSuccessMsg('✅ Nouveau plat ajouté au menu !');
+        await createProduct(productFormData);
       }
-
-      setShowProductModal(false);
-      setTimeout(() => setProductSuccessMsg(''), 4000);
+      setIsProductModalOpen(false);
+      loadProducts();
     } catch (err: any) {
-      alert(err.message || 'Erreur sauvegarde plat');
-    } finally {
-      setSavingProduct(false);
+      alert(err.message || 'Erreur enregistrement du plat');
     }
   };
 
-  const handleToggleProductAvailability = async (prod: Product) => {
-    const newStatus = prod.is_available ? 0 : 1;
+  const handleToggleProductAvailability = async (p: Product) => {
     try {
-      const res = await updateProduct(prod.id, { is_available: newStatus });
-      setProducts((prev) => prev.map((p) => (p.id === prod.id ? res.product : p)));
-    } catch (e: any) {
-      alert(e.message || 'Erreur modification');
+      const nextState = !Boolean(p.is_available);
+      await updateProduct(p.id, { is_available: nextState });
+      loadProducts();
+    } catch (err: any) {
+      alert(err.message || 'Erreur');
     }
   };
 
   const handleDeleteProduct = async (id: number, name: string) => {
-    if (confirm(`Voulez-vous vraiment supprimer définitivement le plat "${name}" ?`)) {
-      try {
-        await deleteProduct(id);
-        setProducts((prev) => prev.filter((p) => p.id !== id));
-      } catch (e: any) {
-        alert(e.message || 'Erreur suppression plat');
-      }
-    }
-  };
-
-  // Actions Employés
-  const handleAddEmployee = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setEmpLoading(true);
-    setEmpSuccess('');
+    if (!confirm(`Supprimer définitivement le plat "${name}" du catalogue ?`)) return;
     try {
-      const res = await addEmployee({
-        name: newEmpName.trim(),
-        pin: newEmpPin.trim(),
-        role: newEmpRole
-      });
-      setEmployees((prev) => [...prev, res.employee]);
-      setEmpSuccess(`✅ Employé ${res.employee.name} ajouté avec succès !`);
-      setNewEmpName('');
-      setNewEmpPin('');
-      setTimeout(() => setEmpSuccess(''), 4000);
+      await deleteProduct(id);
+      loadProducts();
     } catch (err: any) {
-      alert(err.message || 'Erreur ajout employé');
-    } finally {
-      setEmpLoading(false);
+      alert(err.message || 'Erreur suppression');
     }
   };
 
-  const handleDeleteEmployee = async (id: number) => {
-    if (confirm('Supprimer cet employé ?')) {
-      try {
-        await deleteEmployee(id);
-        setEmployees((prev) => prev.filter((e) => e.id !== id));
-      } catch (err: any) {
-        alert(err.message || 'Erreur suppression');
-      }
-    }
-  };
-
-  // Actions Coupons & Récompenses (fidelity.md)
-  const handleValidateCoupon = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Validation Coupon
+  const handleValidateCoupon = async () => {
     if (!couponCodeInput.trim()) return;
-    setCouponValidating(true);
-    setCouponResult(null);
     try {
       const res = await validateCouponCode({
         code: couponCodeInput.trim(),
-        staffName: currentStaff?.name || 'Personnel'
+        staffName: currentUser?.name || 'Personnel'
       });
-      setCouponResult({ success: true, message: res.message, coupon: res.coupon });
+      setCouponValidationResult(res);
       setCouponCodeInput('');
+      loadLoyaltyData();
     } catch (err: any) {
-      setCouponResult({ success: false, error: err.message || 'Coupon invalide' });
-    } finally {
-      setCouponValidating(false);
+      alert(err.message || 'Coupon invalide ou expiré');
     }
   };
 
   // Filtrage commandes
-  const filteredOrders = orders.filter((o) => {
-    const matchesStatus = 
-      orderStatusFilter === 'all' ||
-      (orderStatusFilter === 'pending' && o.statut === 'EN_ATTENTE_DE_PAIEMENT') ||
-      (orderStatusFilter === 'preparing' && o.statut === 'EN_PREPARATION') ||
-      (orderStatusFilter === 'ready' && o.statut === 'PRETE') ||
-      (orderStatusFilter === 'cancelled' && o.statut === 'ANNULEE');
-
-    const matchesSearch = 
-      o.id.toLowerCase().includes(orderSearch.toLowerCase()) ||
-      (o.customerName && o.customerName.toLowerCase().includes(orderSearch.toLowerCase())) ||
-      (o.customerPhone && o.customerPhone.includes(orderSearch)) ||
-      (o.codeReference && o.codeReference.toLowerCase().includes(orderSearch.toLowerCase()));
-
-    return matchesStatus && matchesSearch;
+  const filteredOrders = orders.filter(o => {
+    if (filterStatus === 'ALL') return true;
+    return o.statut === filterStatus;
   });
 
-  const pendingCount = orders.filter((o) => o.statut === 'EN_ATTENTE_DE_PAIEMENT').length;
-  const preparingCount = orders.filter((o) => o.statut === 'EN_PREPARATION').length;
-
-  // Filtrage des plats
-  const filteredProducts = products.filter((p) => {
-    const matchesCat = productCategoryFilter === 'Tous' || p.category === productCategoryFilter;
-    const matchesSearch = p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-                          (p.description && p.description.toLowerCase().includes(productSearch.toLowerCase()));
-    return matchesCat && matchesSearch;
-  });
-
-  // Catégories uniques pour le filtre
-  const categoriesList = ['Tous', 'Gâteaux', 'Macarons', 'Viennoiseries', 'Traditionnels', 'Mariage', 'Boisson'];
-
-  // =========================================================================
-  // ÉCRAN DE VERROUILLAGE / CODE PIN
-  // =========================================================================
-  if (!currentStaff) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-[#111827] via-[#0F172A] to-black flex items-center justify-center p-4">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="w-full max-w-sm bg-white/10 backdrop-blur-xl border border-white/15 p-8 rounded-3xl text-center shadow-2xl text-white"
-        >
-          <div className="w-16 h-16 rounded-2xl bg-[#D4AF37]/20 border border-[#D4AF37]/40 text-[#D4AF37] flex items-center justify-center mx-auto mb-4 shadow-lg">
-            <Lock size={30} />
-          </div>
-
-          <h2 className="text-xl font-black tracking-tight mb-1">Espace Caisse & Gérance</h2>
-          <p className="text-xs text-gray-300 mb-6">Saisissez votre code PIN d'accès</p>
-
-          <div className="flex justify-center gap-3 mb-6">
-            {[0, 1, 2, 3].map((idx) => (
-              <div
-                key={idx}
-                className={`w-4 h-4 rounded-full border-2 transition-all ${
-                  pinInput.length > idx
-                    ? 'bg-[#D4AF37] border-[#D4AF37] scale-110 shadow-[0_0_10px_#D4AF37]'
-                    : 'border-gray-500 bg-transparent'
-                }`}
-              />
-            ))}
-          </div>
-
-          {pinError && (
-            <div className="mb-4 p-2.5 rounded-xl bg-red-500/20 border border-red-500/40 text-red-300 text-xs font-semibold">
-              {pinError}
-            </div>
-          )}
-
-          <div className="grid grid-cols-3 gap-3 max-w-[240px] mx-auto mb-6">
-            {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
-              <button
-                key={digit}
-                onClick={() => handlePinDigit(digit)}
-                className="w-16 h-16 rounded-2xl bg-white/5 hover:bg-white/20 active:scale-95 border border-white/10 text-xl font-bold text-white transition flex items-center justify-center shadow-sm"
-              >
-                {digit}
-              </button>
-            ))}
-            <button
-              onClick={() => { setPinInput(''); setPinError(''); }}
-              className="w-16 h-16 rounded-2xl bg-white/5 hover:bg-white/10 text-xs font-bold text-gray-400 border border-white/10 flex items-center justify-center"
-            >
-              Effacer
-            </button>
-            <button
-              onClick={() => handlePinDigit('0')}
-              className="w-16 h-16 rounded-2xl bg-white/5 hover:bg-white/20 active:scale-95 border border-white/10 text-xl font-bold text-white transition flex items-center justify-center shadow-sm"
-            >
-              0
-            </button>
-            <button
-              onClick={handlePinDelete}
-              className="w-16 h-16 rounded-2xl bg-white/5 hover:bg-white/10 text-sm font-bold text-gray-300 border border-white/10 flex items-center justify-center"
-              aria-label="Supprimer"
-            >
-              ⌫
-            </button>
-          </div>
-
-          <p className="text-[11px] text-gray-400">
-            Code PIN Gérant par défaut : <strong className="text-[#D4AF37]">1234</strong>
-          </p>
-        </motion.div>
-      </div>
-    );
-  }
-
-  // =========================================================================
-  // TABLEAU DE BORD AVEC NAVIGATION EN SIDEBAR
-  // =========================================================================
   return (
-    <div className="min-h-screen bg-[#F8F9FA] flex flex-col md:flex-row">
-      
-      {/* SIDEBAR NAVIGATION GAUCHE */}
-      <aside className="w-full md:w-64 bg-[#111827] text-white flex-shrink-0 flex flex-col justify-between border-r border-gray-800 z-30">
+    <div className="min-h-screen bg-[#0F172A] text-white flex flex-col md:flex-row">
+      {/* SIDEBAR NAVIGATION GÉRANCE & ÉQUIPE */}
+      <aside className="w-full md:w-72 bg-[#1E293B] border-r border-white/10 flex flex-col justify-between shrink-0">
         <div>
-          {/* Logo & Header Sidebar */}
-          <div className="p-6 border-b border-gray-800 flex items-center gap-3">
-            <img src="/logo.png" alt="Logo" className="h-10 w-auto object-contain drop-shadow" />
-            <div>
-              <h2 className="text-sm font-black text-white leading-tight">Les Douceurs de Lê Ci</h2>
-              <span className="text-[10px] font-bold text-[#D4AF37] uppercase tracking-wider">Caisse & Gérance</span>
+          {/* Logo & Info Session */}
+          <div className="p-6 border-b border-white/10">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#D4AF37] to-[#F3E5AB] text-black flex items-center justify-center font-black shadow-lg">
+                <UtensilsCrossed size={20} />
+              </div>
+              <div>
+                <h1 className="font-extrabold text-sm text-white tracking-wide">Les Douceurs de Lê Ci</h1>
+                <span className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">Back-Office Sécurisé</span>
+              </div>
+            </div>
+
+            {/* Badge Rôle Utilisateur */}
+            <div className="mt-3 p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold ${
+                  isGerant ? 'bg-[#D4AF37]/20 text-[#D4AF37]' : 'bg-sky-500/20 text-sky-400'
+                }`}>
+                  {isGerant ? <Crown size={15} /> : <ChefHat size={15} />}
+                </div>
+                <div className="truncate max-w-[130px]">
+                  <div className="text-xs font-bold text-white truncate">{currentUser?.name}</div>
+                  <div className="text-[10px] text-gray-400 capitalize">{currentUser?.role === 'gerant' ? '👑 Gérant' : '👨‍🍳 Employé'}</div>
+                </div>
+              </div>
+              <button
+                onClick={handleLogout}
+                title="Se déconnecter"
+                className="p-1.5 text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition cursor-pointer"
+              >
+                <LogOut size={16} />
+              </button>
             </div>
           </div>
 
-          {/* Menu Items */}
+          {/* Onglets Navigation RBAC */}
           <nav className="p-4 space-y-1.5">
             <button
-              onClick={() => setActiveNav('orders')}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-bold transition ${
-                activeNav === 'orders' 
-                  ? 'bg-[#D4AF37] text-white shadow-lg shadow-[#D4AF37]/20' 
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+              onClick={() => setActiveTab('orders')}
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
+                activeTab === 'orders'
+                  ? 'bg-[#D4AF37] text-black shadow-lg shadow-[#D4AF37]/20'
+                  : 'text-gray-300 hover:bg-white/5 hover:text-white'
               }`}
             >
               <div className="flex items-center gap-3">
-                <ShoppingBag size={18} />
-                <span>Commandes</span>
+                <Package size={17} />
+                <span>Commandes & KDS</span>
               </div>
-              {pendingCount > 0 && (
-                <span className="bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">
-                  {pendingCount}
+              {orders.filter(o => o.statut === 'EN_ATTENTE_DE_PAIEMENT' || o.statut === 'EN_PREPARATION').length > 0 && (
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${
+                  activeTab === 'orders' ? 'bg-black text-white' : 'bg-[#D4AF37] text-black'
+                }`}>
+                  {orders.filter(o => o.statut === 'EN_ATTENTE_DE_PAIEMENT' || o.statut === 'EN_PREPARATION').length}
                 </span>
               )}
             </button>
 
-            {/* GESTION DES PLATS / MENU */}
-            <button
-              onClick={() => setActiveNav('menu')}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-bold transition ${
-                activeNav === 'menu' 
-                  ? 'bg-[#D4AF37] text-white shadow-lg shadow-[#D4AF37]/20' 
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <UtensilsCrossed size={18} />
-                <span>Gestion des Plats</span>
-              </div>
-              <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded-full text-gray-300">
-                {products.length}
-              </span>
-            </button>
+            {/* Onglets réservés au Gérant */}
+            {isGerant && (
+              <>
+                <button
+                  onClick={() => setActiveTab('menu')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
+                    activeTab === 'menu'
+                      ? 'bg-[#D4AF37] text-black shadow-lg shadow-[#D4AF37]/20'
+                      : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                  }`}
+                >
+                  <UtensilsCrossed size={17} />
+                  <span>Gestion des Plats</span>
+                </button>
 
-            {/* STATISTIQUES ADMINISTRATEUR */}
-            <button
-              onClick={() => { setActiveNav('stats'); fetchAllData(); }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition ${
-                activeNav === 'stats' 
-                  ? 'bg-[#D4AF37] text-white shadow-lg shadow-[#D4AF37]/20' 
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <BarChart3 size={18} />
-              <span>Statistiques & Ventes</span>
-            </button>
-
-            {/* FIDÉLITÉ & RÉCOMPENSES */}
-            <button
-              onClick={() => setActiveNav('fidelity')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition ${
-                activeNav === 'fidelity' 
-                  ? 'bg-[#D4AF37] text-white shadow-lg shadow-[#D4AF37]/20' 
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <Crown size={18} />
-              <span>Fidélité & Coupons</span>
-            </button>
-
-            {/* EMPLOYÉS (GÉRANT) */}
-            {currentStaff.role === 'admin' && (
-              <button
-                onClick={() => setActiveNav('employees')}
-                className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-bold transition ${
-                  activeNav === 'employees' 
-                    ? 'bg-[#D4AF37] text-white shadow-lg shadow-[#D4AF37]/20' 
-                    : 'text-gray-400 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <Users size={18} />
-                  <span>Employés</span>
-                </div>
-                <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded-full text-gray-300">
-                  {employees.length}
-                </span>
-              </button>
+                <button
+                  onClick={() => setActiveTab('stats')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
+                    activeTab === 'stats'
+                      ? 'bg-[#D4AF37] text-black shadow-lg shadow-[#D4AF37]/20'
+                      : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                  }`}
+                >
+                  <BarChart3 size={17} />
+                  <span>Statistiques & Ventes</span>
+                </button>
+              </>
             )}
 
             <button
-              onClick={() => setActiveNav('simulator')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition ${
-                activeNav === 'simulator' 
-                  ? 'bg-[#D4AF37] text-white shadow-lg shadow-[#D4AF37]/20' 
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+              onClick={() => setActiveTab('loyalty')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
+                activeTab === 'loyalty'
+                  ? 'bg-[#D4AF37] text-black shadow-lg shadow-[#D4AF37]/20'
+                  : 'text-gray-300 hover:bg-white/5 hover:text-white'
               }`}
             >
-              <Zap size={18} />
-              <span>Simulateur OM</span>
+              <Award size={17} />
+              <span>Fidélité & Coupons</span>
             </button>
+
+            {/* Onglet Équipe - Réservé au Gérant */}
+            {isGerant && (
+              <>
+                <button
+                  onClick={() => setActiveTab('team')}
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
+                    activeTab === 'team'
+                      ? 'bg-[#D4AF37] text-black shadow-lg shadow-[#D4AF37]/20'
+                      : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Users size={17} />
+                    <span>Gestion de l'Équipe</span>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 font-bold">
+                    {teamUsers.length}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('simulator')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
+                    activeTab === 'simulator'
+                      ? 'bg-[#D4AF37] text-black shadow-lg shadow-[#D4AF37]/20'
+                      : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                  }`}
+                >
+                  <Zap size={17} />
+                  <span>Simulateur OM</span>
+                </button>
+              </>
+            )}
           </nav>
         </div>
 
-        {/* Profil Personnel & Déconnexion en bas de Sidebar */}
-        <div className="p-4 border-t border-gray-800 bg-black/20">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-9 h-9 rounded-xl bg-[#D4AF37]/20 border border-[#D4AF37]/40 text-[#D4AF37] flex items-center justify-center font-bold text-xs flex-shrink-0">
-                {currentStaff.name.charAt(0)}
-              </div>
-              <div className="truncate">
-                <p className="text-xs font-bold text-white truncate">{currentStaff.name}</p>
-                <span className="text-[10px] text-[#D4AF37] uppercase font-bold tracking-wider">
-                  {currentStaff.role === 'admin' ? 'Administrateur' : 'Caisse'}
-                </span>
-              </div>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="p-2 text-gray-400 hover:text-red-400 hover:bg-white/5 rounded-xl transition"
-              title="Déconnexion"
-            >
-              <LogOut size={16} />
-            </button>
+        {/* Pied de sidebar */}
+        <div className="p-4 border-t border-white/10 text-[11px] text-gray-500 flex flex-col gap-1">
+          <div className="flex items-center gap-1.5 text-emerald-400 font-semibold">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Connecté • RBAC Actif</span>
           </div>
+          <span>Expiration automatique après 4h</span>
         </div>
       </aside>
 
       {/* CONTENU PRINCIPAL */}
-      <main className="flex-1 overflow-y-auto p-4 sm:p-8">
-
-        {/* ========================================================================= */}
-        {/* VUE 1 : COMMANDES (CARTES CONFORMES À LA CAPTURE D'ÉCRAN) */}
-        {/* ========================================================================= */}
-        {activeNav === 'orders' && (
-          <div className="space-y-6 max-w-7xl mx-auto">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
+      <main className="flex-1 p-4 sm:p-8 overflow-y-auto">
+        {/* ============================================================ */}
+        {/* ONGLET 1 : COMMANDES & KDS (ACCESSIBLE TOUS PROFILS)           */}
+        {/* ============================================================ */}
+        {activeTab === 'orders' && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h1 className="text-2xl font-black text-gray-900 tracking-tight">Commandes KDS & Caisse</h1>
-                <p className="text-xs text-gray-500">Validation instantanée dès notification Orange Money</p>
+                <h2 className="text-2xl font-black text-white flex items-center gap-2">
+                  <span>Commandes en Cuisine</span>
+                  {!isGerant && (
+                    <span className="text-xs px-3 py-1 rounded-full bg-sky-500/20 text-sky-400 font-semibold border border-sky-500/30">
+                      Vue Opérationnelle Employé
+                    </span>
+                  )}
+                </h2>
+                <p className="text-xs text-gray-400">
+                  {isGerant 
+                    ? 'Supervision globale de l\'activité, encaissements Orange Money et statut des commandes.'
+                    : 'Préparez les douceurs commandées et mettez à jour leur statut en temps réel.'}
+                </p>
               </div>
 
-              <div className="flex items-center gap-3 w-full sm:w-auto">
-                <div className="relative flex-1 sm:w-64">
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                  <input
-                    type="text"
-                    placeholder="Rechercher (Nom, N°, Tél)..."
-                    value={orderSearch}
-                    onChange={(e) => setOrderSearch(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
-                  />
-                </div>
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={fetchAllData}
-                  className="p-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-600 transition"
-                  title="Actualiser"
+                  onClick={loadOrders}
+                  className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold transition flex items-center gap-2 cursor-pointer"
                 >
-                  <RefreshCw size={16} />
+                  <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+                  <span>Actualiser</span>
                 </button>
               </div>
             </div>
 
             {/* Filtres de statut */}
-            <div className="flex gap-2 overflow-x-auto pb-1">
+            <div className="flex flex-wrap gap-2">
               {[
-                { key: 'all', label: 'Toutes', count: orders.length },
-                { key: 'pending', label: 'En attente paiement', count: pendingCount },
-                { key: 'preparing', label: 'En préparation (Payées)', count: preparingCount },
-                { key: 'ready', label: 'Prêtes', count: orders.filter((o) => o.statut === 'PRETE').length },
-                { key: 'cancelled', label: 'Annulées', count: orders.filter((o) => o.statut === 'ANNULEE').length },
-              ].map((f) => (
+                { id: 'ALL', label: 'Toutes' },
+                { id: 'EN_ATTENTE_DE_PAIEMENT', label: 'En attente OM' },
+                { id: 'EN_PREPARATION', label: 'À préparer' },
+                { id: 'PRETE', label: 'Prêtes' },
+                { id: 'LIVREE', label: 'Livrées' },
+                { id: 'ANNULEE', label: 'Annulées' }
+              ].map(f => (
                 <button
-                  key={f.key}
-                  onClick={() => setOrderStatusFilter(f.key as any)}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap flex items-center gap-2 ${
-                    orderStatusFilter === f.key
-                      ? 'bg-[#111827] text-white shadow-sm'
-                      : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                  key={f.id}
+                  onClick={() => setFilterStatus(f.id)}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                    filterStatus === f.id
+                      ? 'bg-[#D4AF37] text-black shadow-md'
+                      : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 border border-white/5'
                   }`}
                 >
-                  <span>{f.label}</span>
-                  <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-gray-200 text-gray-800 font-extrabold">
-                    {f.count}
-                  </span>
+                  {f.label}
                 </button>
               ))}
             </div>
 
-            {/* GRILLE DES CARTES DE COMMANDES (STYLE CAPTURE D'ÉCRAN) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredOrders.map((order) => {
-                const totalItemCount = order.items.reduce((sum, it) => sum + (it.quantity || 1), 0);
-                const orderShortId = order.id.replace('CMD-', '#').slice(0, 10);
-                const formattedDate = new Date(order.createdAt).toLocaleString('fr-FR', {
-                  day: '2-digit',
-                  month: 'short',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                });
+            {/* Grille de cartes de commandes */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+              {filteredOrders.map(order => (
+                <div
+                  key={order.id}
+                  className={`p-5 rounded-3xl border transition flex flex-col justify-between ${
+                    order.statut === 'EN_PREPARATION'
+                      ? 'bg-amber-500/5 border-amber-500/30 shadow-lg shadow-amber-500/5'
+                      : order.statut === 'PRETE'
+                      ? 'bg-emerald-500/5 border-emerald-500/30'
+                      : 'bg-[#1E293B] border-white/10'
+                  }`}
+                >
+                  <div>
+                    {/* Header Carte */}
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <div className="text-xs font-mono font-bold text-gray-400">{order.id}</div>
+                        <div className="text-base font-extrabold text-white mt-0.5">{order.customerName}</div>
+                        {order.customerPhone && (
+                          <div className="text-xs text-gray-400">📞 {order.customerPhone}</div>
+                        )}
+                      </div>
+                      <span className={`text-[11px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider ${
+                        order.statut === 'EN_PREPARATION'
+                          ? 'bg-amber-400 text-black animate-pulse'
+                          : order.statut === 'PRETE'
+                          ? 'bg-emerald-400 text-black'
+                          : order.statut === 'PAYEE'
+                          ? 'bg-blue-400 text-black'
+                          : order.statut === 'ANNULEE'
+                          ? 'bg-rose-500/20 text-rose-300'
+                          : 'bg-white/10 text-gray-300'
+                      }`}>
+                        {order.statut.replace(/_/g, ' ')}
+                      </span>
+                    </div>
 
-                return (
-                  <motion.div
-                    key={order.id}
-                    layout
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col justify-between hover:shadow-md transition"
-                  >
-                    <div>
-                      {/* En-tête : Order #351 + Date + Avatar */}
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <h3 className="text-base font-extrabold text-gray-900 tracking-tight">
-                            Order {orderShortId}
-                          </h3>
-                          <p className="text-xs text-gray-400 font-medium">
-                            {formattedDate}
-                          </p>
-                          {order.customerName && (
-                            <p className="text-xs font-bold text-gray-700 mt-1">
-                              👤 {order.customerName} {order.customerPhone ? `(${order.customerPhone})` : ''}
-                            </p>
+                    {/* Articles commandés */}
+                    <div className="my-3 py-3 border-y border-white/10 space-y-2">
+                      {order.items && order.items.map((item, idx) => (
+                        <div key={idx} className="flex justify-between items-center text-xs">
+                          <span className="text-gray-200">
+                            <strong>{item.quantity}x</strong> {item.name}
+                          </span>
+                          {/* Le prix unitaire de la commande n'est affiché qu'au Gérant */}
+                          {isGerant && (
+                            <span className="text-gray-400 font-mono">
+                              {(item.price * item.quantity).toLocaleString('fr-FR')} FCFA
+                            </span>
                           )}
                         </div>
-
-                        {/* Avatar rond du client */}
-                        <div className="w-11 h-11 rounded-full bg-emerald-100 border border-emerald-200 text-emerald-800 flex items-center justify-center font-black text-sm flex-shrink-0 shadow-sm">
-                          {order.customerName ? order.customerName.charAt(0).toUpperCase() : 'C'}
-                        </div>
-                      </div>
-
-                      {/* Badge Statut */}
-                      <div className="mb-4">
-                        <span className={`inline-block px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${
-                          order.statut === 'EN_ATTENTE_DE_PAIEMENT'
-                            ? 'bg-amber-100 text-amber-800'
-                            : (order.statut === 'EN_PREPARATION'
-                              ? 'bg-blue-100 text-blue-800'
-                              : (order.statut === 'PRETE'
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : 'bg-red-100 text-red-800'))
-                        }`}>
-                          {order.statut.replace(/_/g, ' ')}
-                        </span>
-                      </div>
-
-                      {/* Liste des articles avec photos rondes */}
-                      <div className="space-y-4 my-2">
-                        {order.items.map((item, idx) => (
-                          <div key={idx} className="flex items-center gap-4 py-1">
-                            <img
-                              src={item.image || 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=400'}
-                              alt={item.name}
-                              className="w-14 h-14 rounded-full object-cover shadow-sm ring-2 ring-gray-100 flex-shrink-0"
-                            />
-
-                            <div className="flex-1 min-w-0">
-                              <h4 className="text-sm font-bold text-gray-900 truncate">
-                                {item.name}
-                              </h4>
-                              <p className="text-xs text-gray-400 truncate">
-                                Pâtisserie fraîche artisanale
-                              </p>
-                              <div className="flex justify-between items-center mt-1">
-                                <span className="text-sm font-bold text-gray-900">
-                                  {Number(item.price).toLocaleString('fr-FR')} FCFA
-                                </span>
-                                <span className="text-xs font-semibold text-gray-800">
-                                  Qty: {item.quantity || 1}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      <hr className="border-gray-100 my-4" />
+                      ))}
                     </div>
 
-                    {/* Bas de carte : Total + Boutons d'action croix rouge & coche verte */}
-                    <div className="flex items-center justify-between pt-1">
-                      <div>
-                        <span className="text-xs text-gray-400 font-semibold block">
-                          X{totalItemCount} Items
-                        </span>
-                        <span className="text-base font-black text-gray-900">
-                          {order.montantTotal.toLocaleString('fr-FR')} FCFA
+                    {/* Total financier (affiché au Gérant, masqué pour l'employé) */}
+                    {isGerant && (
+                      <div className="flex justify-between items-center mb-4">
+                        <span className="text-xs text-gray-400">Montant Total :</span>
+                        <span className="text-base font-black text-[#D4AF37]">
+                          {Number(order.montantTotal).toLocaleString('fr-FR')} FCFA
                         </span>
                       </div>
+                    )}
 
-                      <div className="flex items-center gap-2.5">
-                        <button
-                          onClick={() => handleCancelOrder(order.id)}
-                          className="w-11 h-11 rounded-2xl border border-red-200 bg-red-50/60 hover:bg-red-100 active:scale-95 text-red-500 flex items-center justify-center transition shadow-sm"
-                          title="Rejeter / Annuler"
-                        >
-                          <X size={20} strokeWidth={2.5} />
-                        </button>
-
-                        <button
-                          onClick={() => handleValidateOrder(order)}
-                          className="w-11 h-11 rounded-2xl border border-emerald-200 bg-emerald-50/60 hover:bg-emerald-100 active:scale-95 text-emerald-600 flex items-center justify-center transition shadow-sm"
-                          title={order.statut === 'EN_ATTENTE_DE_PAIEMENT' ? 'Valider le paiement' : 'Marquer comme prête'}
-                        >
-                          <Check size={20} strokeWidth={2.5} />
-                        </button>
+                    {order.codeReference && (
+                      <div className="text-[11px] text-gray-400 mb-2">
+                        Réf. Marchand : <strong className="text-white font-mono">{order.codeReference}</strong>
                       </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
+                    )}
+                  </div>
+
+                  {/* Actions Opérationnelles */}
+                  <div className="pt-3 border-t border-white/10 flex gap-2">
+                    {order.statut === 'EN_ATTENTE_DE_PAIEMENT' && isGerant && (
+                      <button
+                        onClick={() => handleValidateOrder(order.id)}
+                        className="flex-1 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-black font-bold text-xs transition cursor-pointer"
+                      >
+                        Valider Manuellement
+                      </button>
+                    )}
+
+                    {order.statut === 'EN_PREPARATION' && (
+                      <button
+                        onClick={() => handleFinishOrder(order.id)}
+                        className="flex-1 py-2.5 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-black font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-lg transition cursor-pointer"
+                      >
+                        <CheckCircle2 size={16} />
+                        <span>Marquer Prête</span>
+                      </button>
+                    )}
+
+                    {order.statut === 'PRETE' && (
+                      <button
+                        onClick={async () => {
+                          await finishOrder(order.id);
+                          loadOrders();
+                        }}
+                        className="flex-1 py-2 rounded-xl bg-blue-500/20 text-blue-300 border border-blue-500/30 text-xs font-bold hover:bg-blue-500/30 transition cursor-pointer"
+                      >
+                        Commande Récupérée
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
 
-            {filteredOrders.length === 0 && (
-              <div className="text-center py-16 bg-white rounded-3xl border border-gray-100 p-8">
-                <ShoppingBag size={40} className="mx-auto text-gray-300 mb-3" />
-                <h3 className="text-base font-bold text-gray-700">Aucune commande trouvée</h3>
-                <p className="text-xs text-gray-400 mt-1">Les nouvelles commandes s'afficheront ici en temps réel.</p>
+            {filteredOrders.length === 0 && !loading && (
+              <div className="text-center py-16 bg-[#1E293B] rounded-3xl border border-white/10">
+                <Package size={40} className="mx-auto text-gray-600 mb-3" />
+                <p className="text-gray-400 font-medium text-sm">Aucune commande dans cette catégorie.</p>
               </div>
             )}
           </div>
         )}
 
-        {/* ========================================================================= */}
-        {/* VUE 2 : GESTION DES PLATS (AJOUTER, MODIFIER, SUPPRIMER) */}
-        {/* ========================================================================= */}
-        {activeNav === 'menu' && (
-          <div className="space-y-6 max-w-7xl mx-auto">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-              <div>
-                <h1 className="text-2xl font-black text-gray-900 tracking-tight">Gestion du Menu & des Plats</h1>
-                <p className="text-xs text-gray-500">Ajoutez, modifiez les tarifs et gérez les disponibilités de votre carte</p>
-              </div>
-
-              <div className="flex items-center gap-3 w-full sm:w-auto">
-                <button
-                  onClick={handleOpenAddProduct}
-                  className="px-5 py-2.5 rounded-2xl bg-[#D4AF37] hover:bg-[#c29d2b] text-white font-extrabold text-xs shadow-md transition flex items-center gap-2"
-                >
-                  <Plus size={16} />
-                  <span>Ajouter un Plat</span>
-                </button>
-              </div>
+        {/* ============================================================ */}
+        {/* ONGLET 2 : GESTION DE L'ÉQUIPE (RÉSERVÉ GÉRANT UNIQUEMENT)   */}
+        {/* ============================================================ */}
+        {activeTab === 'team' && isGerant && (
+          <div className="space-y-8">
+            <div>
+              <h2 className="text-2xl font-black text-white flex items-center gap-2">
+                <Users className="text-[#D4AF37]" size={26} />
+                <span>Gestion de l'Équipe & Rôles RBAC</span>
+              </h2>
+              <p className="text-xs text-gray-400 mt-1">
+                Générez des accès pour votre brigade de cuisine, attribuez les permissions et bloquez instantanément un collaborateur en cas de départ.
+              </p>
             </div>
 
-            {productSuccessMsg && (
-              <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold">
-                {productSuccessMsg}
+            {teamMessage && (
+              <div className={`p-4 rounded-2xl flex items-center gap-3 text-xs font-bold ${
+                teamMessage.type === 'success' 
+                  ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300' 
+                  : 'bg-rose-500/10 border border-rose-500/30 text-rose-300'
+              }`}>
+                {teamMessage.type === 'success' ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
+                <span>{teamMessage.text}</span>
               </div>
             )}
 
-            {/* Barre de recherche et filtres de catégories */}
-            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-              <div className="flex gap-2 overflow-x-auto w-full sm:w-auto pb-1">
-                {categoriesList.map((cat) => (
+            {/* Formulaire Nouvel Accès */}
+            <div className="bg-[#1E293B] p-6 rounded-3xl border border-white/10">
+              <h3 className="text-base font-extrabold text-white mb-4 flex items-center gap-2">
+                <UserPlus className="text-[#D4AF37]" size={18} />
+                <span>Créer un Nouvel Accès Collaborateur</span>
+              </h3>
+
+              <form onSubmit={handleCreateUser} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+                    Nom Complet
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newUserForm.name}
+                    onChange={(e) => setNewUserForm({ ...newUserForm, name: e.target.value })}
+                    placeholder="ex: Mamadou Traoré"
+                    className="w-full px-4 py-2.5 bg-[#0F172A] border border-gray-700 rounded-xl text-white text-xs focus:ring-2 focus:ring-[#D4AF37] focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+                    Email Professionnel
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={newUserForm.email}
+                    onChange={(e) => setNewUserForm({ ...newUserForm, email: e.target.value })}
+                    placeholder="mamadou@lesdouceursdeleci.com"
+                    className="w-full px-4 py-2.5 bg-[#0F172A] border border-gray-700 rounded-xl text-white text-xs focus:ring-2 focus:ring-[#D4AF37] focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+                    Mot de Passe (min. 8 car.)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newUserForm.password}
+                    onChange={(e) => setNewUserForm({ ...newUserForm, password: e.target.value })}
+                    placeholder="P@ssword2026!"
+                    className="w-full px-4 py-2.5 bg-[#0F172A] border border-gray-700 rounded-xl text-white text-xs font-mono focus:ring-2 focus:ring-[#D4AF37] focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+                    Rôle Attribué
+                  </label>
+                  <select
+                    value={newUserForm.role}
+                    onChange={(e) => setNewUserForm({ ...newUserForm, role: e.target.value as any })}
+                    className="w-full px-4 py-2.5 bg-[#0F172A] border border-gray-700 rounded-xl text-white text-xs focus:ring-2 focus:ring-[#D4AF37] focus:outline-none"
+                  >
+                    <option value="employe">Employé (Commandes & KDS seul)</option>
+                    <option value="gerant">Gérant (Administration totale & CA)</option>
+                  </select>
+                </div>
+
+                <div className="sm:col-span-2 lg:col-span-4 flex justify-end pt-2">
+                  <button
+                    type="submit"
+                    className="px-6 py-2.5 bg-[#D4AF37] hover:bg-[#c29d2b] text-black font-extrabold text-xs rounded-xl shadow-lg transition flex items-center gap-2 cursor-pointer"
+                  >
+                    <UserPlus size={16} />
+                    <span>Générer l'Accès Sécurisé</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Tableau des Collaborateurs */}
+            <div className="bg-[#1E293B] rounded-3xl border border-white/10 overflow-hidden">
+              <div className="p-5 border-b border-white/10 flex justify-between items-center">
+                <h3 className="font-bold text-sm text-white">Membres Actuels de la Brigade ({teamUsers.length})</h3>
+                <span className="text-[11px] text-gray-400">Authentification forte active par JWT</span>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#0F172A] text-gray-400 uppercase tracking-wider text-[10px]">
+                    <tr>
+                      <th className="py-3 px-5">Collaborateur</th>
+                      <th className="py-3 px-5">Rôle Attribué</th>
+                      <th className="py-3 px-5">Statut</th>
+                      <th className="py-3 px-5">Création</th>
+                      <th className="py-3 px-5">Dernière Connexion</th>
+                      <th className="py-3 px-5 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {teamUsers.map(user => {
+                      const isSelf = user.id === currentUser?.id;
+                      return (
+                        <tr key={user.id} className="hover:bg-white/5 transition">
+                          <td className="py-3.5 px-5">
+                            <div className="font-bold text-white flex items-center gap-2">
+                              <span>{user.name}</span>
+                              {isSelf && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold">
+                                  Vous
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-gray-400 text-[11px] font-mono">{user.email}</div>
+                          </td>
+
+                          <td className="py-3.5 px-5">
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wide ${
+                              user.role === 'gerant'
+                                ? 'bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/30'
+                                : 'bg-sky-500/20 text-sky-400 border border-sky-500/30'
+                            }`}>
+                              {user.role === 'gerant' ? <Crown size={12} /> : <ChefHat size={12} />}
+                              <span>{user.role === 'gerant' ? 'Gérant' : 'Employé'}</span>
+                            </span>
+                          </td>
+
+                          <td className="py-3.5 px-5">
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                              user.status === 'active'
+                                ? 'bg-emerald-500/20 text-emerald-300'
+                                : 'bg-rose-500/20 text-rose-300'
+                            }`}>
+                              {user.status === 'active' ? <UserCheck size={12} /> : <Ban size={12} />}
+                              <span>{user.status === 'active' ? 'Actif' : 'Bloqué'}</span>
+                            </span>
+                          </td>
+
+                          <td className="py-3.5 px-5 text-gray-400">
+                            {new Date(user.created_at).toLocaleDateString('fr-FR')}
+                          </td>
+
+                          <td className="py-3.5 px-5 text-gray-400">
+                            {user.last_login_at 
+                              ? new Date(user.last_login_at).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })
+                              : 'Jamais'}
+                          </td>
+
+                          <td className="py-3.5 px-5 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              {/* Bouton Bloquer / Débloquer */}
+                              <button
+                                disabled={isSelf}
+                                onClick={() => handleToggleUserStatus(user)}
+                                title={user.status === 'active' ? 'Bloquer l\'accès' : 'Réactiver l\'accès'}
+                                className={`p-1.5 rounded-lg border text-xs font-bold transition disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer ${
+                                  user.status === 'active'
+                                    ? 'border-amber-500/30 text-amber-300 hover:bg-amber-500/20'
+                                    : 'border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20'
+                                }`}
+                              >
+                                {user.status === 'active' ? <Ban size={14} /> : <UserCheck size={14} />}
+                              </button>
+
+                              {/* Bouton Supprimer */}
+                              <button
+                                disabled={isSelf}
+                                onClick={() => handleDeleteUser(user)}
+                                title="Supprimer définitivement"
+                                className="p-1.5 rounded-lg border border-rose-500/30 text-rose-300 hover:bg-rose-500/20 transition disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* ONGLET 3 : GESTION DES PLATS (RÉSERVÉ GÉRANT)                 */}
+        {/* ============================================================ */}
+        {activeTab === 'menu' && isGerant && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-black text-white flex items-center gap-2">
+                  <UtensilsCrossed className="text-[#D4AF37]" size={26} />
+                  <span>Gestion des Plats & Carte Sucrée</span>
+                </h2>
+                <p className="text-xs text-gray-400 mt-1">
+                  Ajoutez, modifiez, ajustez les prix (minimum 500 FCFA) et activez la disponibilité de vos pâtisseries.
+                </p>
+              </div>
+
+              <button
+                onClick={handleOpenAddProduct}
+                className="px-5 py-2.5 rounded-2xl bg-[#D4AF37] hover:bg-[#c29d2b] text-black font-extrabold text-xs flex items-center gap-2 shadow-lg transition cursor-pointer"
+              >
+                <Plus size={16} />
+                <span>Nouveau Plat</span>
+              </button>
+            </div>
+
+            {/* Filtres et recherche plats */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
+                <input
+                  type="text"
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                  placeholder="Rechercher une pâtisserie..."
+                  className="w-full pl-10 pr-4 py-2.5 bg-[#1E293B] border border-white/10 rounded-2xl text-white text-xs focus:ring-2 focus:ring-[#D4AF37] focus:outline-none"
+                />
+              </div>
+
+              <div className="flex flex-wrap gap-1.5">
+                {['Tous', 'Gâteaux', 'Macarons', 'Viennoiseries', 'Traditionnels', 'Mariage'].map(cat => (
                   <button
                     key={cat}
                     onClick={() => setProductCategoryFilter(cat)}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
                       productCategoryFilter === cat
-                        ? 'bg-[#111827] text-white shadow-sm'
-                        : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                        ? 'bg-[#D4AF37] text-black'
+                        : 'bg-white/5 text-gray-300 hover:bg-white/10'
                     }`}
                   >
                     {cat}
                   </button>
                 ))}
               </div>
-
-              <div className="relative w-full sm:w-64">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                <input
-                  type="text"
-                  placeholder="Rechercher un plat..."
-                  value={productSearch}
-                  onChange={(e) => setProductSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#D4AF37] bg-white"
-                />
-              </div>
             </div>
 
-            {/* Grille des Plats */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredProducts.map((prod) => (
-                <div
-                  key={prod.id}
-                  className="bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-sm flex flex-col justify-between hover:shadow-md transition p-4 group"
-                >
-                  <div>
-                    <div className="relative h-44 rounded-2xl overflow-hidden mb-3 bg-gray-100">
-                      <img
-                        src={prod.image || 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=600'}
-                        alt={prod.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                      <span className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-white/90 backdrop-blur-sm text-gray-800 shadow-sm">
-                        {prod.category}
-                      </span>
-                      <span className={`absolute top-2.5 right-2.5 px-2.5 py-1 rounded-full text-[10px] font-black shadow-sm ${
-                        prod.is_available ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'
-                      }`}>
-                        {prod.is_available ? 'Disponible' : 'Épuisé'}
-                      </span>
-                    </div>
-
-                    <h3 className="text-sm font-extrabold text-gray-900 group-hover:text-[#D4AF37] transition">
-                      {prod.name}
-                    </h3>
-                    <p className="text-xs text-gray-400 line-clamp-2 mt-1">
-                      {prod.description || 'Pâtisserie artisanale faite maison'}
-                    </p>
-                  </div>
-
-                  <div className="pt-3 mt-3 border-t border-gray-100 flex items-center justify-between">
-                    <span className="text-base font-black text-gray-900">
-                      {prod.price.toLocaleString('fr-FR')} FCFA
-                    </span>
-
-                    <div className="flex items-center gap-1.5">
-                      {/* Bascule disponibilité rapide */}
-                      <button
-                        onClick={() => handleToggleProductAvailability(prod)}
-                        className={`p-2 rounded-xl transition ${
-                          prod.is_available ? 'text-emerald-600 hover:bg-emerald-50' : 'text-gray-400 hover:bg-gray-100'
-                        }`}
-                        title={prod.is_available ? 'Marquer épuisé' : 'Rendre disponible'}
-                      >
-                        {prod.is_available ? <Eye size={16} /> : <EyeOff size={16} />}
-                      </button>
-
-                      {/* Modifier */}
-                      <button
-                        onClick={() => handleOpenEditProduct(prod)}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-xl transition"
-                        title="Modifier ce plat"
-                      >
-                        <Edit3 size={16} />
-                      </button>
-
-                      {/* Supprimer */}
-                      <button
-                        onClick={() => handleDeleteProduct(prod.id, prod.name)}
-                        className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition"
-                        title="Supprimer"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {filteredProducts.length === 0 && (
-              <div className="text-center py-16 bg-white rounded-3xl border border-gray-100 p-8">
-                <UtensilsCrossed size={40} className="mx-auto text-gray-300 mb-3" />
-                <h3 className="text-base font-bold text-gray-700">Aucun plat correspondant</h3>
-                <p className="text-xs text-gray-400 mt-1">Cliquez sur « Ajouter un Plat » pour enrichir votre carte.</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* MODAL AJOUT / MODIFICATION D'UN PLAT */}
-        {showProductModal && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-gray-100 max-h-[90vh] overflow-y-auto"
-            >
-              <div className="flex justify-between items-center pb-4 border-b border-gray-100 mb-5">
-                <h3 className="text-lg font-black text-gray-900">
-                  {editingProductId ? 'Modifier le Plat' : 'Ajouter un Nouveau Plat'}
-                </h3>
-                <button
-                  onClick={() => setShowProductModal(false)}
-                  className="p-2 text-gray-400 hover:text-gray-700 rounded-xl"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              <form onSubmit={handleSaveProduct} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Nom du Plat *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ex: Fraisier Signature Prestige"
-                    value={formProdName}
-                    onChange={(e) => setFormProdName(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#D4AF37]"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">Catégorie *</label>
-                    <select
-                      value={formProdCategory}
-                      onChange={(e) => setFormProdCategory(e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl bg-white"
-                    >
-                      <option value="Gâteaux">Gâteaux</option>
-                      <option value="Macarons">Macarons</option>
-                      <option value="Viennoiseries">Viennoiseries</option>
-                      <option value="Traditionnels">Traditionnels</option>
-                      <option value="Mariage">Mariage</option>
-                      <option value="Boisson">Boisson</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">Prix (FCFA, min 500) *</label>
-                    <input
-                      type="number"
-                      required
-                      min={500}
-                      step={50}
-                      value={formProdPrice}
-                      onChange={(e) => setFormProdPrice(e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl font-bold"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Description du Plat</label>
-                  <textarea
-                    rows={2}
-                    placeholder="Ingrédients, parfums, texture..."
-                    value={formProdDesc}
-                    onChange={(e) => setFormProdDesc(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">URL de la Photo</label>
-                  <input
-                    type="url"
-                    placeholder="https://images.unsplash.com/..."
-                    value={formProdImage}
-                    onChange={(e) => setFormProdImage(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl"
-                  />
-                </div>
-
-                {formProdImage && (
-                  <div className="h-28 rounded-xl overflow-hidden bg-gray-100">
-                    <img src={formProdImage} alt="Aperçu" className="w-full h-full object-cover" />
-                  </div>
-                )}
-
-                <div className="flex items-center gap-2 pt-1">
-                  <input
-                    type="checkbox"
-                    id="is_available_check"
-                    checked={formProdAvailable}
-                    onChange={(e) => setFormProdAvailable(e.target.checked)}
-                    className="w-4 h-4 text-[#D4AF37] rounded"
-                  />
-                  <label htmlFor="is_available_check" className="text-xs font-bold text-gray-700 cursor-pointer">
-                    Disponible immédiatement à la commande
-                  </label>
-                </div>
-
-                <div className="flex gap-3 pt-3 border-t border-gray-100">
-                  <button
-                    type="button"
-                    onClick={() => setShowProductModal(false)}
-                    className="flex-1 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-50"
+            {/* Grille des plats */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              {products
+                .filter(p => productCategoryFilter === 'Tous' || p.category === productCategoryFilter)
+                .filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()))
+                .map(product => (
+                  <div
+                    key={product.id}
+                    className={`p-4 rounded-3xl border transition flex flex-col justify-between group ${
+                      product.is_available ? 'bg-[#1E293B] border-white/10' : 'bg-black/30 border-dashed border-gray-700 opacity-60'
+                    }`}
                   >
-                    Annuler
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={savingProduct}
-                    className="flex-1 py-2.5 rounded-xl bg-[#D4AF37] hover:bg-[#c29d2b] text-white text-xs font-extrabold shadow-md transition"
-                  >
-                    {savingProduct ? 'Enregistrement...' : (editingProductId ? 'Sauvegarder' : 'Ajouter le Plat')}
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* VUE 3 : STATISTIQUES & CHIFFRE D'AFFAIRES DÉTAILLÉ */}
-        {/* ========================================================================= */}
-        {activeNav === 'stats' && (
-          <div className="space-y-6 max-w-7xl mx-auto">
-            <div className="flex justify-between items-center bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-              <div>
-                <h1 className="text-2xl font-black text-gray-900 tracking-tight">Statistiques & Performance</h1>
-                <p className="text-xs text-gray-500">Chiffre d'affaires, panier moyen, ventes et top des pâtisseries</p>
-              </div>
-
-              <button
-                onClick={fetchAllData}
-                className="p-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-600 transition flex items-center gap-2 text-xs font-bold"
-              >
-                <RefreshCw size={15} />
-                <span>Actualiser les chiffres</span>
-              </button>
-            </div>
-
-            {stats && (
-              <>
-                {/* 4 KPIs Clés */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex items-center justify-between">
                     <div>
-                      <span className="text-xs font-bold text-gray-400 uppercase">Chiffre d'Affaires Total</span>
-                      <p className="text-2xl font-black text-gray-900 mt-1">
-                        {stats.kpis.totalRevenue.toLocaleString('fr-FR')} <span className="text-sm font-bold text-[#D4AF37]">FCFA</span>
-                      </p>
-                      <span className="text-[11px] text-emerald-600 font-semibold">
-                        Aujourd'hui : {stats.kpis.todayRevenue.toLocaleString('fr-FR')} FCFA
-                      </span>
-                    </div>
-                    <div className="w-12 h-12 rounded-2xl bg-[#D4AF37]/15 text-[#D4AF37] flex items-center justify-center">
-                      <DollarSign size={24} />
-                    </div>
-                  </div>
-
-                  <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex items-center justify-between">
-                    <div>
-                      <span className="text-xs font-bold text-gray-400 uppercase">Commandes Réglées</span>
-                      <p className="text-2xl font-black text-gray-900 mt-1">
-                        {stats.kpis.paidOrdersCount} <span className="text-sm font-normal text-gray-400">/ {stats.kpis.totalOrdersCount}</span>
-                      </p>
-                      <span className="text-[11px] text-blue-600 font-semibold">
-                        {stats.kpis.preparingOrdersCount} en cuisine • {stats.kpis.readyOrdersCount} prêtes
-                      </span>
-                    </div>
-                    <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                      <ShoppingBag size={24} />
-                    </div>
-                  </div>
-
-                  <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex items-center justify-between">
-                    <div>
-                      <span className="text-xs font-bold text-gray-400 uppercase">Panier Moyen</span>
-                      <p className="text-2xl font-black text-gray-900 mt-1">
-                        {stats.kpis.averageOrderValue.toLocaleString('fr-FR')} <span className="text-sm font-bold text-gray-500">FCFA</span>
-                      </p>
-                      <span className="text-[11px] text-gray-400">
-                        Par commande payée
-                      </span>
-                    </div>
-                    <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                      <TrendingUp size={24} />
-                    </div>
-                  </div>
-
-                  <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex items-center justify-between">
-                    <div>
-                      <span className="text-xs font-bold text-gray-400 uppercase">Membres Fidélité</span>
-                      <p className="text-2xl font-black text-gray-900 mt-1">
-                        {stats.loyaltyStats.totalMembers} <span className="text-sm font-normal text-gray-400">clients</span>
-                      </p>
-                      <span className="text-[11px] text-[#D4AF37] font-semibold">
-                        {stats.loyaltyStats.totalPoints.toLocaleString('fr-FR')} pts en circulation
-                      </span>
-                    </div>
-                    <div className="w-12 h-12 rounded-2xl bg-amber-50 text-[#D4AF37] flex items-center justify-center">
-                      <Crown size={24} />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                  
-                  {/* Graphique Ventes 7 Derniers Jours */}
-                  <div className="lg:col-span-7 bg-white p-7 rounded-3xl border border-gray-100 shadow-sm">
-                    <h3 className="text-base font-extrabold text-gray-900 mb-6 flex items-center gap-2">
-                      <Calendar size={18} className="text-[#D4AF37]" />
-                      <span>Évolution des Ventes sur 7 Jours</span>
-                    </h3>
-
-                    <div className="space-y-4">
-                      {stats.dailySales.map((day) => {
-                        const maxDailyRev = Math.max(...stats.dailySales.map((d) => d.revenue), 10000);
-                        const percent = Math.min(100, Math.round((day.revenue / maxDailyRev) * 100));
-                        const dateFormatted = new Date(day.date).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' });
-
-                        return (
-                          <div key={day.date} className="space-y-1">
-                            <div className="flex justify-between text-xs font-semibold">
-                              <span className="text-gray-700 capitalize">{dateFormatted}</span>
-                              <span className="text-gray-900 font-extrabold">
-                                {day.revenue.toLocaleString('fr-FR')} FCFA <span className="text-gray-400 text-[10px]">({day.orders} cmd)</span>
-                              </span>
-                            </div>
-                            <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
-                              <div
-                                className="bg-gradient-to-r from-amber-400 to-[#D4AF37] h-full rounded-full transition-all duration-700"
-                                style={{ width: `${Math.max(5, percent)}%` }}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Top 5 des Plats les plus vendus */}
-                  <div className="lg:col-span-5 bg-white p-7 rounded-3xl border border-gray-100 shadow-sm">
-                    <h3 className="text-base font-extrabold text-gray-900 mb-6 flex items-center gap-2">
-                      <Flame size={18} className="text-amber-500" />
-                      <span>Top des Ventes (Pâtisseries Vedettes)</span>
-                    </h3>
-
-                    {stats.topProducts.length === 0 ? (
-                      <p className="text-xs text-gray-400 py-6 text-center">Aucune vente enregistrée pour le moment.</p>
-                    ) : (
-                      <div className="space-y-3">
-                        {stats.topProducts.map((tp, idx) => (
-                          <div key={idx} className="flex items-center gap-3 p-3 bg-[#FAF8F5] rounded-2xl border border-gray-100">
-                            <span className="w-6 h-6 rounded-full bg-[#111827] text-white flex items-center justify-center font-bold text-xs flex-shrink-0">
-                              {idx + 1}
-                            </span>
-                            {tp.image && (
-                              <img src={tp.image} alt={tp.name} className="w-11 h-11 rounded-full object-cover flex-shrink-0 ring-2 ring-white" />
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <h4 className="text-xs font-bold text-gray-900 truncate">{tp.name}</h4>
-                              <p className="text-[11px] text-gray-500">{tp.quantitySold} unités vendues</p>
-                            </div>
-                            <span className="text-xs font-black text-gray-900 flex-shrink-0">
-                              {tp.totalRevenue.toLocaleString('fr-FR')} FCFA
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                </div>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* VUE 4 : FIDÉLITÉ & RÉCOMPENSES (fidelity.md) */}
-        {/* ========================================================================= */}
-        {activeNav === 'fidelity' && (
-          <div className="space-y-6 max-w-5xl mx-auto">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-              <div>
-                <h1 className="text-2xl font-black text-gray-900 tracking-tight">Programme de Fidélité RestoBoost</h1>
-                <p className="text-xs text-gray-500">Validation de coupons clients, catalogue de récompenses et barème</p>
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setFidelitySubTab('validate_coupon')}
-                  className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-                    fidelitySubTab === 'validate_coupon' ? 'bg-[#D4AF37] text-white shadow-sm' : 'bg-gray-100 text-gray-700'
-                  }`}
-                >
-                  <ScanLine size={15} />
-                  <span>Valider Coupon</span>
-                </button>
-                <button
-                  onClick={() => setFidelitySubTab('rewards')}
-                  className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-                    fidelitySubTab === 'rewards' ? 'bg-[#D4AF37] text-white shadow-sm' : 'bg-gray-100 text-gray-700'
-                  }`}
-                >
-                  <Gift size={15} />
-                  <span>Récompenses ({rewards.length})</span>
-                </button>
-                <button
-                  onClick={() => setFidelitySubTab('members')}
-                  className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-                    fidelitySubTab === 'members' ? 'bg-[#D4AF37] text-white shadow-sm' : 'bg-gray-100 text-gray-700'
-                  }`}
-                >
-                  <Users size={15} />
-                  <span>Membres ({loyaltyMembers.length})</span>
-                </button>
-              </div>
-            </div>
-
-            {fidelitySubTab === 'validate_coupon' && (
-              <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm max-w-xl mx-auto text-center space-y-6">
-                <div className="w-16 h-16 rounded-2xl bg-[#D4AF37]/15 text-[#D4AF37] flex items-center justify-center mx-auto">
-                  <Ticket size={30} />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900">Validation de Coupon Récompense</h3>
-                  <p className="text-xs text-gray-500">Entrez le code à usage unique (ex: CPN-81586) présenté par le client</p>
-                </div>
-
-                <form onSubmit={handleValidateCoupon} className="space-y-4">
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ex: CPN-81586"
-                    value={couponCodeInput}
-                    onChange={(e) => setCouponCodeInput(e.target.value)}
-                    className="w-full text-center text-lg font-mono font-bold tracking-widest px-4 py-3 border-2 border-gray-200 rounded-2xl focus:border-[#D4AF37] focus:outline-none uppercase"
-                  />
-                  <button
-                    type="submit"
-                    disabled={couponValidating}
-                    className="w-full py-3 px-6 rounded-2xl bg-[#111827] hover:bg-black text-white font-bold text-xs shadow-md transition"
-                  >
-                    {couponValidating ? 'Vérification...' : 'Valider & Consommer le Coupon'}
-                  </button>
-                </form>
-
-                {couponResult && (
-                  <div className={`p-4 rounded-2xl text-xs font-bold ${
-                    couponResult.success ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'
-                  }`}>
-                    {couponResult.success ? (
-                      <div>
-                        <p className="text-sm">🎉 {couponResult.message}</p>
-                        <p className="text-[11px] font-normal text-emerald-600 mt-1">
-                          Client : {couponResult.coupon.phone} • Validé par {couponResult.coupon.validated_by}
-                        </p>
-                      </div>
-                    ) : (
-                      <p>⚠️ {couponResult.error}</p>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {fidelitySubTab === 'rewards' && (
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {rewards.map((r) => (
-                    <div key={r.id} className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm p-4 flex flex-col justify-between">
-                      {r.image && (
-                        <img src={r.image} alt={r.title} className="w-full h-32 object-cover rounded-xl mb-3" />
-                      )}
-                      <div>
-                        <span className="text-[10px] font-bold text-gray-400 uppercase">{r.category}</span>
-                        <h4 className="text-sm font-bold text-gray-900">{r.title}</h4>
-                        <span className="inline-block mt-2 px-2.5 py-1 rounded-lg bg-[#D4AF37]/15 text-[#D4AF37] font-black text-xs">
-                          {r.points_cost} points
+                      <div className="relative aspect-video rounded-2xl overflow-hidden mb-3 bg-black/40">
+                        <img
+                          src={product.image || 'https://images.unsplash.com/photo-1582180834946-f3d376b18376?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080'}
+                          alt={product.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                        />
+                        <span className="absolute top-2 left-2 px-2.5 py-0.5 rounded-full bg-black/70 backdrop-blur-md text-[10px] font-bold text-[#D4AF37]">
+                          {product.category}
                         </span>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
-            {fidelitySubTab === 'members' && (
-              <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-                <h3 className="text-sm font-bold text-gray-900 mb-4">Membres Actifs ({loyaltyMembers.length})</h3>
-                <div className="space-y-2">
-                  {loyaltyMembers.map((m) => (
-                    <div key={m.phone} className="flex justify-between items-center p-3 bg-gray-50 rounded-2xl text-xs">
-                      <div>
-                        <span className="font-bold text-gray-900 block">{m.name}</span>
-                        <span className="text-gray-400 font-mono">📱 +226 {m.phone} • {m.orders_count} commandes</span>
-                      </div>
-                      <div className="text-right">
-                        <span className="font-black text-sm text-[#D4AF37] block">{m.points} pts</span>
-                        <span className="text-[10px] text-gray-500 font-bold">{m.tier}</span>
+                      <h3 className="font-bold text-white text-sm mb-1">{product.name}</h3>
+                      <p className="text-[11px] text-gray-400 line-clamp-2 mb-3">
+                        {product.description || 'Pâtisserie fine confectionnée à la main.'}
+                      </p>
+                      <div className="text-base font-black text-[#D4AF37] mb-3">
+                        {product.price.toLocaleString('fr-FR')} FCFA
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
+
+                    <div className="pt-3 border-t border-white/10 flex items-center justify-between gap-2">
+                      <button
+                        onClick={() => handleToggleProductAvailability(product)}
+                        className={`px-2.5 py-1.5 rounded-xl text-[10px] font-extrabold flex items-center gap-1 transition cursor-pointer ${
+                          product.is_available
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                            : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                        }`}
+                      >
+                        {product.is_available ? <Eye size={12} /> : <EyeOff size={12} />}
+                        <span>{product.is_available ? 'En Stock' : 'Indisponible'}</span>
+                      </button>
+
+                      <div className="flex gap-1.5">
+                        <button
+                          onClick={() => handleOpenEditProduct(product)}
+                          className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
+                        >
+                          <Edit3 size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteProduct(product.id, product.name)}
+                          className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition cursor-pointer"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+            </div>
           </div>
         )}
 
-        {/* ========================================================================= */}
-        {/* VUE 5 : GESTION DES EMPLOYÉS (ACCÈS ADMINISTRATEUR SEULEMENT) */}
-        {/* ========================================================================= */}
-        {activeNav === 'employees' && currentStaff.role === 'admin' && (
-          <div className="space-y-6 max-w-4xl mx-auto">
-            <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-              <h1 className="text-2xl font-black text-gray-900 tracking-tight">Gestion des Employés & Équipe</h1>
-              <p className="text-xs text-gray-500">Ajoutez des employés et attribuez-leur un code PIN individuel d'accès à la caisse</p>
+        {/* ============================================================ */}
+        {/* ONGLET 4 : STATISTIQUES FINANCIÈRES (RÉSERVÉ GÉRANT)          */}
+        {/* ============================================================ */}
+        {activeTab === 'stats' && isGerant && (
+          <div className="space-y-8">
+            <div>
+              <h2 className="text-2xl font-black text-white flex items-center gap-2">
+                <BarChart3 className="text-[#D4AF37]" size={26} />
+                <span>Statistiques Financières & Ventes</span>
+              </h2>
+              <p className="text-xs text-gray-400 mt-1">
+                Données financières confidentielles réservées au Gérant. Suivi du chiffre d'affaires et performances.
+              </p>
             </div>
 
-            {empSuccess && (
-              <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold">
-                {empSuccess}
+            {/* 4 Cartes KPIs */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="p-5 rounded-3xl bg-[#1E293B] border border-white/10">
+                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Chiffre d'Affaires</span>
+                <div className="text-2xl font-black text-[#D4AF37] mt-2">
+                  {(detailedStats?.kpis.totalRevenue || 0).toLocaleString('fr-FR')} FCFA
+                </div>
+                <div className="text-[11px] text-gray-400 mt-1">Total encaissé via Orange Money</div>
               </div>
-            )}
 
-            <form onSubmit={handleAddEmployee} className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
-              <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                <UserPlus size={18} className="text-[#D4AF37]" />
-                <span>Créer un nouvel employé</span>
+              <div className="p-5 rounded-3xl bg-[#1E293B] border border-white/10">
+                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Commandes Payées</span>
+                <div className="text-2xl font-black text-emerald-400 mt-2">
+                  {detailedStats?.kpis.paidOrdersCount || 0}
+                </div>
+                <div className="text-[11px] text-gray-400 mt-1">Validées sans commission</div>
+              </div>
+
+              <div className="p-5 rounded-3xl bg-[#1E293B] border border-white/10">
+                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Panier Moyen</span>
+                <div className="text-2xl font-black text-white mt-2">
+                  {(detailedStats?.kpis.averageOrderValue || 0).toLocaleString('fr-FR')} FCFA
+                </div>
+                <div className="text-[11px] text-gray-400 mt-1">Par commande client</div>
+              </div>
+
+              <div className="p-5 rounded-3xl bg-[#1E293B] border border-white/10">
+                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Membres Fidélité</span>
+                <div className="text-2xl font-black text-sky-400 mt-2">
+                  {detailedStats?.loyaltyStats.totalMembers || 0}
+                </div>
+                <div className="text-[11px] text-gray-400 mt-1">{detailedStats?.loyaltyStats.totalPoints || 0} points distribués</div>
+              </div>
+            </div>
+
+            {/* Classement Meilleures Ventes */}
+            <div className="bg-[#1E293B] p-6 rounded-3xl border border-white/10">
+              <h3 className="font-extrabold text-white text-base mb-4 flex items-center gap-2">
+                <Flame className="text-[#D4AF37]" size={20} />
+                <span>Top des Pâtisseries les Plus Vendues</span>
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-600 mb-1">Nom de l'employé *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ex: Fatou Kaboré"
-                    value={newEmpName}
-                    onChange={(e) => setNewEmpName(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-600 mb-1">Code PIN (4 chiffres) *</label>
-                  <input
-                    type="password"
-                    required
-                    maxLength={6}
-                    placeholder="Ex: 5678"
-                    value={newEmpPin}
-                    onChange={(e) => setNewEmpPin(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl font-mono text-center"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-600 mb-1">Rôle / Poste</label>
-                  <select
-                    value={newEmpRole}
-                    onChange={(e) => setNewEmpRole(e.target.value as any)}
-                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl bg-white"
-                  >
-                    <option value="caissier">Caissier(ère)</option>
-                    <option value="patissier">Pâtissier(ère)</option>
-                    <option value="employee">Employé Polyvalent</option>
-                    <option value="admin">Administrateur / Gérant</option>
-                  </select>
-                </div>
-              </div>
-              <button
-                type="submit"
-                disabled={empLoading}
-                className="px-5 py-2.5 rounded-xl bg-[#111827] hover:bg-black text-white font-bold text-xs shadow-md transition"
-              >
-                {empLoading ? 'Création...' : 'Enregistrer cet employé'}
-              </button>
-            </form>
 
-            <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-              <h3 className="text-sm font-bold text-gray-900 mb-4">Membres de l'équipe ({employees.length})</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {employees.map((emp) => (
-                  <div key={emp.id} className="p-4 rounded-2xl bg-[#FAF8F5] border border-gray-100 flex items-center justify-between">
-                    <div>
-                      <h4 className="text-sm font-bold text-gray-900">{emp.name}</h4>
-                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-gray-200 text-gray-800">
-                        {emp.role}
+              <div className="space-y-3">
+                {detailedStats?.topProducts && detailedStats.topProducts.map((p, i) => (
+                  <div key={i} className="p-3 rounded-2xl bg-white/5 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="w-6 h-6 rounded-lg bg-[#D4AF37]/20 text-[#D4AF37] font-extrabold text-xs flex items-center justify-center">
+                        #{i + 1}
                       </span>
-                      <p className="text-[10px] text-gray-400 mt-1">
-                        Créé le {new Date(emp.created_at).toLocaleDateString('fr-FR')}
-                      </p>
+                      <span className="font-bold text-sm text-white">{p.name}</span>
                     </div>
-                    {emp.id !== currentStaff.id && (
-                      <button
-                        onClick={() => handleDeleteEmployee(emp.id)}
-                        className="p-2 text-gray-400 hover:text-red-500 rounded-xl transition"
-                        title="Supprimer"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    )}
+                    <div className="text-right">
+                      <div className="font-extrabold text-[#D4AF37] text-xs">
+                        {p.totalRevenue.toLocaleString('fr-FR')} FCFA
+                      </div>
+                      <div className="text-[11px] text-gray-400">{p.quantitySold} vendus</div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1517,86 +1160,258 @@ export function AdminDashboard() {
           </div>
         )}
 
-        {/* ========================================================================= */}
-        {/* VUE 6 : SIMULATEUR ORANGE MONEY */}
-        {/* ========================================================================= */}
-        {activeNav === 'simulator' && (
-          <div className="max-w-xl mx-auto bg-white p-8 rounded-3xl border border-gray-100 shadow-sm space-y-6">
-            <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
-                <Zap size={20} />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-gray-900">Simulateur Webhook Orange Money</h3>
-                <p className="text-xs text-gray-500">Tester la validation automatique sans SMS réel</p>
-              </div>
+        {/* ============================================================ */}
+        {/* ONGLET 5 : FIDÉLITÉ & COUPONS                                */}
+        {/* ============================================================ */}
+        {activeTab === 'loyalty' && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-2xl font-black text-white flex items-center gap-2">
+                <Award className="text-[#D4AF37]" size={26} />
+                <span>Programme de Fidélité & Validation Coupons</span>
+              </h2>
+              <p className="text-xs text-gray-400 mt-1">
+                Scannez ou saisissez un coupon présenté par un client en caisse pour le valider.
+              </p>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Montant Payé (FCFA)</label>
-                <input
-                  type="number"
-                  value={testAmount}
-                  onChange={(e) => setTestAmount(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border rounded-xl"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Numéro Client</label>
-                <input
-                  type="tel"
-                  value={testPhone}
-                  onChange={(e) => setTestPhone(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border rounded-xl"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Code Réf Commande (Optionnel)</label>
+            {/* Validation Rapide Coupon */}
+            <div className="p-6 rounded-3xl bg-[#1E293B] border border-white/10 max-w-xl">
+              <h3 className="text-sm font-bold text-white mb-3">Validation Coupon Caisse</h3>
+              <div className="flex gap-2">
                 <input
                   type="text"
-                  placeholder="Ex: 9XSY"
-                  value={testCodeRef}
-                  onChange={(e) => setTestCodeRef(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border rounded-xl"
+                  value={couponCodeInput}
+                  onChange={(e) => setCouponCodeInput(e.target.value.toUpperCase())}
+                  placeholder="ex: CPN-9X2A"
+                  className="flex-1 px-4 py-2.5 bg-[#0F172A] border border-gray-700 rounded-xl text-white font-mono text-sm focus:ring-2 focus:ring-[#D4AF37] focus:outline-none"
+                />
+                <button
+                  onClick={handleValidateCoupon}
+                  className="px-5 py-2.5 bg-[#D4AF37] text-black font-extrabold text-xs rounded-xl shadow transition cursor-pointer"
+                >
+                  Valider
+                </button>
+              </div>
+
+              {couponValidationResult && (
+                <div className="mt-4 p-4 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs">
+                  ✅ <strong>{couponValidationResult.message}</strong> — {couponValidationResult.coupon.reward_title}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* ONGLET 6 : SIMULATEUR OM (RÉSERVÉ GÉRANT)                     */}
+        {/* ============================================================ */}
+        {activeTab === 'simulator' && isGerant && (
+          <div className="space-y-6 max-w-xl">
+            <div>
+              <h2 className="text-2xl font-black text-white flex items-center gap-2">
+                <Zap className="text-[#D4AF37]" size={26} />
+                <span>Simulateur Webhook Orange Money</span>
+              </h2>
+              <p className="text-xs text-gray-400 mt-1">
+                Testez la réconciliation automatique instantanée en simulant un SMS de caisse MacroDroid.
+              </p>
+            </div>
+
+            <div className="p-6 rounded-3xl bg-[#1E293B] border border-white/10 space-y-4">
+              <div>
+                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                  Numéro Client
+                </label>
+                <input
+                  type="text"
+                  value={simPhone}
+                  onChange={(e) => setSimPhone(e.target.value)}
+                  className="w-full px-4 py-2 bg-[#0F172A] border border-gray-700 rounded-xl text-white text-xs font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                  Montant (FCFA)
+                </label>
+                <input
+                  type="number"
+                  value={simAmount}
+                  onChange={(e) => setSimAmount(e.target.value)}
+                  className="w-full px-4 py-2 bg-[#0F172A] border border-gray-700 rounded-xl text-white text-xs font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                  Code Réf Marchand (optionnel)
+                </label>
+                <input
+                  type="text"
+                  value={simCodeRef}
+                  onChange={(e) => setSimCodeRef(e.target.value)}
+                  placeholder="ex: K9X2"
+                  className="w-full px-4 py-2 bg-[#0F172A] border border-gray-700 rounded-xl text-white text-xs font-mono"
                 />
               </div>
 
               <button
+                disabled={simulating}
                 onClick={async () => {
                   setSimulating(true);
                   try {
                     const res = await simulateWebhook({
-                      amount: Number(testAmount),
-                      phone: testPhone,
-                      codeReference: testCodeRef || undefined
+                      phone: simPhone,
+                      amount: Number(simAmount),
+                      codeReference: simCodeRef || undefined
                     });
                     setSimResult(res);
-                    fetchAllData();
-                  } catch (e: any) {
-                    setSimResult({ error: e.message });
+                    loadOrders();
+                    loadDetailedStats();
+                  } catch (err: any) {
+                    alert(err.message || 'Erreur');
                   } finally {
                     setSimulating(false);
                   }
                 }}
-                disabled={simulating}
-                className="w-full py-3 rounded-xl bg-[#D4AF37] text-white font-bold text-xs shadow-md hover:bg-[#c29d2b] transition"
+                className="w-full py-3 bg-[#D4AF37] hover:bg-[#c29d2b] text-black font-extrabold text-xs rounded-xl shadow-lg transition cursor-pointer"
               >
-                {simulating ? 'Simulation en cours...' : 'Envoyer Paiement Simulé'}
+                {simulating ? 'Envoi du SMS...' : 'Déclencher Webhook SMS Orange Money'}
               </button>
 
               {simResult && (
-                <pre className="p-3 bg-gray-900 text-emerald-400 text-[11px] rounded-xl overflow-x-auto">
+                <pre className="p-4 rounded-xl bg-black/60 border border-white/10 text-[11px] text-emerald-400 overflow-x-auto">
                   {JSON.stringify(simResult, null, 2)}
                 </pre>
               )}
             </div>
           </div>
         )}
-
       </main>
+
+      {/* MODAL AJOUT / ÉDITION DE PLAT (GÉRANT) */}
+      {isProductModalOpen && isGerant && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#1E293B] rounded-3xl border border-white/15 max-w-lg w-full p-6 space-y-4 shadow-2xl">
+            <div className="flex justify-between items-center">
+              <h3 className="text-base font-extrabold text-white">
+                {editingProduct ? 'Modifier la Pâtisserie' : 'Ajouter un Nouveau Plat'}
+              </h3>
+              <button
+                onClick={() => setIsProductModalOpen(false)}
+                className="p-1 rounded-lg text-gray-400 hover:text-white"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveProduct} className="space-y-4">
+              <div>
+                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                  Nom du plat
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={productFormData.name}
+                  onChange={(e) => setProductFormData({ ...productFormData, name: e.target.value })}
+                  placeholder="ex: Fraisier Prestige"
+                  className="w-full px-4 py-2.5 bg-[#0F172A] border border-gray-700 rounded-xl text-white text-xs"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                    Catégorie
+                  </label>
+                  <select
+                    value={productFormData.category}
+                    onChange={(e) => setProductFormData({ ...productFormData, category: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-[#0F172A] border border-gray-700 rounded-xl text-white text-xs"
+                  >
+                    <option value="Gâteaux">Gâteaux</option>
+                    <option value="Macarons">Macarons</option>
+                    <option value="Viennoiseries">Viennoiseries</option>
+                    <option value="Traditionnels">Traditionnels</option>
+                    <option value="Mariage">Mariage</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                    Prix (FCFA, min. 500)
+                  </label>
+                  <input
+                    type="number"
+                    min="500"
+                    required
+                    value={productFormData.price}
+                    onChange={(e) => setProductFormData({ ...productFormData, price: Number(e.target.value) })}
+                    className="w-full px-4 py-2.5 bg-[#0F172A] border border-gray-700 rounded-xl text-white text-xs"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                  Description
+                </label>
+                <textarea
+                  rows={2}
+                  value={productFormData.description}
+                  onChange={(e) => setProductFormData({ ...productFormData, description: e.target.value })}
+                  placeholder="Ingrédients nobles, préparation artisanale..."
+                  className="w-full px-4 py-2.5 bg-[#0F172A] border border-gray-700 rounded-xl text-white text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                  URL de l'image
+                </label>
+                <input
+                  type="url"
+                  value={productFormData.image}
+                  onChange={(e) => setProductFormData({ ...productFormData, image: e.target.value })}
+                  placeholder="https://..."
+                  className="w-full px-4 py-2.5 bg-[#0F172A] border border-gray-700 rounded-xl text-white text-xs"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="availCheck"
+                  checked={productFormData.is_available}
+                  onChange={(e) => setProductFormData({ ...productFormData, is_available: e.target.checked })}
+                  className="rounded text-[#D4AF37] focus:ring-[#D4AF37]"
+                />
+                <label htmlFor="availCheck" className="text-xs text-gray-300 font-semibold cursor-pointer">
+                  Activer immédiatement ce plat au catalogue (En stock)
+                </label>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setIsProductModalOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-white/10 text-xs font-bold text-gray-300 hover:text-white"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-[#D4AF37] hover:bg-[#c29d2b] text-black text-xs font-extrabold shadow"
+                >
+                  Enregistrer
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,3 +1,5 @@
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 import express from 'express';
 import cors from 'cors';
 import http from 'http';
@@ -24,6 +26,59 @@ app.use(express.json({
 }));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.text({ type: ['text/*', 'application/text'] }));
+
+// ==========================================
+// AUTHENTIFICATION JWT & RBAC
+// ==========================================
+const JWT_SECRET = process.env.JWT_SECRET || 'leci_super_secret_jwt_key_2026_restopremium';
+
+export async function authenticateJwt(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  if (!authHeader) {
+    return res.status(401).json({ error: 'Accès non autorisé : jeton de session JWT manquant' });
+  }
+
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : authHeader.trim();
+  if (!token) {
+    return res.status(401).json({ error: 'Format du jeton invalide (attendu: Bearer <token>)' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = await db.getAdminUserById(decoded.id);
+
+    if (!user) {
+      return res.status(401).json({ error: 'Utilisateur introuvable ou compte supprimé' });
+    }
+
+    if (user.status === 'blocked') {
+      return res.status(403).json({ error: 'Compte suspendu : votre accès a été bloqué par le gérant' });
+    }
+
+    req.user = user;
+    next();
+  } catch (err) {
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Votre session a expiré après inactivité. Veuillez vous reconnecter.', expired: true });
+    }
+    return res.status(401).json({ error: 'Jeton de session invalide' });
+  }
+}
+
+export function requireRole(allowedRoles = ['gerant']) {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Authentification requise' });
+    }
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({
+        error: `Accès refusé : cette action est réservée au profil ${allowedRoles.join(' ou ')}.`
+      });
+    }
+    next();
+  };
+}
+
 
 // ==========================================
 // RATE LIMITING (anti-DoS / anti-SMS bombing)
@@ -708,7 +763,7 @@ app.get('/api/products/:id', async (req, res) => {
 });
 
 // Ajouter un nouveau plat
-app.post('/api/products', async (req, res) => {
+app.post('/api/products', authenticateJwt, requireRole(['gerant']), async (req, res) => {
   try {
     const product = await db.createProduct(req.body);
     res.status(201).json({ success: true, product, message: 'Plat ajouté au menu avec succès !' });
@@ -718,7 +773,7 @@ app.post('/api/products', async (req, res) => {
 });
 
 // Modifier un plat existant
-app.put('/api/products/:id', async (req, res) => {
+app.put('/api/products/:id', authenticateJwt, requireRole(['gerant']), async (req, res) => {
   try {
     const product = await db.updateProduct(req.params.id, req.body);
     res.json({ success: true, product, message: 'Plat mis à jour avec succès !' });
@@ -728,7 +783,7 @@ app.put('/api/products/:id', async (req, res) => {
 });
 
 // Supprimer un plat
-app.delete('/api/products/:id', async (req, res) => {
+app.delete('/api/products/:id', authenticateJwt, requireRole(['gerant']), async (req, res) => {
   try {
     const result = await db.deleteProduct(req.params.id);
     res.json(result);
@@ -741,7 +796,110 @@ app.delete('/api/products/:id', async (req, res) => {
 // ROUTES STATISTIQUES ADMINISTRATEUR
 // ==========================================
 
-app.get('/api/admin/detailed-stats', async (req, res) => {
+
+// ==========================================
+// AUTHENTIFICATION FORTE (EMAIL + PASSWORD + JWT)
+// ==========================================
+
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Adresse email et mot de passe requis' });
+    }
+
+    const user = await db.getAdminUserByEmail(email);
+    if (!user) {
+      return res.status(401).json({ error: 'Identifiants invalides (email ou mot de passe incorrect)' });
+    }
+
+    if (user.status === 'blocked') {
+      return res.status(403).json({ error: 'Ce compte a été bloqué par la direction. Veuillez contacter le gérant.' });
+    }
+
+    const passwordValid = bcrypt.compareSync(password, user.password_hash);
+    if (!passwordValid) {
+      return res.status(401).json({ error: 'Identifiants invalides (email ou mot de passe incorrect)' });
+    }
+
+    // Mise à jour de la dernière connexion
+    await db.updateAdminUserLastLogin(user.id);
+
+    // Signature du token JWT valide 4 heures
+    const token = jwt.sign(
+      { id: user.id, email: user.email, name: user.name, role: user.role },
+      JWT_SECRET,
+      { expiresIn: '4h' }
+    );
+
+    const safeUser = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      status: user.status
+    };
+
+    console.log(`🔐 [Auth] Connexion réussie pour ${safeUser.email} (Rôle: ${safeUser.role})`);
+    res.json({
+      success: true,
+      token,
+      user: safeUser,
+      expiresIn: '4h'
+    });
+  } catch (err) {
+    console.error('Erreur login:', err);
+    res.status(500).json({ error: 'Erreur lors de la tentative de connexion' });
+  }
+});
+
+app.get('/api/auth/me', authenticateJwt, (req, res) => {
+  res.json({ success: true, user: req.user });
+});
+
+// ==========================================
+// GESTION DU PERSONNEL & ÉQUIPE (RÉSERVÉ GÉRANT)
+// ==========================================
+
+app.get('/api/admin/users', authenticateJwt, requireRole(['gerant']), async (req, res) => {
+  try {
+    const users = await db.getAllAdminUsers();
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/admin/users', authenticateJwt, requireRole(['gerant']), async (req, res) => {
+  try {
+    const { name, email, password, role } = req.body;
+    const newUser = await db.createAdminUser({ name, email, password, role });
+    res.json({ success: true, user: newUser, message: 'Membre d\'équipe créé avec succès' });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.put('/api/admin/users/:id/status', authenticateJwt, requireRole(['gerant']), async (req, res) => {
+  try {
+    const { status } = req.body;
+    const updated = await db.updateAdminUserStatus(Number(req.params.id), status);
+    res.json({ success: true, user: updated, message: `Statut du compte mis à jour (${status})` });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.delete('/api/admin/users/:id', authenticateJwt, requireRole(['gerant']), async (req, res) => {
+  try {
+    await db.deleteAdminUser(Number(req.params.id));
+    res.json({ success: true, message: 'Compte supprimé définitivement' });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.get('/api/admin/detailed-stats', authenticateJwt, requireRole(['gerant']), async (req, res) => {
   try {
     const stats = await db.getAdminDetailedStats();
     res.json(stats);

@@ -26,6 +26,44 @@ export interface Order {
 
 const API_BASE = '/api';
 
+export function getAuthToken(): string | null {
+  return localStorage.getItem('le_ci_jwt_token');
+}
+
+export function setAuthToken(token: string): void {
+  localStorage.setItem('le_ci_jwt_token', token);
+}
+
+export function removeAuthToken(): void {
+  localStorage.removeItem('le_ci_jwt_token');
+  localStorage.removeItem('le_ci_admin_user');
+}
+
+export function getStoredAdminUser(): AdminUser | null {
+  try {
+    const raw = localStorage.getItem('le_ci_admin_user');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setStoredAdminUser(user: AdminUser): void {
+  localStorage.setItem('le_ci_admin_user', JSON.stringify(user));
+}
+
+function authHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json'
+  };
+  const token = getAuthToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
+
 export async function createOrder(data: {
   customerName: string;
   customerPhone?: string;
@@ -478,7 +516,7 @@ export async function createProduct(data: {
 }): Promise<{ success: boolean; product: Product; message: string }> {
   const res = await fetch(`${API_BASE}/products`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders(),
     body: JSON.stringify(data)
   });
   if (!res.ok) {
@@ -491,7 +529,7 @@ export async function createProduct(data: {
 export async function updateProduct(id: number, data: Partial<Product>): Promise<{ success: boolean; product: Product; message: string }> {
   const res = await fetch(`${API_BASE}/products/${id}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders(),
     body: JSON.stringify(data)
   });
   if (!res.ok) {
@@ -502,7 +540,7 @@ export async function updateProduct(id: number, data: Partial<Product>): Promise
 }
 
 export async function deleteProduct(id: number): Promise<{ success: boolean; message: string }> {
-  const res = await fetch(`${API_BASE}/products/${id}`, { method: 'DELETE' });
+  const res = await fetch(`${API_BASE}/products/${id}`, { method: 'DELETE', headers: authHeaders() });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || 'Erreur lors de la suppression du plat');
@@ -511,7 +549,110 @@ export async function deleteProduct(id: number): Promise<{ success: boolean; mes
 }
 
 export async function getAdminDetailedStats(): Promise<AdminDetailedStats> {
-  const res = await fetch(`${API_BASE}/admin/detailed-stats`);
+  const res = await fetch(`${API_BASE}/admin/detailed-stats`, { headers: authHeaders() });
   if (!res.ok) throw new Error('Erreur lecture des statistiques');
+  return res.json();
+}
+
+// ==========================================
+// AUTHENTIFICATION RBAC & SÉPARATION DES ACCÈS
+// ==========================================
+
+export interface AdminUser {
+  id: number;
+  name: string;
+  email: string;
+  role: 'gerant' | 'employe';
+  status: 'active' | 'blocked';
+  created_at: string;
+  updated_at?: string;
+  last_login_at?: string;
+}
+
+export interface LoginResponse {
+  success: boolean;
+  token: string;
+  user: AdminUser;
+  expiresIn: string;
+}
+
+export async function loginAdmin(credentials: { email: string; password: string }): Promise<LoginResponse> {
+  const res = await fetch(`${API_BASE}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(credentials)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Identifiants incorrects');
+  }
+  const data: LoginResponse = await res.json();
+  setAuthToken(data.token);
+  setStoredAdminUser(data.user);
+  return data;
+}
+
+export async function getMe(): Promise<{ success: boolean; user: AdminUser }> {
+  const res = await fetch(`${API_BASE}/auth/me`, {
+    headers: authHeaders()
+  });
+  if (!res.ok) {
+    removeAuthToken();
+    throw new Error('Session expirée ou non autorisée');
+  }
+  return res.json();
+}
+
+export async function getAdminUsers(): Promise<AdminUser[]> {
+  const res = await fetch(`${API_BASE}/admin/users`, {
+    headers: authHeaders()
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Erreur lors du chargement des utilisateurs');
+  }
+  return res.json();
+}
+
+export async function createAdminUser(data: {
+  name: string;
+  email: string;
+  password: string;
+  role: 'gerant' | 'employe';
+}): Promise<{ success: boolean; user: AdminUser; message: string }> {
+  const res = await fetch(`${API_BASE}/admin/users`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Erreur lors de la création du compte');
+  }
+  return res.json();
+}
+
+export async function updateAdminUserStatus(id: number, status: 'active' | 'blocked'): Promise<{ success: boolean; user: AdminUser; message: string }> {
+  const res = await fetch(`${API_BASE}/admin/users/${id}/status`, {
+    method: 'PUT',
+    headers: authHeaders(),
+    body: JSON.stringify({ status })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Erreur lors de la mise à jour du statut');
+  }
+  return res.json();
+}
+
+export async function deleteAdminUser(id: number): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(`${API_BASE}/admin/users/${id}`, {
+    method: 'DELETE',
+    headers: authHeaders()
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Erreur lors de la suppression');
+  }
   return res.json();
 }

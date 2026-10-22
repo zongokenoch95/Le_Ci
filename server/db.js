@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs';
 import sqlite3 from 'sqlite3';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -142,7 +143,45 @@ export async function initDb() {
     )
   `);
 
-    // ==========================================
+  // ==========================================
+  // TABLE UTILISATEURS ADMINISTRATIFS & SÉCURITÉ RBAC
+  // ==========================================
+  await run(`
+    CREATE TABLE IF NOT EXISTS admin_users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      email TEXT UNIQUE NOT NULL COLLATE NOCASE,
+      password_hash TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'employe', -- 'gerant' ou 'employe'
+      status TEXT NOT NULL DEFAULT 'active', -- 'active' ou 'blocked'
+      created_at DATETIME NOT NULL,
+      updated_at DATETIME NOT NULL,
+      last_login_at DATETIME
+    )
+  `);
+
+  // Initialisation du Gérant et d'un Employé par défaut
+  const defaultGerant = await get("SELECT id FROM admin_users WHERE email = 'gerant@lesdouceursdeleci.com'");
+  if (!defaultGerant) {
+    const salt = bcrypt.genSaltSync(10);
+    const gerantHash = bcrypt.hashSync('Admin@Leci2026!', salt);
+    const staffHash = bcrypt.hashSync('Staff@Leci2026!', salt);
+    const now = new Date().toISOString();
+
+    await run(`
+      INSERT INTO admin_users (name, email, password_hash, role, status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `, ['Gérant Principal', 'gerant@lesdouceursdeleci.com', gerantHash, 'gerant', 'active', now, now]);
+
+    await run(`
+      INSERT INTO admin_users (name, email, password_hash, role, status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `, ['Équipe Cuisine (KDS)', 'cuisine@lesdouceursdeleci.com', staffHash, 'employe', 'active', now, now]);
+
+    console.log('👑 [RBAC] Comptes Gérant & Employé créés par défaut.');
+  }
+
+  // ==========================================
   // TABLE EMPLOYÉS & AUTHENTIFICATION PIN
   // ==========================================
   await run(`
@@ -1359,7 +1398,16 @@ export async function getAdminDetailedStats() {
   };
 }
 
+
+
 export default {
+  getAdminUserByEmail,
+  getAdminUserById,
+  getAllAdminUsers,
+  createAdminUser,
+  updateAdminUserStatus,
+  deleteAdminUser,
+  updateAdminUserLastLogin,
   initDb,
   createOrder,
   getOrderById,
@@ -1401,3 +1449,101 @@ export default {
   deleteProduct,
   getAdminDetailedStats
 };
+
+// ==========================================
+// GESTION DES ACCÈS & PERSONNEL (RBAC)
+// ==========================================
+
+export async function getAdminUserByEmail(email) {
+  if (!email) return null;
+  const user = await get('SELECT * FROM admin_users WHERE email = ?', [email.trim().toLowerCase()]);
+  return user || null;
+}
+
+export async function getAdminUserById(id) {
+  if (!id) return null;
+  const user = await get('SELECT id, name, email, role, status, created_at, updated_at, last_login_at FROM admin_users WHERE id = ?', [id]);
+  return user || null;
+}
+
+export async function getAllAdminUsers() {
+  const users = await all('SELECT id, name, email, role, status, created_at, updated_at, last_login_at FROM admin_users ORDER BY id ASC');
+  return users || [];
+}
+
+export async function createAdminUser({ name, email, password, role = 'employe' }) {
+  if (!name || !email || !password) {
+    throw new Error('Nom, adresse email et mot de passe sont obligatoires');
+  }
+  const cleanEmail = email.trim().toLowerCase();
+  const cleanName = name.trim();
+  const validRole = ['gerant', 'employe'].includes(role) ? role : 'employe';
+
+  if (password.length < 8) {
+    throw new Error('Le mot de passe doit comporter au moins 8 caractères');
+  }
+
+  const existing = await get('SELECT id FROM admin_users WHERE email = ?', [cleanEmail]);
+  if (existing) {
+    throw new Error('Un compte utilisateur existe déjà avec cette adresse email');
+  }
+
+  const salt = bcrypt.genSaltSync(10);
+  const hash = bcrypt.hashSync(password, salt);
+  const now = new Date().toISOString();
+
+  const res = await run(
+    'INSERT INTO admin_users (name, email, password_hash, role, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [cleanName, cleanEmail, hash, validRole, 'active', now, now]
+  );
+
+  return {
+    id: res.lastID,
+    name: cleanName,
+    email: cleanEmail,
+    role: validRole,
+    status: 'active',
+    created_at: now
+  };
+}
+
+export async function updateAdminUserStatus(id, status) {
+  if (!['active', 'blocked'].includes(status)) {
+    throw new Error('Statut invalide (doit être "active" ou "blocked")');
+  }
+  const user = await get('SELECT * FROM admin_users WHERE id = ?', [id]);
+  if (!user) throw new Error('Utilisateur introuvable');
+
+  // Si on tente de bloquer un gérant, vérifier qu'il reste au moins 1 gérant actif
+  if (user.role === 'gerant' && status === 'blocked') {
+    const activeGerants = await get("SELECT COUNT(*) as count FROM admin_users WHERE role = 'gerant' AND status = 'active' AND id != ?", [id]);
+    if (!activeGerants || activeGerants.count === 0) {
+      throw new Error('Impossible de bloquer le dernier compte Gérant actif');
+    }
+  }
+
+  const now = new Date().toISOString();
+  await run('UPDATE admin_users SET status = ?, updated_at = ? WHERE id = ?', [status, now, id]);
+  return getAdminUserById(id);
+}
+
+export async function deleteAdminUser(id) {
+  const user = await get('SELECT * FROM admin_users WHERE id = ?', [id]);
+  if (!user) throw new Error('Utilisateur introuvable');
+
+  // Empêcher de supprimer le dernier compte Gérant
+  if (user.role === 'gerant') {
+    const gerantCount = await get("SELECT COUNT(*) as count FROM admin_users WHERE role = 'gerant'");
+    if (gerantCount && gerantCount.count <= 1) {
+      throw new Error('Impossible de supprimer le dernier compte Gérant du système');
+    }
+  }
+
+  await run('DELETE FROM admin_users WHERE id = ?', [id]);
+  return { success: true };
+}
+
+export async function updateAdminUserLastLogin(id) {
+  const now = new Date().toISOString();
+  await run('UPDATE admin_users SET last_login_at = ? WHERE id = ?', [now, id]);
+}

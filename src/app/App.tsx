@@ -8,9 +8,8 @@ import { Home } from './pages/Home';
 import { Catalogue } from './pages/Catalogue';
 import { CustomOrder } from './pages/CustomOrder';
 import { Promotions } from './pages/Promotions';
-import { About } from './pages/About';
-import { Contact } from './pages/Contact';
 import { AdminDashboard } from './pages/AdminDashboard';
+import { AdminLogin } from './pages/AdminLogin';
 import { Payment } from './pages/Payment';
 import { Loyalty } from './pages/Loyalty';
 import '../styles/index.css';
@@ -26,14 +25,22 @@ export default function App() {
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/catalogue" element={<Catalogue />} />
+              <Route path="/nos-produits" element={<Catalogue />} />
               <Route path="/sur-commande" element={<CustomOrder />} />
               <Route path="/promotions" element={<Promotions />} />
-              <Route path="/a-propos" element={<About />} />
-              <Route path="/contact" element={<Contact />} />
+              
+              {/* Espace Administration Isolé (Authentification Forte & RBAC) */}
+              <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/admin" element={<AdminDashboard />} />
+
+              {/* Fidélité & Paiement */}
               <Route path="/fidelite" element={<Loyalty />} />
               <Route path="/fidelisation" element={<Loyalty />} />
               <Route path="/paiement/:orderId" element={<Payment />} />
+
+              {/* Redirections des anciennes pages supprimées */}
+              <Route path="/a-propos" element={<Navigate to="/" replace />} />
+              <Route path="/contact" element={<Navigate to="/" replace />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>

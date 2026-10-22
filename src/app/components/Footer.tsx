@@ -22,10 +22,10 @@ export function Footer() {
             <h4 className="text-xs uppercase tracking-widest font-bold mb-4 text-[#D4AF37]">Navigation</h4>
             <ul className="space-y-2.5 text-xs text-gray-300">
               <li><Link to="/" className="hover:text-white transition">Accueil</Link></li>
-              <li><Link to="/catalogue" className="hover:text-white transition">Nos Créations</Link></li>
+              <li><Link to="/catalogue" className="hover:text-white transition">Nos produits</Link></li>
               <li><Link to="/sur-commande" className="hover:text-white transition">Sur Commande</Link></li>
-              <li><Link to="/a-propos" className="hover:text-white transition">À propos</Link></li>
-              <li><Link to="/admin" className="hover:text-white transition">Tableau de Bord Caisse</Link></li>
+              <li><Link to="/fidelite" className="hover:text-white transition">Programme Fidélité</Link></li>
+              <li><Link to="/admin/login" className="text-gray-500 hover:text-[#D4AF37] transition">Accès Gestionnaire</Link></li>
             </ul>
           </div>
 
