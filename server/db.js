@@ -272,18 +272,189 @@ export async function initDb() {
   if (prodCount && prodCount.count === 0) {
     const now = new Date().toISOString();
     const initialProducts = [
-      ['Croissant Beurre Pur Artisanal', 'Viennoiseries', 500, 'Croissant doré pur beurre feuilleté à la main chaque matin.', 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080'],
-      ['Pain au Chocolat Feuilleté', 'Viennoiseries', 600, 'Pâte feuilletée croustillante avec deux barres de chocolat intense.', 'https://images.unsplash.com/photo-1530610476181-d83430b64dcd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080'],
-      ['Macarons Assortis (Boîte Découverte)', 'Macarons', 1500, 'Assortiment de 4 macarons parfumés : vanille, pistache, caramel et framboise.', 'https://images.unsplash.com/photo-1728566842903-59fbc50b951b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080'],
-      ['Macarons Chocolat Intense', 'Macarons', 1800, 'Coffret gourmand de macarons ganache grand cru chocolat noir.', 'https://images.unsplash.com/photo-1728566842903-59fbc50b951b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080'],
-      ['Baklava Premium Miel & Pistache', 'Traditionnels', 2000, 'Feuilleté traditionnel oriental aux pistaches concassées et miel pur.', 'https://images.unsplash.com/photo-1701357462333-4924d0ad6132?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080'],
-      ['Tarte aux Fruits Frais', 'Gâteaux', 2500, 'Pâte sablée dorée, crème pâtissière onctueuse et fruits frais de saison.', 'https://images.unsplash.com/photo-1582180834946-f3d376b18376?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080'],
-      ['Opéra Classique Chocolat & Café', 'Gâteaux', 3000, 'Biscuit Joconde imbibé de café, ganache chocolat et crème au beurre café.', 'https://images.unsplash.com/photo-1640794334523-b299f14d28db?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080'],
-      ['Forêt Noire Grand Cru', 'Gâteaux', 3200, 'Génoise cacao imbibée, crème chantilly légère et cerises griottes.', 'https://images.unsplash.com/photo-1640794334523-b299f14d28db?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080'],
-      ['Fraisier Signature Prestige', 'Gâteaux', 3500, 'Fraises fraîches sélectionnées, génoise aérée et crème mousseline vanillée.', 'https://images.unsplash.com/photo-1582180834946-f3d376b18376?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080'],
-      ['Entremet Pistache Royale', 'Gâteaux', 4000, 'Mousse onctueuse à la pistache d\'Iran, cœur coulant fruits rouges et croustillant praliné.', 'https://images.unsplash.com/photo-1761594606868-1c577b10f69e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080'],
-      ['Gâteau de Mariage Pièce Montée', 'Mariage', 15000, 'Pièce montée d\'exception réalisée sur mesure pour vos réceptions et mariages.', 'https://images.unsplash.com/photo-1696236927117-d7041454d199?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080']
-    ];
+  [
+    "Plateau Feuilletés Salés Apéritifs",
+    "Douceurs salées",
+    2500,
+    "Feuilletés croustillants au fromage fondant et épices douces, parfaits pour vos réceptions.",
+    "/products/salee_1.jpeg"
+  ],
+  [
+    "Croissants Salés Gourmets Farcis",
+    "Douceurs salées",
+    2000,
+    "Pâte pur beurre croustillante garnie de volaille assaisonnée et crème onctueuse.",
+    "/products/salee_2.jpeg"
+  ],
+  [
+    "Assortiment Bouchées & Pastels Salés",
+    "Douceurs salées",
+    3000,
+    "Beignets salés dorés et croustillants avec sauce maison parfumée de Lê Ci.",
+    "/products/salee_3.jpeg"
+  ],
+  [
+    "Éclairs Fondants Chocolat & Ganache Dorée",
+    "Douceurs sucrées",
+    1500,
+    "Pâte à choux aérée garnie de ganache onctueuse au chocolat grand cru.",
+    "/products/sucree_1.jpeg"
+  ],
+  [
+    "Cupcakes Moelleux Crème Vanille Bourbon",
+    "Douceurs sucrées",
+    1500,
+    "Gâteau ultra moelleux surmonté d'un tourbillon de crème montée veloutée.",
+    "/products/sucree_2.jpeg"
+  ],
+  [
+    "Macarons Assortis Prestige (Boîte Découverte)",
+    "Douceurs sucrées",
+    2000,
+    "Coques craquantes et cœurs fondants : pistache, framboise, chocolat et caramel fleur de sel.",
+    "/products/sucree_3.jpeg"
+  ],
+  [
+    "Tartelettes Sablées Fraises & Fruits Rouges",
+    "Douceurs sucrées",
+    2500,
+    "Pâte sablée dorée, crème pâtissière légère et fruits frais sélectionnés.",
+    "/products/sucree_4.jpeg"
+  ],
+  [
+    "Choux Craquelins Cœur Praliné Noisette",
+    "Douceurs sucrées",
+    1800,
+    "Craquelin doré et croustillant garni d'une crème pralinée maison.",
+    "/products/sucree_5.jpeg"
+  ],
+  [
+    "Donuts Gourmands Glacés & Vermicelles",
+    "Douceurs sucrées",
+    1000,
+    "Pâte briochée moelleuse avec glaçage gourmand coloré.",
+    "/products/sucree_6.jpeg"
+  ],
+  [
+    "Sablés Délicats au Beurre & Confiture",
+    "Douceurs sucrées",
+    1200,
+    "Biscuits fondants pur beurre garnis de confiture artisanale.",
+    "/products/sucree_7.jpeg"
+  ],
+  [
+    "Mignardises Sucrées Festives de Lê Ci",
+    "Douceurs sucrées",
+    3500,
+    "Sélection raffinée de petites bouchées sucrées pour vos pauses gourmandes.",
+    "/products/sucree_8.jpeg"
+  ],
+  [
+    "Fraisier Signature Suprême Crème Mousseline",
+    "Gâteaux",
+    6500,
+    "Génoise aérienne, fraises fraîches parfumées et crème mousseline vanillée.",
+    "/products/gateau_1.jpeg"
+  ],
+  [
+    "Gâteau Festif Personnalisé Pâte d'Amande",
+    "Gâteaux",
+    12000,
+    "Création sur-mesure décorée à la main pour vos anniversaires et célébrations.",
+    "/products/gateau_2.jpeg"
+  ],
+  [
+    "Forêt Noire Grand Cru Cacao & Cerises",
+    "Gâteaux",
+    7000,
+    "Génoise cacao intense, crème chantilly légère et cerises griottes juteuses.",
+    "/products/gateau_3.jpeg"
+  ],
+  [
+    "Layer Cake Chocolat Praliné & Drip Caramel",
+    "Gâteaux",
+    9500,
+    "Étages gourmands de chocolat et praliné avec coulant de caramel doré.",
+    "/products/gateau_4.jpeg"
+  ],
+  [
+    "Entremet Miroir Fruits Rouges & Mousse Velours",
+    "Gâteaux",
+    8000,
+    "Glaçage miroir étincelant sur mousse onctueuse aux fruits rouges frais.",
+    "/products/gateau_5.jpeg"
+  ],
+  [
+    "Red Velvet Cake Onctueux Cream Cheese",
+    "Gâteaux",
+    7500,
+    "Gâteau rouge velours traditionnel avec son glaçage doux au fromage frais.",
+    "/products/gateau_6.jpeg"
+  ],
+  [
+    "Number Cake Décoré Fruits Frais & Macarons",
+    "Gâteaux",
+    14000,
+    "Chiffre personnalisé sur sablé amande garni de crème vanille et macarons.",
+    "/products/gateau_7.jpeg"
+  ],
+  [
+    "Pièce Montée d'Exception & Mariage Prestige",
+    "Gâteaux",
+    25000,
+    "Chef-d'œuvre de haute pâtisserie pour mariages et grandes réceptions.",
+    "/products/gateau_8.jpeg"
+  ],
+  [
+    "Box Découverte Douceurs de Lê Ci",
+    "Paquets",
+    5000,
+    "Coffret cadeau assorti contenant un mix de nos meilleures pâtisseries artisanales.",
+    "/products/paquet_1.jpeg"
+  ],
+  [
+    "Paquet Cadeau Gourmand Ruban Doré",
+    "Paquets",
+    6500,
+    "Emballage d'exception prêt à offrir avec sélection de douceurs raffinées.",
+    "/products/paquet_2.jpeg"
+  ],
+  [
+    "Coffret Dégustation Macarons & Mignardises",
+    "Paquets",
+    8000,
+    "Assortiment luxueux présenté dans son écrin de fête personnalisé.",
+    "/products/paquet_3.jpeg"
+  ],
+  [
+    "Pack Fête Familiale (Gâteaux + Mignardises)",
+    "Paquets",
+    15000,
+    "Le pack complet pour combler vos invités : gâteau central et bouchées variées.",
+    "/products/paquet_4.jpeg"
+  ],
+  [
+    "Box Pause Douceur & Viennoiseries Assorties",
+    "Paquets",
+    4500,
+    "Idéal pour les réunions et pauses gourmandes de bureau.",
+    "/products/paquet_5.jpeg"
+  ],
+  [
+    "Coffret Écrin Anniversaire Surprise",
+    "Paquets",
+    10000,
+    "Pack festif avec bougies, douceurs personnalisées et finitions prestige.",
+    "/products/paquet_6.jpeg"
+  ],
+  [
+    "Pack Réception & Cocktails d'Entreprise",
+    "Paquets",
+    20000,
+    "Grande sélection de douceurs salées et sucrées pour événements professionnels.",
+    "/products/paquet_7.jpeg"
+  ]
+];
 
     for (const p of initialProducts) {
       await run(`

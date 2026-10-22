@@ -998,7 +998,7 @@ export function AdminDashboard() {
               </div>
 
               <div className="flex flex-wrap gap-1.5">
-                {['Tous', 'Gâteaux', 'Macarons', 'Viennoiseries', 'Traditionnels', 'Mariage'].map(cat => (
+                {['Tous', 'Douceurs salées', 'Douceurs sucrées', 'Gâteaux', 'Paquets'].map(cat => (
                   <button
                     key={cat}
                     onClick={() => setProductCategoryFilter(cat)}
@@ -1331,11 +1331,10 @@ export function AdminDashboard() {
                     onChange={(e) => setProductFormData({ ...productFormData, category: e.target.value })}
                     className="w-full px-4 py-2.5 bg-[#0F172A] border border-gray-700 rounded-xl text-white text-xs"
                   >
+                    <option value="Douceurs salées">Douceurs salées</option>
+                    <option value="Douceurs sucrées">Douceurs sucrées</option>
                     <option value="Gâteaux">Gâteaux</option>
-                    <option value="Macarons">Macarons</option>
-                    <option value="Viennoiseries">Viennoiseries</option>
-                    <option value="Traditionnels">Traditionnels</option>
-                    <option value="Mariage">Mariage</option>
+                    <option value="Paquets">Paquets</option>
                   </select>
                 </div>
 

@@ -13,7 +13,7 @@ export function Footer() {
               <img src="/logo.png" alt="Les Douceurs de Lê Ci" className="h-16 w-auto object-contain drop-shadow" />
             </Link>
             <p className="text-xs text-gray-400 leading-relaxed">
-              <strong>Les Douceurs de Lê Ci</strong> — L'art de la haute pâtisserie artisanale, gâteaux de fête et créations d'exception avec validation automatique des paiements Orange Money.
+              <strong>Les Douceurs de Lê Ci</strong> — Douceurs sucrées et salées faites main, gâteaux de fête et créations d'exception avec validation automatique des paiements Orange Money.
             </p>
           </div>
 
@@ -22,9 +22,9 @@ export function Footer() {
             <h4 className="text-xs uppercase tracking-widest font-bold mb-4 text-[#D4AF37]">Navigation</h4>
             <ul className="space-y-2.5 text-xs text-gray-300">
               <li><Link to="/" className="hover:text-white transition">Accueil</Link></li>
-              <li><Link to="/catalogue" className="hover:text-white transition">Nos produits</Link></li>
-              <li><Link to="/sur-commande" className="hover:text-white transition">Sur Commande</Link></li>
-              <li><Link to="/fidelite" className="hover:text-white transition">Programme Fidélité</Link></li>
+              <li><Link to="/nos-douceurs" className="hover:text-white transition">Nos douceurs</Link></li>
+              <li><Link to="/sur-commande" className="hover:text-white transition">Gâteaux personnalisés</Link></li>
+              <li><Link to="/fidelite" className="hover:text-white transition">Carte de fidélité</Link></li>
               <li><Link to="/admin/login" className="text-gray-500 hover:text-[#D4AF37] transition">Accès Gestionnaire</Link></li>
             </ul>
           </div>

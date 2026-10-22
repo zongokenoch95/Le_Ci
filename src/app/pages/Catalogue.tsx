@@ -5,21 +5,252 @@ import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { useCart } from '../context/CartContext';
 import { getProducts, Product } from '../services/api';
 
-const categories = ['Tous', 'Gâteaux', 'Macarons', 'Viennoiseries', 'Traditionnels', 'Mariage'];
+// Les 4 catégories officielles issues des dossiers de img/
+const categories = ['Tous', 'Douceurs salées', 'Douceurs sucrées', 'Gâteaux', 'Paquets'];
 
-// Produits de repli par défaut (prix >= 500 FCFA)
+// 26 produits créés à partir des dossiers d'images
 const fallbackProducts = [
-  { id: 101, name: 'Croissant Beurre Pur Artisanal', category: 'Viennoiseries', price: '500 FCFA', numericPrice: 500, image: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080' },
-  { id: 102, name: 'Pain au Chocolat Feuilleté', category: 'Viennoiseries', price: '600 FCFA', numericPrice: 600, image: 'https://images.unsplash.com/photo-1530610476181-d83430b64dcd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080' },
-  { id: 3, name: 'Macarons Assortis (Boîte Découverte)', category: 'Macarons', price: '1 500 FCFA', numericPrice: 1500, image: 'https://images.unsplash.com/photo-1728566842903-59fbc50b951b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080' },
-  { id: 8, name: 'Macarons Chocolat Intense', category: 'Macarons', price: '1 800 FCFA', numericPrice: 1800, image: 'https://images.unsplash.com/photo-1728566842903-59fbc50b951b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080' },
-  { id: 6, name: 'Baklava Premium Miel & Pistache', category: 'Traditionnels', price: '2 000 FCFA', numericPrice: 2000, image: 'https://images.unsplash.com/photo-1701357462333-4924d0ad6132?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080' },
-  { id: 7, name: 'Tarte aux Fruits Frais', category: 'Gâteaux', price: '2 500 FCFA', numericPrice: 2500, image: 'https://images.unsplash.com/photo-1582180834946-f3d376b18376?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080' },
-  { id: 2, name: 'Opéra Classique Chocolat & Café', category: 'Gâteaux', price: '3 000 FCFA', numericPrice: 3000, image: 'https://images.unsplash.com/photo-1640794334523-b299f14d28db?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080' },
-  { id: 9, name: 'Forêt Noire Grand Cru', category: 'Gâteaux', price: '3 200 FCFA', numericPrice: 3200, image: 'https://images.unsplash.com/photo-1640794334523-b299f14d28db?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080' },
-  { id: 1, name: 'Fraisier Signature Prestige', category: 'Gâteaux', price: '3 500 FCFA', numericPrice: 3500, image: 'https://images.unsplash.com/photo-1582180834946-f3d376b18376?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080' },
-  { id: 4, name: 'Entremet Pistache Royale', category: 'Gâteaux', price: '4 000 FCFA', numericPrice: 4000, image: 'https://images.unsplash.com/photo-1761594606868-1c577b10f69e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080' },
-  { id: 5, name: 'Gâteau de Mariage Pièce Montée', category: 'Mariage', price: '15 000 FCFA', numericPrice: 15000, image: 'https://images.unsplash.com/photo-1696236927117-d7041454d199?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080' },
+  // 1. Douceurs salées (3 produits)
+  {
+    id: 1,
+    name: "Plateau Feuilletés Salés Apéritifs",
+    category: 'Douceurs salées',
+    price: '2 500 FCFA',
+    numericPrice: 2500,
+    description: "Feuilletés croustillants au fromage fondant et épices douces, parfaits pour vos réceptions.",
+    image: '/products/salee_1.jpeg'
+  },
+  {
+    id: 2,
+    name: "Croissants Salés Gourmets Farcis",
+    category: 'Douceurs salées',
+    price: '2 000 FCFA',
+    numericPrice: 2000,
+    description: "Pâte pur beurre croustillante garnie de volaille assaisonnée et crème onctueuse.",
+    image: '/products/salee_2.jpeg'
+  },
+  {
+    id: 3,
+    name: "Assortiment Bouchées & Pastels Salés",
+    category: 'Douceurs salées',
+    price: '3 000 FCFA',
+    numericPrice: 3000,
+    description: "Beignets salés dorés et croustillants avec sauce maison parfumée de Lê Ci.",
+    image: '/products/salee_3.jpeg'
+  },
+
+  // 2. Douceurs sucrées (8 produits)
+  {
+    id: 4,
+    name: "Éclairs Fondants Chocolat & Ganache Dorée",
+    category: 'Douceurs sucrées',
+    price: '1 500 FCFA',
+    numericPrice: 1500,
+    description: "Pâte à choux aérée garnie de ganache onctueuse au chocolat grand cru.",
+    image: '/products/sucree_1.jpeg'
+  },
+  {
+    id: 5,
+    name: "Cupcakes Moelleux Crème Vanille Bourbon",
+    category: 'Douceurs sucrées',
+    price: '1 500 FCFA',
+    numericPrice: 1500,
+    description: "Gâteau ultra moelleux surmonté d'un tourbillon de crème montée veloutée.",
+    image: '/products/sucree_2.jpeg'
+  },
+  {
+    id: 6,
+    name: "Macarons Assortis Prestige (Boîte Découverte)",
+    category: 'Douceurs sucrées',
+    price: '2 000 FCFA',
+    numericPrice: 2000,
+    description: "Coques craquantes et cœurs fondants : pistache, framboise, chocolat et caramel fleur de sel.",
+    image: '/products/sucree_3.jpeg'
+  },
+  {
+    id: 7,
+    name: "Tartelettes Sablées Fraises & Fruits Rouges",
+    category: 'Douceurs sucrées',
+    price: '2 500 FCFA',
+    numericPrice: 2500,
+    description: "Pâte sablée dorée, crème pâtissière légère et fruits frais sélectionnés.",
+    image: '/products/sucree_4.jpeg'
+  },
+  {
+    id: 8,
+    name: "Choux Craquelins Cœur Praliné Noisette",
+    category: 'Douceurs sucrées',
+    price: '1 800 FCFA',
+    numericPrice: 1800,
+    description: "Craquelin doré et croustillant garni d'une crème pralinée maison.",
+    image: '/products/sucree_5.jpeg'
+  },
+  {
+    id: 9,
+    name: "Donuts Gourmands Glacés & Vermicelles",
+    category: 'Douceurs sucrées',
+    price: '1 000 FCFA',
+    numericPrice: 1000,
+    description: "Pâte briochée moelleuse avec glaçage gourmand coloré.",
+    image: '/products/sucree_6.jpeg'
+  },
+  {
+    id: 10,
+    name: "Sablés Délicats au Beurre & Confiture",
+    category: 'Douceurs sucrées',
+    price: '1 200 FCFA',
+    numericPrice: 1200,
+    description: "Biscuits fondants pur beurre garnis de confiture artisanale.",
+    image: '/products/sucree_7.jpeg'
+  },
+  {
+    id: 11,
+    name: "Mignardises Sucrées Festives de Lê Ci",
+    category: 'Douceurs sucrées',
+    price: '3 500 FCFA',
+    numericPrice: 3500,
+    description: "Sélection raffinée de petites bouchées sucrées pour vos pauses gourmandes.",
+    image: '/products/sucree_8.jpeg'
+  },
+
+  // 3. Gâteaux (8 produits)
+  {
+    id: 12,
+    name: "Fraisier Signature Suprême Crème Mousseline",
+    category: 'Gâteaux',
+    price: '6 500 FCFA',
+    numericPrice: 6500,
+    description: "Génoise aérienne, fraises fraîches parfumées et crème mousseline vanillée.",
+    image: '/products/gateau_1.jpeg'
+  },
+  {
+    id: 13,
+    name: "Gâteau Festif Personnalisé Pâte d'Amande",
+    category: 'Gâteaux',
+    price: '12 000 FCFA',
+    numericPrice: 12000,
+    description: "Création sur-mesure décorée à la main pour vos anniversaires et célébrations.",
+    image: '/products/gateau_2.jpeg'
+  },
+  {
+    id: 14,
+    name: "Forêt Noire Grand Cru Cacao & Cerises",
+    category: 'Gâteaux',
+    price: '7 000 FCFA',
+    numericPrice: 7000,
+    description: "Génoise cacao intense, crème chantilly légère et cerises griottes juteuses.",
+    image: '/products/gateau_3.jpeg'
+  },
+  {
+    id: 15,
+    name: "Layer Cake Chocolat Praliné & Drip Caramel",
+    category: 'Gâteaux',
+    price: '9 500 FCFA',
+    numericPrice: 9500,
+    description: "Étages gourmands de chocolat et praliné avec coulant de caramel doré.",
+    image: '/products/gateau_4.jpeg'
+  },
+  {
+    id: 16,
+    name: "Entremet Miroir Fruits Rouges & Mousse Velours",
+    category: 'Gâteaux',
+    price: '8 000 FCFA',
+    numericPrice: 8000,
+    description: "Glaçage miroir étincelant sur mousse onctueuse aux fruits rouges frais.",
+    image: '/products/gateau_5.jpeg'
+  },
+  {
+    id: 17,
+    name: "Red Velvet Cake Onctueux Cream Cheese",
+    category: 'Gâteaux',
+    price: '7 500 FCFA',
+    numericPrice: 7500,
+    description: "Gâteau rouge velours traditionnel avec son glaçage doux au fromage frais.",
+    image: '/products/gateau_6.jpeg'
+  },
+  {
+    id: 18,
+    name: "Number Cake Décoré Fruits Frais & Macarons",
+    category: 'Gâteaux',
+    price: '14 000 FCFA',
+    numericPrice: 14000,
+    description: "Chiffre personnalisé sur sablé amande garni de crème vanille et macarons.",
+    image: '/products/gateau_7.jpeg'
+  },
+  {
+    id: 19,
+    name: "Pièce Montée d'Exception & Mariage Prestige",
+    category: 'Gâteaux',
+    price: '25 000 FCFA',
+    numericPrice: 25000,
+    description: "Chef-d'œuvre de haute pâtisserie pour mariages et grandes réceptions.",
+    image: '/products/gateau_8.jpeg'
+  },
+
+  // 4. Paquets (7 produits)
+  {
+    id: 20,
+    name: "Box Découverte Douceurs de Lê Ci",
+    category: 'Paquets',
+    price: '5 000 FCFA',
+    numericPrice: 5000,
+    description: "Coffret cadeau assorti contenant un mix de nos meilleures pâtisseries artisanales.",
+    image: '/products/paquet_1.jpeg'
+  },
+  {
+    id: 21,
+    name: "Paquet Cadeau Gourmand Ruban Doré",
+    category: 'Paquets',
+    price: '6 500 FCFA',
+    numericPrice: 6500,
+    description: "Emballage d'exception prêt à offrir avec sélection de douceurs raffinées.",
+    image: '/products/paquet_2.jpeg'
+  },
+  {
+    id: 22,
+    name: "Coffret Dégustation Macarons & Mignardises",
+    category: 'Paquets',
+    price: '8 000 FCFA',
+    numericPrice: 8000,
+    description: "Assortiment luxueux présenté dans son écrin de fête personnalisé.",
+    image: '/products/paquet_3.jpeg'
+  },
+  {
+    id: 23,
+    name: "Pack Fête Familiale (Gâteaux + Mignardises)",
+    category: 'Paquets',
+    price: '15 000 FCFA',
+    numericPrice: 15000,
+    description: "Le pack complet pour combler vos invités : gâteau central et bouchées variées.",
+    image: '/products/paquet_4.jpeg'
+  },
+  {
+    id: 24,
+    name: "Box Pause Douceur & Viennoiseries Assorties",
+    category: 'Paquets',
+    price: '4 500 FCFA',
+    numericPrice: 4500,
+    description: "Idéal pour les réunions et pauses gourmandes de bureau.",
+    image: '/products/paquet_5.jpeg'
+  },
+  {
+    id: 25,
+    name: "Coffret Écrin Anniversaire Surprise",
+    category: 'Paquets',
+    price: '10 000 FCFA',
+    numericPrice: 10000,
+    description: "Pack festif avec bougies, douceurs personnalisées et finitions prestige.",
+    image: '/products/paquet_6.jpeg'
+  },
+  {
+    id: 26,
+    name: "Pack Réception & Cocktails d'Entreprise",
+    category: 'Paquets',
+    price: '20 000 FCFA',
+    numericPrice: 20000,
+    description: "Grande sélection de douceurs salées et sucrées pour événements professionnels.",
+    image: '/products/paquet_7.jpeg'
+  }
 ];
 
 export function Catalogue() {
@@ -38,12 +269,12 @@ export function Catalogue() {
         if (Array.isArray(data) && data.length > 0) {
           const formatted = data.map((p: Product) => ({
             id: p.id,
-            name: p.name,
+            name: "p.name",
             category: p.category || 'Gâteaux',
             price: `${p.price.toLocaleString('fr-FR')} FCFA`,
             numericPrice: p.price,
-            image: p.image || 'https://images.unsplash.com/photo-1582180834946-f3d376b18376?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080',
-            description: p.description
+            image: p.image || '/products/gateau_1.jpeg',
+            description: "p.description",
           }));
           setProductsList(formatted);
         }
@@ -63,7 +294,14 @@ export function Catalogue() {
   });
 
   const handleAddToCart = (product: any, openDrawer = false) => {
-    addToCart(product, 1);
+    addToCart({
+      id: product.id,
+      name: "product.name",
+      price: product.price,
+      numericPrice: product.numericPrice,
+      image: product.image,
+      category: product.category
+    }, 1);
     setAddedProductId(product.id);
     setTimeout(() => setAddedProductId(null), 1500);
     if (openDrawer) {
@@ -80,17 +318,17 @@ export function Catalogue() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-12"
         >
-          <span className="text-xs font-bold uppercase tracking-widest text-[#D4AF37]">Notre Carte Sucrée</span>
-          <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 mt-2 mb-4">Catalogue des Délices</h1>
+          <span className="text-xs font-bold uppercase tracking-widest text-[#D4AF37]">Notre Carte Sucrée & Salée</span>
+          <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 mt-2 mb-4">Nos douceurs</h1>
           <p className="text-base text-gray-600 max-w-2xl mx-auto">
             Chaque création est préparée à la commande avec des ingrédients nobles. Commandez en quelques clics et payez instantanément via Orange Money.
           </p>
           <div className="inline-flex items-center gap-2 mt-4 px-4 py-1.5 rounded-full bg-[#D4AF37]/10 text-[#8C6D23] text-xs font-semibold">
-            <ShieldCheck size={14} /> Tarifs accessibles à partir de 500 FCFA
+            <ShieldCheck size={14} /> Préparation artisanale fraîche & Paiement direct Orange Money
           </div>
         </motion.div>
 
-        {/* Barre de Recherche et Filtres */}
+        {/* Barre de Recherche et Filtres par Catégorie */}
         <div className="mb-10 space-y-6">
           <div className="max-w-md mx-auto relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -98,17 +336,18 @@ export function Catalogue() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Rechercher un délice, macaron, gâteau..."
+              placeholder="Rechercher une douceur, un gâteau, un paquet..."
               className="w-full pl-11 pr-4 py-3.5 bg-white rounded-2xl border border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#D4AF37] focus:border-transparent text-sm"
             />
           </div>
 
+          {/* 4 Boutons de Catégories + Tous */}
           <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
             {categories.map((category) => (
               <button
                 key={category}
                 onClick={() => setSelectedCategory(category)}
-                className={`px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all ${
+                className={`px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                   selectedCategory === category
                     ? 'bg-[#D4AF37] text-white shadow-md shadow-[#D4AF37]/30 scale-105'
                     : 'bg-white text-gray-700 border border-gray-200/80 hover:bg-gray-50'
@@ -124,10 +363,10 @@ export function Catalogue() {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-24 text-gray-400 gap-3">
             <Loader2 className="animate-spin text-[#D4AF37]" size={36} />
-            <span className="text-sm font-medium">Chargement des délices artisanaux...</span>
+            <span className="text-sm font-medium">Chargement de nos douceurs artisanales...</span>
           </div>
         ) : (
-          <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             <AnimatePresence>
               {filteredProducts.map((product) => {
                 const isAdded = addedProductId === product.id;
@@ -152,25 +391,23 @@ export function Catalogue() {
                         </span>
                       </div>
 
-                      <div className="p-6">
-                        <div className="flex justify-between items-start mb-2">
-                          <h3 className="font-bold text-gray-900 text-lg group-hover:text-[#D4AF37] transition">
-                            {product.name}
-                          </h3>
-                        </div>
-                        <p className="text-xs text-gray-500 mb-4 line-clamp-2">
+                      <div className="p-5">
+                        <h3 className="font-bold text-gray-900 text-base group-hover:text-[#D4AF37] transition mb-1 line-clamp-1">
+                          {product.name}
+                        </h3>
+                        <p className="text-xs text-gray-500 mb-3 line-clamp-2 leading-relaxed">
                           {product.description || 'Création artisanale raffinée avec des ingrédients d excellence.'}
                         </p>
-                        <div className="text-xl font-extrabold text-[#D4AF37]">
+                        <div className="text-lg font-extrabold text-[#D4AF37]">
                           {product.price}
                         </div>
                       </div>
                     </div>
 
-                    <div className="p-6 pt-0 flex gap-2">
+                    <div className="p-5 pt-0 flex gap-2">
                       <button
                         onClick={() => handleAddToCart(product, false)}
-                        className={`flex-1 py-3 px-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition-all ${
+                        className={`flex-1 py-3 px-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
                           isAdded
                             ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
                             : 'bg-gray-900 hover:bg-black text-white shadow-md'
@@ -182,17 +419,17 @@ export function Catalogue() {
                           </>
                         ) : (
                           <>
-                            <ShoppingBag size={16} /> Ajouter au panier
+                            <ShoppingBag size={15} /> Commander une douceur
                           </>
                         )}
                       </button>
 
                       <button
                         onClick={() => handleAddToCart(product, true)}
-                        className="py-3 px-4 rounded-2xl font-bold text-xs bg-[#D4AF37] hover:bg-[#c29d2b] text-white flex items-center justify-center gap-1 shadow-md shadow-[#D4AF37]/20"
+                        className="py-3 px-3.5 rounded-2xl font-bold text-xs bg-[#D4AF37] hover:bg-[#c29d2b] text-white flex items-center justify-center shadow-md shadow-[#D4AF37]/20 cursor-pointer"
                         title="Commander tout de suite"
                       >
-                        <Zap size={16} />
+                        <Zap size={15} />
                       </button>
                     </div>
                   </motion.div>
@@ -204,10 +441,10 @@ export function Catalogue() {
 
         {filteredProducts.length === 0 && !loading && (
           <div className="text-center py-16 bg-white rounded-3xl border border-gray-100 p-8">
-            <p className="text-gray-500 font-medium mb-4">Aucune gourmandise ne correspond à votre recherche.</p>
+            <p className="text-gray-500 font-medium mb-4">Aucune douceur ne correspond à votre recherche.</p>
             <button
               onClick={() => { setSelectedCategory('Tous'); setSearchQuery(''); }}
-              className="px-6 py-2.5 bg-gray-900 text-white rounded-xl text-xs font-bold hover:bg-black transition"
+              className="px-6 py-2.5 bg-gray-900 text-white rounded-xl text-xs font-bold hover:bg-black transition cursor-pointer"
             >
               Réinitialiser les filtres
             </button>
