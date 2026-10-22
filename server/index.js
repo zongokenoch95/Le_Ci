@@ -1044,7 +1044,7 @@ if (fs.existsSync(distPath)) {
   console.warn('⚠️ [Static] Dossier dist introuvable ! Exécutez npm run build.');
 }
 
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 [Les Douceurs de Lê Ci] Serveur de paiement démarré sur http://localhost:${PORT}`);
     console.log(`🛡️ [Sécurité] Rate limiting actif — Webhooks: 30 req/min, API: 100 req/min`);
     console.log(`📋 [Audit] Journal d'audit actif — GET /api/audit-logs pour consulter`);
