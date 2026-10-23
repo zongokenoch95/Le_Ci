@@ -320,9 +320,9 @@ export function Catalogue() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-12"
         >
-          <span className="text-xs font-bold uppercase tracking-widest text-[#7E22CE] bg-purple-100 px-4 py-1.5 rounded-full inline-block">Notre Carte Sucrée & Salée</span>
-          <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 mt-2 mb-4">Nos douceurs</h1>
-          <p className="font-barcelony text-2xl sm:text-3xl text-[#581C87] mb-2">
+          
+          <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 mt-2 mb-4">Nos produits</h1>
+          <p className="text-sm text-gray-500 max-w-2xl mx-auto mb-2 font-light">
             La croisée entre la santé consciente, le plaisir gourmand et la fierté locale.
           </p>
           <p className="text-xs text-gray-600 max-w-2xl mx-auto">
@@ -341,11 +341,11 @@ export function Catalogue() {
               <button
                 key={category}
                 onClick={() => setSelectedCategory(category)}
-                className={`px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-                  selectedCategory === category
-                    ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30 scale-105'
-                    : 'bg-white text-gray-700 border border-purple-100 hover:border-purple-300 hover:bg-purple-50/50'
-                }`}
+                className={`px-6 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                selectedCategory === category
+                  ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30 scale-105'
+                  : 'bg-white text-gray-700 border border-purple-100 hover:border-purple-300 hover:bg-purple-50/50'
+              }`}
               >
                 {category}
               </button>
@@ -401,10 +401,10 @@ export function Catalogue() {
                     <div className="p-5 pt-0 flex gap-2">
                       <button
                         onClick={() => handleAddToCart(product, false)}
-                        className={`flex-1 py-3 px-3 rounded-2xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                        className={`flex-1 py-2.5 px-3 rounded-full font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                           isAdded
                             ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-                            : 'bg-white hover:bg-gray-100 text-gray-900 border border-gray-300 shadow-sm'
+                            : 'bg-white hover:bg-purple-50 text-gray-800 border border-gray-200 hover:border-purple-200 shadow-sm'
                         }`}
                         title="Ajouter au panier"
                       >
@@ -421,7 +421,7 @@ export function Catalogue() {
 
                       <button
                         onClick={() => handleAddToCart(product, true)}
-                        className="flex-1 py-3 px-3 rounded-2xl font-extrabold text-xs bg-[#581C87] hover:bg-[#6B21A8] text-white shadow-md shadow-purple-900/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                        className="flex-1 py-2.5 px-3 rounded-full font-extrabold text-xs bg-[#581C87] hover:bg-[#6B21A8] text-white shadow-md shadow-purple-900/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
                         title="Commander immédiatement"
                       >
                         <Zap size={15} />
@@ -440,7 +440,7 @@ export function Catalogue() {
             <p className="text-gray-500 font-medium mb-4">Aucune douceur ne correspond à votre recherche.</p>
             <button
               onClick={() => setSelectedCategory('Tous')}
-              className="px-6 py-2.5 bg-[#581C87] text-white rounded-xl text-xs font-bold hover:bg-[#6B21A8] transition cursor-pointer"
+              className="px-7 py-3 bg-[#581C87] text-white rounded-full text-xs font-bold hover:bg-[#6B21A8] transition cursor-pointer shadow-md"
             >
               Réinitialiser les filtres
             </button>

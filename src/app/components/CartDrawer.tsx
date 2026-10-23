@@ -154,7 +154,7 @@ export const CartDrawer: React.FC = () => {
             {/* Header */}
             <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-[#111827] text-white">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#D4AF37]/20 border border-[#D4AF37]/40 flex items-center justify-center text-[#D4AF37]">
+                <div className="w-10 h-10 rounded-full bg-[#581C87]/20 border border-[#D4AF37]/40 flex items-center justify-center text-[#581C87]">
                   <ShoppingBag size={20} />
                 </div>
                 <div>
@@ -189,7 +189,7 @@ export const CartDrawer: React.FC = () => {
                       closeCart();
                       navigate('/catalogue');
                     }}
-                    className="px-6 py-3 rounded-full bg-[#D4AF37] hover:bg-[#c29d2b] text-white text-xs font-bold shadow-md transition"
+                    className="px-6 py-3 rounded-full bg-[#581C87] hover:bg-[#6B21A8] text-white text-xs font-bold shadow-md transition"
                   >
                     Découvrir nos créations
                   </button>
@@ -211,7 +211,7 @@ export const CartDrawer: React.FC = () => {
                         )}
                         <div className="flex-1 min-w-0">
                           <h4 className="text-sm font-bold text-gray-900 truncate">{item.name}</h4>
-                          <p className="text-xs text-[#D4AF37] font-semibold">
+                          <p className="text-xs text-[#581C87] font-semibold">
                             {item.numericPrice.toLocaleString('fr-FR')} FCFA
                           </p>
                           <div className="flex items-center gap-2 mt-2">
@@ -305,7 +305,7 @@ export const CartDrawer: React.FC = () => {
                   {memberInfo && (
                     <div className="p-3 rounded-2xl bg-gradient-to-r from-amber-500/10 via-[#D4AF37]/15 to-amber-500/10 border border-[#D4AF37]/30 space-y-2">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5 text-xs font-extrabold text-[#D4AF37]">
+                        <div className="flex items-center gap-1.5 text-xs font-extrabold text-[#581C87]">
                           <Crown size={15} />
                           <span>Club Privilège ({memberInfo.tier})</span>
                         </div>
@@ -327,7 +327,7 @@ export const CartDrawer: React.FC = () => {
                             type="checkbox"
                             checked={useLoyaltyPoints}
                             onChange={(e) => setUseLoyaltyPoints(e.target.checked)}
-                            className="w-4 h-4 rounded text-[#D4AF37] focus:ring-[#D4AF37]"
+                            className="w-4 h-4 rounded text-[#581C87] focus:ring-[#D4AF37]"
                           />
                           <span>Déduire {pointsToUse} points (-{loyaltyDiscount} FCFA)</span>
                         </label>
@@ -351,7 +351,7 @@ export const CartDrawer: React.FC = () => {
 
                     <div className="flex justify-between items-center text-sm font-extrabold text-gray-900 pt-1 border-t border-gray-200">
                       <span>Net à payer</span>
-                      <span className="text-base text-[#D4AF37] font-black">
+                      <span className="text-base text-[#581C87] font-black">
                         {finalAmountToPay.toLocaleString('fr-FR')} FCFA
                       </span>
                     </div>
@@ -360,7 +360,7 @@ export const CartDrawer: React.FC = () => {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full py-3 px-4 rounded-xl bg-[#D4AF37] hover:bg-[#c29d2b] text-white font-extrabold text-sm shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="w-full py-3 px-4 rounded-full bg-[#581C87] hover:bg-[#6B21A8] text-white font-extrabold text-sm shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     {isSubmitting ? (
                       <span>Validation en cours...</span>

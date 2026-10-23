@@ -338,34 +338,25 @@ export function Home() {
           transition={{ duration: 0.9 }}
           className="relative z-10 text-center max-w-4xl px-4 sm:px-6"
         >
-          <span className="text-xs font-bold uppercase tracking-widest text-purple-300 bg-purple-900/60 border border-purple-400/30 px-4 py-1.5 rounded-full inline-block mb-4 backdrop-blur-md">
-            ✦ Pâtisserie Fine Artisanale ✦
-          </span>
+          
 
-          <h1 className="text-4xl sm:text-6xl md:text-7xl font-extrabold text-white tracking-tight mb-4 leading-tight drop-shadow-xl">
+          <h1 className="font-barcelony text-6xl sm:text-8xl md:text-9xl text-white tracking-wide mb-3 leading-tight drop-shadow-2xl">
             Les Douceurs de Lê Ci
           </h1>
 
-          <p className="font-barcelony text-2xl sm:text-4xl text-purple-200 mb-8 max-w-2xl mx-auto leading-relaxed drop-shadow-lg">
+          <p className="font-gotham text-sm sm:text-base md:text-lg text-purple-100 font-normal mb-8 max-w-2xl mx-auto leading-relaxed drop-shadow">
             La croisée entre la santé consciente, le plaisir gourmand et la fierté locale.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            {/* Bouton "Commander" en Violet */}
+          <div className="flex justify-center items-center">
+            {/* Bouton "Commander" en Pill (rounded-full) */}
             <button
               onClick={scrollToCatalogue}
-              className="w-full sm:w-auto px-8 py-4 bg-[#581C87] hover:bg-[#6B21A8] text-white font-extrabold rounded-2xl shadow-xl shadow-purple-950/50 transition-all inline-flex items-center justify-center gap-2 transform hover:-translate-y-0.5 text-sm cursor-pointer border border-purple-400/30"
+              className="px-10 py-4 bg-[#581C87] hover:bg-[#6B21A8] text-white font-extrabold rounded-full shadow-2xl shadow-purple-950/60 transition-all inline-flex items-center justify-center gap-2.5 transform hover:-translate-y-0.5 text-sm cursor-pointer border border-purple-400/30"
             >
               <span>Commander</span>
               <ArrowRight size={18} />
             </button>
-
-            <Link
-              to="/sur-commande"
-              className="w-full sm:w-auto px-8 py-4 bg-white/15 hover:bg-white/25 text-white font-bold rounded-2xl backdrop-blur-md border border-white/30 transition-all inline-flex items-center justify-center text-sm"
-            >
-              Gâteaux sur mesure
-            </Link>
           </div>
 
           {/* Garanties en bas du Hero */}
@@ -396,14 +387,12 @@ export function Home() {
           viewport={{ once: true }}
           className="text-center mb-12"
         >
-          <span className="text-xs font-bold uppercase tracking-widest text-[#7E22CE] bg-purple-100 px-4 py-1.5 rounded-full inline-block mb-3">
-            Carte Sucrée & Salée
-          </span>
+          
           <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mt-1 mb-3">
-            Nos Douceurs Fraîches
+            Nos produits
           </h2>
-          <p className="font-barcelony text-2xl sm:text-3xl text-[#581C87] max-w-xl mx-auto">
-            Préparées avec passion à la commande pour vos moments inoubliables.
+          <p className="text-xs sm:text-sm text-gray-500 max-w-xl mx-auto font-light mt-1">
+            Préparés avec passion à la commande pour vos moments inoubliables.
           </p>
         </motion.div>
 
@@ -413,7 +402,7 @@ export function Home() {
             <button
               key={category}
               onClick={() => setSelectedCategory(category)}
-              className={`px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              className={`px-6 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                 selectedCategory === category
                   ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30 scale-105'
                   : 'bg-white text-gray-700 border border-purple-100 hover:border-purple-300 hover:bg-purple-50/50'
@@ -472,7 +461,7 @@ export function Home() {
                     <div className="p-5 pt-0 flex gap-2">
                       <button
                         onClick={() => handleAddToCart(product, false)}
-                        className={`flex-1 py-2.5 px-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                        className={`flex-1 py-2.5 px-3 rounded-full font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                           isAdded
                             ? 'bg-emerald-600 text-white shadow-sm'
                             : 'bg-white hover:bg-purple-50 text-gray-800 border border-gray-200 hover:border-purple-200 shadow-sm'
@@ -492,7 +481,7 @@ export function Home() {
 
                       <button
                         onClick={() => handleAddToCart(product, true)}
-                        className="flex-1 py-2.5 px-2 rounded-xl font-extrabold text-xs bg-[#581C87] hover:bg-[#6B21A8] text-white shadow-md shadow-purple-900/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                        className="flex-1 py-2.5 px-3 rounded-full font-extrabold text-xs bg-[#581C87] hover:bg-[#6B21A8] text-white shadow-md shadow-purple-900/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
                         title="Commander immédiatement"
                       >
                         <Zap size={14} />
@@ -511,7 +500,7 @@ export function Home() {
             <p className="text-gray-500 font-medium mb-4">Aucune douceur dans cette catégorie pour le moment.</p>
             <button
               onClick={() => setSelectedCategory('Tous')}
-              className="px-6 py-2.5 bg-[#581C87] text-white rounded-xl text-xs font-bold hover:bg-[#6B21A8] transition cursor-pointer"
+              className="px-7 py-3 bg-[#581C87] text-white rounded-full text-xs font-bold hover:bg-[#6B21A8] transition cursor-pointer shadow-md"
             >
               Voir toutes les douceurs
             </button>

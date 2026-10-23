@@ -128,14 +128,14 @@ export function About() {
           <div className="flex flex-wrap justify-center gap-4">
             <Link
               to="/nos-douceurs"
-              className="px-8 py-3.5 rounded-2xl bg-white text-[#581C87] hover:bg-purple-50 font-bold text-sm shadow-md transition-all inline-flex items-center gap-2 transform hover:-translate-y-0.5 cursor-pointer"
+              className="px-8 py-3.5 rounded-full bg-white text-[#581C87] hover:bg-purple-50 font-bold text-sm shadow-md transition-all inline-flex items-center gap-2 transform hover:-translate-y-0.5 cursor-pointer"
             >
               <span>Découvrir la carte</span>
               <ArrowRight size={16} />
             </Link>
             <Link
               to="/sur-commande"
-              className="px-8 py-3.5 rounded-2xl bg-purple-800/60 hover:bg-purple-800 text-white font-bold text-sm border border-purple-400/30 transition-all inline-flex items-center gap-2 cursor-pointer"
+              className="px-8 py-3.5 rounded-full bg-purple-800/60 hover:bg-purple-800 text-white font-bold text-sm border border-purple-400/30 transition-all inline-flex items-center gap-2 cursor-pointer"
             >
               <span>Gâteaux sur mesure</span>
             </Link>
