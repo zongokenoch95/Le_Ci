@@ -85,6 +85,18 @@ import {
 import { getSocket, joinAdmin } from '../services/socket';
 
 export function AdminDashboard() {
+  // État pour le bandeau d'annonces et promotions
+  const [bannerData, setBannerData] = useState<AnnouncementBanner>({
+    message: '',
+    is_permanent: true,
+    start_date: '',
+    end_date: '',
+    text_color: '#FFFFFF',
+    bg_color: '#3B0764',
+    is_active: true
+  });
+  const [savingBanner, setSavingBanner] = useState(false);
+  const [bannerSuccessMsg, setBannerSuccessMsg] = useState('');
   const navigate = useNavigate();
 
   // Session & Auth RBAC
@@ -470,8 +482,7 @@ export function AdminDashboard() {
             <button
               onClick={() => setActiveTab('orders')}
               className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
-                activeTab === 'orders'
-                  ? 'bg-[#D4AF37] text-black shadow-lg shadow-[#D4AF37]/20'
+                activeTab === 'orders' ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30'
                   : 'text-gray-300 hover:bg-white/5 hover:text-white'
               }`}
             >
@@ -494,8 +505,7 @@ export function AdminDashboard() {
                 <button
                   onClick={() => setActiveTab('menu')}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
-                    activeTab === 'menu'
-                      ? 'bg-[#D4AF37] text-black shadow-lg shadow-[#D4AF37]/20'
+                    activeTab === 'menu' ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30'
                       : 'text-gray-300 hover:bg-white/5 hover:text-white'
                   }`}
                 >
@@ -506,8 +516,7 @@ export function AdminDashboard() {
                 <button
                   onClick={() => setActiveTab('stats')}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
-                    activeTab === 'stats'
-                      ? 'bg-[#D4AF37] text-black shadow-lg shadow-[#D4AF37]/20'
+                    activeTab === 'stats' ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30'
                       : 'text-gray-300 hover:bg-white/5 hover:text-white'
                   }`}
                 >
@@ -520,8 +529,7 @@ export function AdminDashboard() {
             <button
               onClick={() => setActiveTab('loyalty')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
-                activeTab === 'loyalty'
-                  ? 'bg-[#D4AF37] text-black shadow-lg shadow-[#D4AF37]/20'
+                activeTab === 'loyalty' ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30'
                   : 'text-gray-300 hover:bg-white/5 hover:text-white'
               }`}
             >
@@ -535,8 +543,7 @@ export function AdminDashboard() {
                 <button
                   onClick={() => setActiveTab('team')}
                   className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
-                    activeTab === 'team'
-                      ? 'bg-[#D4AF37] text-black shadow-lg shadow-[#D4AF37]/20'
+                    activeTab === 'team' ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30'
                       : 'text-gray-300 hover:bg-white/5 hover:text-white'
                   }`}
                 >
@@ -550,10 +557,21 @@ export function AdminDashboard() {
                 </button>
 
                 <button
+                  onClick={() => setActiveTab('banner')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
+                    activeTab === 'banner'
+                      ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30'
+                      : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                  }`}
+                >
+                  <Sparkles size={17} className={activeTab === 'banner' ? 'text-purple-300' : ''} />
+                  <span>Bandeau & Promo</span>
+                </button>
+
+                <button
                   onClick={() => setActiveTab('simulator')}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
-                    activeTab === 'simulator'
-                      ? 'bg-[#D4AF37] text-black shadow-lg shadow-[#D4AF37]/20'
+                    activeTab === 'simulator' ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30'
                       : 'text-gray-300 hover:bg-white/5 hover:text-white'
                   }`}
                 >
@@ -1206,6 +1224,256 @@ export function AdminDashboard() {
         {/* ============================================================ */}
         {/* ONGLET 6 : SIMULATEUR OM (RÉSERVÉ GÉRANT)                     */}
         {/* ============================================================ */}
+                {/* ========================================================================= */}
+        {/* ONGLET BANDEAU & PROMOTION (PARAMÉTRABLE CÔTÉ GÉRANT) */}
+        {/* ========================================================================= */}
+        {activeTab === 'banner' && isGerant && (
+          <div className="space-y-8 animate-fade-in">
+            <div className="bg-white rounded-3xl p-8 border border-purple-100 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-4 mb-6 pb-6 border-b border-gray-100">
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#581C87] bg-purple-100 px-3 py-1 rounded-full">
+                    Promotion & Annonces
+                  </span>
+                  <h2 className="text-2xl font-extrabold text-gray-900 mt-2">Paramétrage du Bandeau Lumineux</h2>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Personnalisez le message défilant tout en haut du site, sa durée de diffusion et ses couleurs.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-gray-700">Statut du bandeau :</span>
+                  <button
+                    type="button"
+                    onClick={() => setBannerData(prev => ({ ...prev, is_active: !prev.is_active }))}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-2 ${
+                      bannerData.is_active
+                        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                        : 'bg-gray-200 text-gray-700'
+                    }`}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${bannerData.is_active ? 'bg-white animate-pulse' : 'bg-gray-400'}`} />
+                    <span>{bannerData.is_active ? 'Bandeau Actif' : 'Bandeau Masqué'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Aperçu en direct */}
+              <div className="mb-8 p-5 bg-[#FAF7F5] rounded-2xl border border-purple-100">
+                <span className="text-xs font-bold text-gray-600 uppercase tracking-wider block mb-2">
+                  Aperçu en direct sur le site :
+                </span>
+                <div
+                  className="w-full overflow-hidden text-xs py-2.5 rounded-xl shadow-inner font-bold uppercase tracking-wider text-[11px]"
+                  style={{ backgroundColor: bannerData.bg_color, color: bannerData.text_color }}
+                >
+                  <div className="animate-marquee whitespace-nowrap flex items-center gap-10">
+                    <span className="flex items-center gap-2">
+                      <Sparkles size={14} /> {bannerData.message || 'Votre message défilera ici...'}
+                    </span>
+                    <span>•</span>
+                    <span>PAIEMENT INSTANTANÉ ORANGE MONEY SANS FRAIS</span>
+                    <span>•</span>
+                    <span className="flex items-center gap-2">
+                      <Sparkles size={14} /> {bannerData.message || 'Votre message défilera ici...'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {bannerSuccessMsg && (
+                <div className="mb-6 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2 animate-fade-in">
+                  <Check size={16} />
+                  <span>{bannerSuccessMsg}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleSaveBanner} className="space-y-6">
+                {/* 1. Message */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
+                    Message de la promotion ou de l'annonce *
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={bannerData.message}
+                    onChange={(e) => setBannerData(prev => ({ ...prev, message: e.target.value }))}
+                    required
+                    placeholder="Ex: ✦ OFFRE SPÉCIALE : -10% sur votre commande avec le code « DOUCEUR10 » ✦ Inscription fidélité offerte dès aujourd'hui ✦"
+                    className="w-full p-4 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#581C87] focus:border-transparent font-medium"
+                  />
+                  <span className="text-[11px] text-gray-400 mt-1 block">
+                    Conseil : Utilisez les symboles ✦ ou • pour séparer vos arguments d'appel.
+                  </span>
+                </div>
+
+                {/* 2. Durée : Permanente vs Période déterminée */}
+                <div className="p-5 rounded-2xl bg-purple-50/50 border border-purple-100 space-y-4">
+                  <label className="block text-xs font-bold text-gray-800 uppercase tracking-wider">
+                    Durée de diffusion de l'annonce *
+                  </label>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label className={`p-4 rounded-xl border-2 cursor-pointer transition flex items-center gap-3 ${
+                      bannerData.is_permanent
+                        ? 'border-[#581C87] bg-white text-[#581C87] shadow-sm'
+                        : 'border-gray-200 bg-white/50 text-gray-600 hover:border-gray-300'
+                    }`}>
+                      <input
+                        type="radio"
+                        name="banner_duration"
+                        checked={bannerData.is_permanent}
+                        onChange={() => setBannerData(prev => ({ ...prev, is_permanent: true }))}
+                        className="text-[#581C87] focus:ring-[#581C87]"
+                      />
+                      <div>
+                        <div className="font-extrabold text-xs">Durée indéterminée</div>
+                        <div className="text-[11px] text-gray-500 font-normal">Information permanente toujours visible</div>
+                      </div>
+                    </label>
+
+                    <label className={`p-4 rounded-xl border-2 cursor-pointer transition flex items-center gap-3 ${
+                      !bannerData.is_permanent
+                        ? 'border-[#581C87] bg-white text-[#581C87] shadow-sm'
+                        : 'border-gray-200 bg-white/50 text-gray-600 hover:border-gray-300'
+                    }`}>
+                      <input
+                        type="radio"
+                        name="banner_duration"
+                        checked={!bannerData.is_permanent}
+                        onChange={() => setBannerData(prev => ({ ...prev, is_permanent: false }))}
+                        className="text-[#581C87] focus:ring-[#581C87]"
+                      />
+                      <div>
+                        <div className="font-extrabold text-xs">Promotion programmée</div>
+                        <div className="text-[11px] text-gray-500 font-normal">Date de début et date de fin précises</div>
+                      </div>
+                    </label>
+                  </div>
+
+                  {/* Dates si non permanent */}
+                  {!bannerData.is_permanent && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-purple-200/50 animate-fade-in">
+                      <div>
+                        <label className="block text-[11px] font-bold text-gray-700 uppercase mb-1">
+                          Date et heure de début
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={bannerData.start_date || ''}
+                          onChange={(e) => setBannerData(prev => ({ ...prev, start_date: e.target.value }))}
+                          className="w-full p-3 rounded-xl border border-gray-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#581C87]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-gray-700 uppercase mb-1">
+                          Date et heure de fin
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={bannerData.end_date || ''}
+                          onChange={(e) => setBannerData(prev => ({ ...prev, end_date: e.target.value }))}
+                          className="w-full p-3 rounded-xl border border-gray-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#581C87]"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* 3. Couleurs du bandeau */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  {/* Couleur du texte */}
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
+                      Couleur du texte
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="color"
+                        value={bannerData.text_color || '#FFFFFF'}
+                        onChange={(e) => setBannerData(prev => ({ ...prev, text_color: e.target.value }))}
+                        className="w-12 h-10 p-0 rounded-xl cursor-pointer border border-gray-300"
+                      />
+                      <input
+                        type="text"
+                        value={bannerData.text_color || '#FFFFFF'}
+                        onChange={(e) => setBannerData(prev => ({ ...prev, text_color: e.target.value }))}
+                        className="w-28 p-2.5 rounded-xl border border-gray-200 text-xs font-mono"
+                      />
+                      <div className="flex gap-1.5">
+                        {['#FFFFFF', '#F3E8FF', '#FDE047', '#A7F3D0'].map(c => (
+                          <button
+                            type="button"
+                            key={c}
+                            onClick={() => setBannerData(prev => ({ ...prev, text_color: c }))}
+                            className="w-6 h-6 rounded-full border border-gray-300 cursor-pointer shadow-sm"
+                            style={{ backgroundColor: c }}
+                            title={c}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Couleur de fond */}
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
+                      Couleur de fond du bandeau
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="color"
+                        value={bannerData.bg_color || '#3B0764'}
+                        onChange={(e) => setBannerData(prev => ({ ...prev, bg_color: e.target.value }))}
+                        className="w-12 h-10 p-0 rounded-xl cursor-pointer border border-gray-300"
+                      />
+                      <input
+                        type="text"
+                        value={bannerData.bg_color || '#3B0764'}
+                        onChange={(e) => setBannerData(prev => ({ ...prev, bg_color: e.target.value }))}
+                        className="w-28 p-2.5 rounded-xl border border-gray-200 text-xs font-mono"
+                      />
+                      <div className="flex gap-1.5">
+                        {['#3B0764', '#581C87', '#1E1B4B', '#111827'].map(c => (
+                          <button
+                            type="button"
+                            key={c}
+                            onClick={() => setBannerData(prev => ({ ...prev, bg_color: c }))}
+                            className="w-6 h-6 rounded-full border border-gray-300 cursor-pointer shadow-sm"
+                            style={{ backgroundColor: c }}
+                            title={c}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bouton de sauvegarde */}
+                <div className="pt-4 border-t border-gray-100 flex justify-end">
+                  <button
+                    type="submit"
+                    disabled={savingBanner}
+                    className="px-8 py-3.5 rounded-2xl bg-[#581C87] hover:bg-[#6B21A8] text-white font-extrabold text-xs shadow-lg shadow-purple-900/25 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    {savingBanner ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        <span>Enregistrement...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check size={16} />
+                        <span>Enregistrer le bandeau</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'simulator' && isGerant && (
           <div className="space-y-6 max-w-xl">
             <div>

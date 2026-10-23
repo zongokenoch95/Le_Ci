@@ -3,14 +3,14 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import confetti from 'canvas-confetti';
 import QRCode from 'qrcode';
-import { 
-  CheckCircle2, 
-  Clock, 
-  Copy, 
-  PhoneCall, 
-  QrCode, 
-  ShieldCheck, 
-  Smartphone, 
+import {
+  CheckCircle2,
+  Clock,
+  Copy,
+  PhoneCall,
+  QrCode,
+  ShieldCheck,
+  Smartphone,
   AlertTriangle,
   ArrowLeft,
   XCircle,
@@ -49,7 +49,7 @@ export function Payment() {
     if (order && (order.statut === 'EN_PREPARATION' || order.statut === 'PAYEE') && order.customerPhone) {
       setEnrollName(order.customerName || '');
       setEnrollPhone(order.customerPhone || '');
-      
+
       getLoyaltySettings().then(setLoyaltySettings).catch(() => null);
       getLoyaltyMember(order.customerPhone)
         .then((m) => {
@@ -115,7 +115,7 @@ export function Payment() {
   const amount = order?.montantTotal || 0;
 
   // Syntaxes USSD
-  const omUssdMarchand = `*144*4*6*${merchantConfig.orangeCode}*${amount}*${codeRef}#`;
+  const omUssdMarchand = `*144*10*77121289*${amount}#`;
   const omTelUrl = `tel:${encodeURIComponent(omUssdMarchand)}`;
 
   const moovUssd = `*555*4*1*${merchantConfig.moovCode}*${amount}#`;
@@ -194,7 +194,7 @@ export function Payment() {
               setOrder(res.order);
             }
           })
-          .catch(() => {});
+          .catch(() => { });
       }
     }, 3000);
 
@@ -297,7 +297,7 @@ export function Payment() {
               className="bg-white rounded-3xl p-8 sm:p-10 shadow-2xl border border-emerald-100 text-center relative overflow-hidden"
             >
               <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-emerald-400 via-teal-500 to-emerald-600" />
-              
+
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
@@ -316,7 +316,7 @@ export function Payment() {
                 Merci <span className="font-semibold text-gray-900">{order.customerName}</span>. Votre commande est validée et nos chefs pâtissiers ont déjà commencé sa préparation.
               </p>
 
-              
+
               {/* ========================================================================= */}
               {/* PORTAIL 1 : INSCRIPTION / CONSULTATION PROGRAMME DE FIDÉLITÉ SUR LA MÊME PAGE */}
               {/* ========================================================================= */}
@@ -486,7 +486,7 @@ export function Payment() {
                     <span className="text-xs uppercase tracking-wider text-[#D4AF37] font-semibold">Paiement Mobile Direct</span>
                     <h1 className="text-2xl sm:text-3xl font-extrabold mt-1">Finalisez votre règlement</h1>
                   </div>
-                  
+
                   {/* Minuteur TTL 10 min */}
                   <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/15">
                     <Clock size={20} className="text-[#D4AF37] animate-pulse" />
@@ -537,11 +537,10 @@ export function Payment() {
                     <button
                       type="button"
                       onClick={() => setSelectedOperator('orange')}
-                      className={`p-4 rounded-2xl border-2 text-center transition flex flex-col items-center gap-2 ${
-                        selectedOperator === 'orange'
+                      className={`p-4 rounded-2xl border-2 text-center transition flex flex-col items-center gap-2 ${selectedOperator === 'orange'
                           ? 'border-[#FF6600] bg-orange-50/50 text-[#FF6600] shadow-md'
                           : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                      }`}
+                        }`}
                     >
                       <div className="w-8 h-8 rounded-full bg-[#FF6600] text-white flex items-center justify-center font-black text-xs">
                         OM
@@ -552,11 +551,10 @@ export function Payment() {
                     <button
                       type="button"
                       onClick={() => setSelectedOperator('wave')}
-                      className={`p-4 rounded-2xl border-2 text-center transition flex flex-col items-center gap-2 ${
-                        selectedOperator === 'wave'
+                      className={`p-4 rounded-2xl border-2 text-center transition flex flex-col items-center gap-2 ${selectedOperator === 'wave'
                           ? 'border-[#1DA1F2] bg-blue-50/50 text-[#1DA1F2] shadow-md'
                           : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                      }`}
+                        }`}
                     >
                       <div className="w-8 h-8 rounded-full bg-[#1DA1F2] text-white flex items-center justify-center font-black text-xs">
                         W
@@ -567,11 +565,10 @@ export function Payment() {
                     <button
                       type="button"
                       onClick={() => setSelectedOperator('moov')}
-                      className={`p-4 rounded-2xl border-2 text-center transition flex flex-col items-center gap-2 ${
-                        selectedOperator === 'moov'
+                      className={`p-4 rounded-2xl border-2 text-center transition flex flex-col items-center gap-2 ${selectedOperator === 'moov'
                           ? 'border-[#0055A5] bg-blue-50/50 text-[#0055A5] shadow-md'
                           : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                      }`}
+                        }`}
                     >
                       <div className="w-8 h-8 rounded-full bg-[#0055A5] text-white flex items-center justify-center font-black text-xs">
                         M

@@ -12,6 +12,7 @@ import { AdminDashboard } from './pages/AdminDashboard';
 import { AdminLogin } from './pages/AdminLogin';
 import { Payment } from './pages/Payment';
 import { Loyalty } from './pages/Loyalty';
+import { About } from './pages/About';
 import '../styles/index.css';
 
 export default function App() {
@@ -40,7 +41,7 @@ export default function App() {
               <Route path="/paiement/:orderId" element={<Payment />} />
 
               {/* Redirections des anciennes pages supprimées */}
-              <Route path="/a-propos" element={<Navigate to="/" replace />} />
+              <Route path="/a-propos" element={<About />} />
               <Route path="/contact" element={<Navigate to="/" replace />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

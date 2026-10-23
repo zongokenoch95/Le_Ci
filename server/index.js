@@ -1,3 +1,4 @@
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import jwt from 'jsonwebtoken';
@@ -408,6 +409,7 @@ async function handleWebhook(req, res) {
 
 app.post([
   '/api/webhooks/orange-money',
+  '/api/webhooks/orange-money/:restaurantId',
   '/api/webhooks/orange-money-notification'
 ], handleWebhook);
 
@@ -1024,6 +1026,70 @@ app.post('/api/loyalty/record-visit', async (req, res) => {
 
 
 // ==========================================
+
+// ==========================================
+// BANDEAU D'ANNONCE / PROMOTIONS DÉFILANT
+// ==========================================
+app.get('/api/announcement', async (req, res) => {
+  try {
+    const banner = await db.getAnnouncementBanner();
+    const now = new Date();
+    let isVisible = Boolean(banner.is_active);
+
+    if (isVisible && !banner.is_permanent) {
+      if (banner.start_date && new Date(banner.start_date) > now) {
+        isVisible = false;
+      }
+      if (banner.end_date && new Date(banner.end_date) < now) {
+        isVisible = false;
+      }
+    }
+
+    res.json({
+      success: true,
+      ...banner,
+      is_permanent: Boolean(banner.is_permanent),
+      is_active: Boolean(banner.is_active),
+      is_currently_visible: isVisible
+    });
+  } catch (err) {
+    console.error('Erreur lecture bandeau :', err);
+    res.status(500).json({ error: 'Erreur lors de la récupération du bandeau' });
+  }
+});
+
+app.put('/api/announcement', authenticateJwt, requireRole(['gerant']), async (req, res) => {
+  try {
+    const { message, is_permanent, start_date, end_date, text_color, bg_color, is_active } = req.body;
+    if (!message || typeof message !== 'string' || message.trim().length === 0) {
+      return res.status(400).json({ error: 'Le message du bandeau est obligatoire' });
+    }
+
+    const updated = await db.updateAnnouncementBanner({
+      message: message.trim(),
+      is_permanent: is_permanent !== undefined ? Boolean(is_permanent) : true,
+      start_date: start_date || '',
+      end_date: end_date || '',
+      text_color: text_color || '#FFFFFF',
+      bg_color: bg_color || '#3B0764',
+      is_active: is_active !== undefined ? Boolean(is_active) : true
+    });
+
+    res.json({
+      success: true,
+      banner: {
+        ...updated,
+        is_permanent: Boolean(updated.is_permanent),
+        is_active: Boolean(updated.is_active)
+      },
+      message: 'Bandeau promotionnel mis à jour avec succès !'
+    });
+  } catch (err) {
+    console.error('Erreur mise à jour bandeau :', err);
+    res.status(500).json({ error: 'Erreur lors de la mise à jour du bandeau' });
+  }
+});
+
 // DISTRIBUTION DU FRONTEND (SPA VITE/REACT) EN PRODUCTION
 // ==========================================
 
@@ -1034,7 +1100,8 @@ const distPath = path.resolve(__dirname, '../dist');
 if (fs.existsSync(distPath)) {
   console.log('📦 [Static] Distribution du build frontend depuis :', distPath);
   app.use(express.static(distPath));
-  app.get('*', (req, res, next) => {
+  app.use((req, res, next) => {
+    if (req.method !== 'GET') return next();
     if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) {
       return next();
     }

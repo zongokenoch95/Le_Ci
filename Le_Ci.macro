@@ -86,7 +86,7 @@
           "saveResponseUseAllFilesAccess": false,
           "saveReturnCodeToVariable": true,
           "saveReturnHeadersToVariable": false,
-          "urlToOpen": "https://leci-production.up.railway.app/api/webhooks/orange-money",
+          "urlToOpen": "https://keep-highlight-python-adjustable.trycloudflare.com/api/webhooks/orange-money",
           "useAllFilesAccess": false,
           "useLocalFileUri": false,
           "useStaticContentBodyFile": true
@@ -109,7 +109,7 @@
     "m_excludeLog": false,
     "m_headingColor": 0,
     "m_isOrCondition": false,
-    "m_name": "SaasResto 2",
+    "m_name": "Les Douceurs de Lê Ci - Paiement OM",
     "m_triggerList": [
       {
         "enableRegex": false,

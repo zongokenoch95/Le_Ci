@@ -656,3 +656,43 @@ export async function deleteAdminUser(id: number): Promise<{ success: boolean; m
   }
   return res.json();
 }
+
+// ==========================================
+// BANDEAU D'ANNONCES & PROMOTIONS
+// ==========================================
+export interface AnnouncementBanner {
+  id?: number;
+  message: string;
+  is_permanent: boolean;
+  start_date?: string;
+  end_date?: string;
+  text_color?: string;
+  bg_color?: string;
+  is_active: boolean;
+  is_currently_visible?: boolean;
+}
+
+export async function getAnnouncementBanner(): Promise<AnnouncementBanner> {
+  const res = await fetch(`${API_BASE_URL}/announcement`);
+  if (!res.ok) {
+    throw new Error('Erreur lors de la récupération du bandeau');
+  }
+  return res.json();
+}
+
+export async function updateAnnouncementBanner(data: Partial<AnnouncementBanner>): Promise<{ success: boolean; banner: AnnouncementBanner; message: string }> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/announcement`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Erreur lors de la mise à jour du bandeau');
+  }
+  return res.json();
+}

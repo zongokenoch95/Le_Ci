@@ -91,7 +91,7 @@ Le téléphone de caisse (qui détient la puce SIM Orange Money ou l'application
 * **Méthode :** `POST`
 * **URL de destination :**
   * *En production / Dev Tunnel :*  
-    `https://<votre-domaine-ou-tunnel>/api/webhooks/orange-money/resto-premium-01`
+    `https://keep-highlight-python-adjustable.trycloudflare.com/api/webhooks/orange-money`
   * *En réseau local direct (Wi-Fi de l'établissement) :*  
     `http://192.168.1.50:3000/api/webhooks/orange-money/resto-premium-01`
 * **En-têtes HTTP (Headers) :**

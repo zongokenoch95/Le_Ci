@@ -254,7 +254,7 @@ export async function initDb() {
   // Gérable entièrement par l'administrateur
   // ==========================================
   await run(`
-    CREATE TABLE IF NOT EXISTS products (
+        CREATE TABLE IF NOT EXISTS products (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       category TEXT NOT NULL DEFAULT 'Gâteaux',
@@ -265,6 +265,26 @@ export async function initDb() {
       created_at DATETIME NOT NULL,
       updated_at DATETIME NOT NULL
     )
+  `);
+
+  // Table pour le bandeau d'annonces / promotions défilant
+  await run(`
+    CREATE TABLE IF NOT EXISTS announcement_banner (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      message TEXT NOT NULL,
+      is_permanent INTEGER DEFAULT 1,
+      start_date TEXT,
+      end_date TEXT,
+      text_color TEXT DEFAULT '#FFFFFF',
+      bg_color TEXT DEFAULT '#3B0764',
+      is_active INTEGER DEFAULT 1,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await run(`
+    INSERT OR IGNORE INTO announcement_banner (id, message, is_permanent, start_date, end_date, text_color, bg_color, is_active)
+    VALUES (1, '✦ OFFRE SPÉCIALE : -10% sur votre commande avec le code « DOUCEUR10 » ✦ Inscription fidélité offerte dès aujourd''hui ✦ Livraison soignée à domicile ✦', 1, '', '', '#FFFFFF', '#3B0764', 1)
   `);
 
   // Seeding initial du catalogue si vide
@@ -1618,7 +1638,9 @@ export default {
   createProduct,
   updateProduct,
   deleteProduct,
-  getAdminDetailedStats
+  getAdminDetailedStats,
+  getAnnouncementBanner,
+  updateAnnouncementBanner
 };
 
 // ==========================================
@@ -1717,4 +1739,42 @@ export async function deleteAdminUser(id) {
 export async function updateAdminUserLastLogin(id) {
   const now = new Date().toISOString();
   await run('UPDATE admin_users SET last_login_at = ? WHERE id = ?', [now, id]);
+}
+
+// ==========================================
+// BANDEAU DÉFILANT D'ANNONCE & PROMOTIONS
+// ==========================================
+export async function getAnnouncementBanner() {
+  let banner = await get('SELECT * FROM announcement_banner WHERE id = 1');
+  if (!banner) {
+    await run(`INSERT OR IGNORE INTO announcement_banner (id, message, is_permanent, start_date, end_date, text_color, bg_color, is_active)
+      VALUES (1, '✦ OFFRE SPÉCIALE : -10% sur votre commande avec le code « DOUCEUR10 » ✦ Inscription fidélité offerte dès aujourd''hui ✦ Livraison soignée à domicile ✦', 1, '', '', '#FFFFFF', '#3B0764', 1)`);
+    banner = await get('SELECT * FROM announcement_banner WHERE id = 1');
+  }
+  return banner;
+}
+
+export async function updateAnnouncementBanner({ message, is_permanent, start_date, end_date, text_color, bg_color, is_active }) {
+  await getAnnouncementBanner(); // assure l'existence
+  await run(`
+    UPDATE announcement_banner SET
+      message = ?,
+      is_permanent = ?,
+      start_date = ?,
+      end_date = ?,
+      text_color = ?,
+      bg_color = ?,
+      is_active = ?,
+      updated_at = CURRENT_TIMESTAMP
+    WHERE id = 1
+  `, [
+    message,
+    is_permanent ? 1 : 0,
+    start_date || '',
+    end_date || '',
+    text_color || '#FFFFFF',
+    bg_color || '#3B0764',
+    is_active !== undefined ? (is_active ? 1 : 0) : 1
+  ]);
+  return getAnnouncementBanner();
 }
