@@ -1,362 +1,1204 @@
 import { useState } from 'react';
-import { motion } from 'motion/react';
-import { ArrowRight, ArrowLeft, Check, Upload } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { 
+  Cake, 
+  ArrowRight, 
+  ArrowLeft, 
+  Check, 
+  Upload, 
+  Heart, 
+  Sparkles, 
+  Calendar, 
+  Clock, 
+  MapPin, 
+  Phone, 
+  User, 
+  MessageSquare, 
+  AlertCircle, 
+  CheckCircle2, 
+  X, 
+  ShieldCheck, 
+  Navigation, 
+  Truck, 
+  Store,
+  FileText,
+  HelpCircle,
+  Share2
+} from 'lucide-react';
+import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 
-interface FormData {
-  eventType: string;
-  flavor: string;
-  size: string;
-  decoration: string;
-  name: string;
-  phone: string;
-  email: string;
-  date: string;
-  message: string;
-  decorationImage: File | null;
-}
-
-const steps = [
-  { id: 1, title: "Type d'événement" },
-  { id: 2, title: 'Goût et garniture' },
-  { id: 3, title: 'Taille et quantité' },
-  { id: 4, title: 'Décoration' },
-  { id: 5, title: 'Informations' },
+// 8 Gâteaux du catalogue de la maison Lê Ci
+const catalogCakes = [
+  { id: 1, name: 'Fraisier Signature Suprême', image: '/products/gateau_1.jpeg' },
+  { id: 2, name: 'Gâteau Festif Personnalisé Pâte d\'Amande', image: '/products/gateau_2.jpeg' },
+  { id: 3, name: 'Forêt Noire Grand Cru Cacao & Cerises', image: '/products/gateau_3.jpeg' },
+  { id: 4, name: 'Layer Cake Chocolat Praliné & Drip Caramel', image: '/products/gateau_4.jpeg' },
+  { id: 5, name: 'Entremet Miroir Fruits Rouges & Velours', image: '/products/gateau_5.jpeg' },
+  { id: 6, name: 'Red Velvet Cake Onctueux Cream Cheese', image: '/products/gateau_6.jpeg' },
+  { id: 7, name: 'Number Cake Décoré Fruits Frais & Macarons', image: '/products/gateau_7.jpeg' },
+  { id: 8, name: 'Pièce Montée d\'Exception & Mariage Prestige', image: '/products/gateau_8.jpeg' }
 ];
 
-const eventTypes = ['Anniversaire', 'Mariage', 'Fiançailles', 'Naissance', 'Entreprise', 'Autre'];
-const flavors = ['Vanille', 'Chocolat', 'Fraise', 'Pistache', 'Caramel', 'Citron', 'Café'];
-const sizes = ['Petit (6-8 personnes)', 'Moyen (10-15 personnes)', 'Grand (20-30 personnes)', 'Très Grand (40+ personnes)'];
+// Nombre de parts avec tarifs indicatifs transparents en FCFA
+const portionsOptions = [
+  { id: '6-8', label: '6 à 8 parts', price: 15000, desc: 'Idéal en petit comité / famille' },
+  { id: '10-12', label: '10 à 12 parts', price: 25000, desc: 'Anniversaire ou dîner festif' },
+  { id: '15-20', label: '15 à 20 parts', price: 35000, desc: 'Célébrations & fêtes d\'enfants' },
+  { id: '25-30', label: '25 à 30 parts', price: 50000, desc: 'Grand anniversaire / baptême' },
+  { id: '40-50', label: '40 à 50 parts', price: 80000, desc: 'Grand événement / Cérémonie' },
+  { id: 'custom', label: 'Plus de 50 parts', price: 0, desc: 'Pièce montée / Devis sur-mesure' }
+];
 
-const basePrices: { [key: string]: number } = {
-  'Petit (6-8 personnes)': 60,
-  'Moyen (10-15 personnes)': 100,
-  'Grand (20-30 personnes)': 180,
-  'Très Grand (40+ personnes)': 300,
-};
+// Saveurs signatures
+const flavorOptions = [
+  'Vanille Bourbon pure & crème veloutée',
+  'Chocolat noir Grand Cru & praliné feuilleté',
+  'Fraisier & coulis de fruits rouges frais',
+  'Caramel au beurre salé & noisettes croquantes',
+  'Mangue locale & Passion exotique (Signature Lê Ci)',
+  'Pistache fine & framboises fraîches',
+  'Red Velvet & glaçage cream cheese doux',
+  'Citron meringué acidulé',
+  'Autre saveur personnalisée'
+];
 
 export function CustomOrder() {
-  const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState<FormData>({
-    eventType: '',
-    flavor: '',
-    size: '',
-    decoration: '',
-    name: '',
-    phone: '',
-    email: '',
-    date: '',
-    message: '',
-    decorationImage: null,
-  });
+  const [currentStep, setCurrentStep] = useState<1 | 2>(1);
 
-  const estimatedPrice = formData.size ? basePrices[formData.size] : 0;
+  // Étape 1 : Description du gâteau
+  const [theme, setTheme] = useState<'mariage' | 'anniversaire' | 'autre'>('anniversaire');
+  const [themeCustom, setThemeCustom] = useState('');
+  const [cakeDescription, setCakeDescription] = useState('');
+  const [selectedPortionId, setSelectedPortionId] = useState('10-12');
+  const [selectedFlavor, setSelectedFlavor] = useState(flavorOptions[0]);
+  const [customFlavorText, setCustomFlavorText] = useState('');
+  
+  // Modèle : Choix catalogue OU Upload image
+  const [modelType, setModelType] = useState<'catalog' | 'upload'>('catalog');
+  const [selectedCatalogCake, setSelectedCatalogCake] = useState<string>(catalogCakes[0].name);
+  const [uploadedImagePreview, setUploadedImagePreview] = useState<string | null>(null);
+  
+  // Carte de petit mot
+  const [hasGreetingCard, setHasGreetingCard] = useState<boolean>(false);
+  const [cardMessage, setCardMessage] = useState('');
 
-  const handleNext = () => {
-    if (currentStep < 5) setCurrentStep(currentStep + 1);
-  };
+  // Étape 2 : Informations pour la livraison
+  const [deliveryType, setDeliveryType] = useState<'livraison' | 'sur_place'>('livraison');
+  const [receptionDate, setReceptionDate] = useState('');
+  const [receptionTime, setReceptionTime] = useState('14h00 - 17h00');
+  const [customTime, setCustomTime] = useState('');
+  
+  // Commanditaire
+  const [ordererName, setOrdererName] = useState('');
+  const [ordererPhone, setOrdererPhone] = useState('');
 
-  const handlePrevious = () => {
-    if (currentStep > 1) setCurrentStep(currentStep - 1);
-  };
+  // Réceptionnaire
+  const [isSameRecipient, setIsSameRecipient] = useState(true);
+  const [recipientName, setRecipientName] = useState('');
+  const [recipientPhone, setRecipientPhone] = useState('');
+  const [recipientPhoneBackup, setRecipientPhoneBackup] = useState('');
 
-  const handleSubmit = () => {
-    const phoneNumber = '21671123456';
-    const message = `Nouvelle commande personnalisée:
-    
-Type d'événement: ${formData.eventType}
-Goût: ${formData.flavor}
-Taille: ${formData.size}
-Décoration: ${formData.decoration}
-Date: ${formData.date}
+  // Lieu de livraison & Géolocalisation
+  const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [geoLocating, setGeoLocating] = useState(false);
+  const [geoCoords, setGeoCoords] = useState<{ lat: number; lng: number } | null>(null);
 
-Informations client:
-Nom: ${formData.name}
-Téléphone: ${formData.phone}
-Email: ${formData.email}
+  // Informations complémentaires
+  const [additionalNotes, setAdditionalNotes] = useState('');
 
-Message: ${formData.message || 'Aucun'}
+  // Modale de confirmation
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
-Prix estimatif: ${estimatedPrice} DT`;
+  // Calcul du prix estimé
+  const currentPortion = portionsOptions.find(p => p.id === selectedPortionId) || portionsOptions[1];
+  const estimatedPrice = currentPortion.price;
 
-    window.open(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`, '_blank');
-  };
+  // Calcul de la date minimale : Aujourd'hui + 2 jours pour préparation artisanale
+  const minDate = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 2);
+    return d.toISOString().split('T')[0];
+  })();
 
-  const canProceed = () => {
-    switch (currentStep) {
-      case 1: return formData.eventType !== '';
-      case 2: return formData.flavor !== '';
-      case 3: return formData.size !== '';
-      case 4: return formData.decoration !== '';
-      case 5: return formData.name && formData.phone && formData.date;
-      default: return false;
+  // Gestion de l'upload d'image
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('L\'image est trop lourde (maximum 5 Mo)');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setUploadedImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
+  // Géolocalisation GPS
+  const handleGetLocation = () => {
+    if (!navigator.geolocation) {
+      alert('La géolocalisation n\'est pas supportée par votre navigateur.');
+      return;
+    }
+    setGeoLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        setGeoCoords({ lat: latitude, lng: longitude });
+        const mapsLink = `https://maps.google.com/?q=${latitude},${longitude}`;
+        setDeliveryAddress(prev => {
+          const prefix = prev ? `${prev} - ` : '';
+          return `${prefix}Position GPS : ${latitude.toFixed(5)}, ${longitude.toFixed(5)} (${mapsLink})`;
+        });
+        setGeoLocating(false);
+      },
+      (err) => {
+        console.warn('Erreur géolocalisation:', err);
+        alert('Impossible de récupérer votre position. Veuillez saisir votre quartier manuellement.');
+        setGeoLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  // Validation Étape 1
+  const validateStep1 = () => {
+    if (theme === 'autre' && !themeCustom.trim()) {
+      setValidationError('Veuillez préciser le thème de votre gâteau.');
+      return false;
+    }
+    if (!cakeDescription.trim()) {
+      setValidationError('Veuillez décrire le style ou les décorations souhaitées pour le gâteau.');
+      return false;
+    }
+    if (selectedFlavor === 'Autre saveur personnalisée' && !customFlavorText.trim()) {
+      setValidationError('Veuillez préciser la saveur personnalisée souhaitée.');
+      return false;
+    }
+    if (hasGreetingCard && !cardMessage.trim()) {
+      setValidationError('Veuillez saisir le texte à écrire sur votre carte de petit mot.');
+      return false;
+    }
+    setValidationError(null);
+    return true;
+  };
+
+  // Validation Étape 2
+  const validateStep2 = () => {
+    if (!receptionDate) {
+      setValidationError('Veuillez sélectionner la date souhaitée pour votre commande.');
+      return false;
+    }
+    if (!ordererName.trim()) {
+      setValidationError('Veuillez renseigner votre nom complet.');
+      return false;
+    }
+    if (!ordererPhone.trim()) {
+      setValidationError('Veuillez renseigner votre numéro WhatsApp ou téléphone.');
+      return false;
+    }
+    const finalRecipientName = isSameRecipient ? ordererName : recipientName;
+    const finalRecipientPhone = isSameRecipient ? ordererPhone : recipientPhone;
+
+    if (!finalRecipientName.trim()) {
+      setValidationError('Veuillez renseigner le nom de la personne qui réceptionnera la commande.');
+      return false;
+    }
+    if (!finalRecipientPhone.trim()) {
+      setValidationError('Veuillez renseigner le numéro de la personne qui réceptionnera la commande.');
+      return false;
+    }
+    if (!recipientPhoneBackup.trim()) {
+      setValidationError('Veuillez fournir un second numéro de secours pour la réception.');
+      return false;
+    }
+    if (deliveryType === 'livraison' && !deliveryAddress.trim()) {
+      setValidationError('Veuillez préciser le quartier et lieu de livraison (ou utiliser la géolocalisation).');
+      return false;
+    }
+    setValidationError(null);
+    return true;
+  };
+
+  const handleNextStep = () => {
+    if (validateStep1()) {
+      setCurrentStep(2);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handlePrevStep = () => {
+    setCurrentStep(1);
+    setValidationError(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Soumission finale vers WhatsApp
+  const handleSubmitOrder = () => {
+    if (!validateStep2()) {
+      return;
+    }
+
+    const themeDisplay = theme === 'autre' ? `Autre (${themeCustom})` : (theme === 'mariage' ? 'Mariage' : 'Anniversaire');
+    const flavorDisplay = selectedFlavor === 'Autre saveur personnalisée' ? `Personnalisée : ${customFlavorText}` : selectedFlavor;
+    const modelDisplay = modelType === 'catalog' 
+      ? `Modèle du catalogue : ${selectedCatalogCake}` 
+      : (uploadedImagePreview ? 'Photo personnalisée fournie par le client (à joindre sur WhatsApp)' : 'Aucune photo');
+
+    const cardDisplay = hasGreetingCard ? `OUI - Texte : « ${cardMessage} »` : 'NON (sans carte)';
+    const finalRecipientName = isSameRecipient ? ordererName : recipientName;
+    const finalRecipientPhone = isSameRecipient ? ordererPhone : recipientPhone;
+    const priceDisplay = estimatedPrice > 0 ? `${estimatedPrice.toLocaleString('fr-FR')} FCFA (estimatif)` : 'Sur devis personnalisé (+50 parts)';
+
+    const whatsappMessage = `*NOUVELLE DEMANDE DE GÂTEAU PERSONNALISÉ* 🎂
+*Maison Les Douceurs de Lê Ci*
+──────────────────────
+
+*ÉTAPE 1 : DESCRIPTION DU GÂTEAU*
+• *Thème :* ${themeDisplay}
+• *Description :* ${cakeDescription}
+• *Nombre de parts :* ${currentPortion.label}
+• *Prix estimatif :* ${priceDisplay}
+• *Saveur :* ${flavorDisplay}
+• *Référence visuelle :* ${modelDisplay}
+• *Carte de petit mot :* ${cardDisplay}
+
+*ÉTAPE 2 : INFORMATIONS LIVRAISON & CONTACT*
+• *Mode de réception :* ${deliveryType === 'livraison' ? '🛵 Livraison à domicile' : '🏪 Retrait sur place (Atelier Lê Ci)'}
+• *Date souhaitée :* ${receptionDate}
+• *Heure / Créneau :* ${receptionTime === 'Autre heure précise' ? customTime : receptionTime}
+• *Commanditaire :* ${ordererName} (${ordererPhone})
+• *Réceptionnaire :* ${finalRecipientName} (${finalRecipientPhone})
+• *Numéro de secours (2nd tél) :* ${recipientPhoneBackup}
+• *Lieu de livraison :* ${deliveryType === 'livraison' ? deliveryAddress : 'Retrait en boutique Lê Ci'}
+• *Informations complémentaires & Allergies :* ${additionalNotes || 'Aucune'}
+
+──────────────────────
+_Demande transmise depuis la plateforme officielle Les Douceurs de Lê Ci._`;
+
+    // Numéro WhatsApp officiel de la boutique
+    const officialPhone = '22670000001';
+    const waUrl = `https://wa.me/${officialPhone}?text=${encodeURIComponent(whatsappMessage)}`;
+    
+    // Ouvrir WhatsApp
+    window.open(waUrl, '_blank');
+    setShowSuccessModal(true);
+  };
+
   return (
-    <div className="min-h-screen py-12">
+    <div className="min-h-screen py-12 sm:py-16 bg-[#FAF8F5]">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
+        
+        {/* Titre & Bannière d'en-tête */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-12"
+          className="text-center mb-10"
         >
-          <h1 className="mb-4">Personnalisez votre gâteau</h1>
-          <p className="opacity-70">Créez une pièce unique pour votre événement</p>
+          <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold bg-purple-100 text-[#581C87] uppercase tracking-wider mb-3">
+            <Cake size={13} /> Confection Sur-Mesure
+          </span>
+          <h1 className="text-3xl sm:text-5xl font-extrabold text-gray-900 tracking-tight">
+            Personnalisation de Gâteau
+          </h1>
+          <p className="text-sm sm:text-base text-gray-600 max-w-xl mx-auto font-light mt-2 leading-relaxed">
+            Donnez vie à vos idées gourmandes en 2 étapes : décrivez votre création idéale et planifiez sa réception.
+          </p>
         </motion.div>
 
-        {/* Progress Steps */}
-        <div className="mb-12">
-          <div className="flex justify-between items-center">
-            {steps.map((step, index) => (
-              <div key={step.id} className="flex items-center flex-1">
-                <div className="flex flex-col items-center flex-1">
-                  <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
-                      currentStep >= step.id
-                        ? 'bg-[var(--beige-gold)] text-white'
-                        : 'bg-[var(--grey-light)] text-gray-400'
-                    }`}
-                  >
-                    {currentStep > step.id ? <Check size={20} /> : step.id}
-                  </div>
-                  <p className="text-xs mt-2 text-center hidden sm:block">{step.title}</p>
-                </div>
-                {index < steps.length - 1 && (
-                  <div
-                    className={`h-0.5 flex-1 mx-2 transition-colors ${
-                      currentStep > step.id ? 'bg-[var(--beige-gold)]' : 'bg-[var(--grey-light)]'
-                    }`}
-                  ></div>
-                )}
+        {/* Indicateur d'Étapes (Stepper) */}
+        <div className="mb-10 max-w-2xl mx-auto">
+          <div className="flex items-center justify-between relative">
+            <div className="absolute top-1/2 left-0 right-0 h-1 bg-purple-200/60 -translate-y-1/2 z-0" />
+            <div 
+              className="absolute top-1/2 left-0 h-1 bg-[#581C87] -translate-y-1/2 z-0 transition-all duration-500" 
+              style={{ width: currentStep === 1 ? '50%' : '100%' }}
+            />
+
+            {/* Bulle Étape 1 */}
+            <div 
+              onClick={() => setCurrentStep(1)}
+              className={`relative z-10 flex items-center gap-3 px-5 py-2.5 rounded-full cursor-pointer transition-all ${
+                currentStep === 1 
+                  ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30 scale-105' 
+                  : 'bg-white text-purple-900 border border-purple-200 shadow-sm'
+              }`}
+            >
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-extrabold ${
+                currentStep === 1 ? 'bg-white text-[#581C87]' : 'bg-purple-100 text-purple-900'
+              }`}>
+                1
               </div>
-            ))}
+              <span className="text-xs sm:text-sm font-bold">Description du gâteau</span>
+            </div>
+
+            {/* Bulle Étape 2 */}
+            <div 
+              onClick={() => validateStep1() && setCurrentStep(2)}
+              className={`relative z-10 flex items-center gap-3 px-5 py-2.5 rounded-full cursor-pointer transition-all ${
+                currentStep === 2 
+                  ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30 scale-105' 
+                  : 'bg-white text-purple-900 border border-purple-200 shadow-sm'
+              }`}
+            >
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-extrabold ${
+                currentStep === 2 ? 'bg-white text-[#581C87]' : 'bg-purple-100 text-purple-900'
+              }`}>
+                2
+              </div>
+              <span className="text-xs sm:text-sm font-bold">Livraison & Contact</span>
+            </div>
           </div>
         </div>
 
-        {/* Form Content */}
-        <motion.div
-          key={currentStep}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="bg-white rounded-2xl p-8 shadow-sm mb-8"
-        >
-          {currentStep === 1 && (
-            <div>
-              <h3 className="mb-6">Quel type d'événement célébrez-vous ?</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                {eventTypes.map((type) => (
-                  <button
-                    key={type}
-                    onClick={() => setFormData({ ...formData, eventType: type })}
-                    className={`p-4 rounded-lg border-2 transition-all ${
-                      formData.eventType === type
-                        ? 'border-[var(--beige-gold)] bg-[var(--beige-gold)]/10'
-                        : 'border-[var(--grey-light)] hover:border-[var(--beige-gold)]'
-                    }`}
-                  >
-                    {type}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+        {/* Message d'erreur de validation si applicable */}
+        {validationError && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            className="mb-8 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs sm:text-sm font-semibold flex items-center gap-3 shadow-sm"
+          >
+            <AlertCircle size={18} className="shrink-0 text-rose-600" />
+            <span>{validationError}</span>
+          </motion.div>
+        )}
 
-          {currentStep === 2 && (
-            <div>
-              <h3 className="mb-6">Choisissez votre goût préféré</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                {flavors.map((flavor) => (
-                  <button
-                    key={flavor}
-                    onClick={() => setFormData({ ...formData, flavor })}
-                    className={`p-4 rounded-lg border-2 transition-all ${
-                      formData.flavor === flavor
-                        ? 'border-[var(--beige-gold)] bg-[var(--beige-gold)]/10'
-                        : 'border-[var(--grey-light)] hover:border-[var(--beige-gold)]'
-                    }`}
-                  >
-                    {flavor}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+        {/* ========================================================================= */}
+        {/* FORMULAIRE : ÉTAPE 1 - DESCRIPTION DU GÂTEAU */}
+        {/* ========================================================================= */}
+        {currentStep === 1 && (
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            className="space-y-10"
+          >
+            {/* 1. Thème */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
+              <h3 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">1</span>
+                Thème de l'événement
+              </h3>
+              <p className="text-xs text-gray-500 mb-6 font-light">
+                Sélectionnez le contexte ou l'occasion célébrée pour adapter le style de votre création.
+              </p>
 
-          {currentStep === 3 && (
-            <div>
-              <h3 className="mb-6">Quelle taille souhaitez-vous ?</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {sizes.map((size) => (
-                  <button
-                    key={size}
-                    onClick={() => setFormData({ ...formData, size })}
-                    className={`p-6 rounded-lg border-2 transition-all text-left ${
-                      formData.size === size
-                        ? 'border-[var(--beige-gold)] bg-[var(--beige-gold)]/10'
-                        : 'border-[var(--grey-light)] hover:border-[var(--beige-gold)]'
-                    }`}
-                  >
-                    <h4 className="mb-1">{size}</h4>
-                    <p className="text-[var(--beige-gold)]">À partir de {basePrices[size]} DT</p>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <button
+                  type="button"
+                  onClick={() => setTheme('mariage')}
+                  className={`p-5 rounded-2xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
+                    theme === 'mariage' 
+                      ? 'border-[#581C87] bg-purple-50/60 shadow-md ring-2 ring-[#581C87]/20' 
+                      : 'border-gray-200 hover:border-purple-200 hover:bg-gray-50/50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-2xl">💍</span>
+                    {theme === 'mariage' && <CheckCircle2 size={18} className="text-[#581C87]" />}
+                  </div>
+                  <div>
+                    <div className="font-extrabold text-gray-900 text-sm">Autour du mariage</div>
+                    <div className="text-[11px] text-gray-500 font-light mt-0.5">Fiançailles, dot, pièce montée, romantisme</div>
+                  </div>
+                </button>
 
-          {currentStep === 4 && (
-            <div>
-              <h3 className="mb-6">Décoration souhaitée</h3>
-              <textarea
-                value={formData.decoration}
-                onChange={(e) => setFormData({ ...formData, decoration: e.target.value })}
-                placeholder="Décrivez la décoration que vous souhaitez (couleurs, thème, style...)"
-                rows={5}
-                className="w-full px-4 py-3 border border-[var(--grey-light)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--beige-gold)] mb-4"
-              />
-              
-              <div className="border-2 border-dashed border-[var(--grey-light)] rounded-lg p-8 text-center hover:border-[var(--beige-gold)] transition-colors cursor-pointer">
-                <Upload size={40} className="mx-auto mb-4 opacity-40" />
-                <p className="opacity-60 mb-2">Télécharger une image de référence (optionnel)</p>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setFormData({ ...formData, decorationImage: e.target.files?.[0] || null })}
-                  className="hidden"
-                  id="decoration-upload"
-                />
-                <label htmlFor="decoration-upload" className="text-[var(--beige-gold)] cursor-pointer">
-                  Choisir un fichier
-                </label>
-                {formData.decorationImage && (
-                  <p className="mt-2 text-sm opacity-70">{formData.decorationImage.name}</p>
-                )}
-              </div>
-            </div>
-          )}
+                <button
+                  type="button"
+                  onClick={() => setTheme('anniversaire')}
+                  className={`p-5 rounded-2xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
+                    theme === 'anniversaire' 
+                      ? 'border-[#581C87] bg-purple-50/60 shadow-md ring-2 ring-[#581C87]/20' 
+                      : 'border-gray-200 hover:border-purple-200 hover:bg-gray-50/50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-2xl">🎂</span>
+                    {theme === 'anniversaire' && <CheckCircle2 size={18} className="text-[#581C87]" />}
+                  </div>
+                  <div>
+                    <div className="font-extrabold text-gray-900 text-sm">Anniversaire</div>
+                    <div className="text-[11px] text-gray-500 font-light mt-0.5">Enfants, adultes, bougies, cake design festif</div>
+                  </div>
+                </button>
 
-          {currentStep === 5 && (
-            <div>
-              <h3 className="mb-6">Vos informations</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm mb-2 opacity-70">Nom complet *</label>
+                <button
+                  type="button"
+                  onClick={() => setTheme('autre')}
+                  className={`p-5 rounded-2xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
+                    theme === 'autre' 
+                      ? 'border-[#581C87] bg-purple-50/60 shadow-md ring-2 ring-[#581C87]/20' 
+                      : 'border-gray-200 hover:border-purple-200 hover:bg-gray-50/50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-2xl">✨</span>
+                    {theme === 'autre' && <CheckCircle2 size={18} className="text-[#581C87]" />}
+                  </div>
+                  <div>
+                    <div className="font-extrabold text-gray-900 text-sm">Autre célébration</div>
+                    <div className="text-[11px] text-gray-500 font-light mt-0.5">Baptême, baby shower, diplôme, entreprise</div>
+                  </div>
+                </button>
+              </div>
+
+              {theme === 'autre' && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }} 
+                  animate={{ opacity: 1, height: 'auto' }} 
+                  className="mt-4 pt-4 border-t border-purple-100"
+                >
+                  <label className="block text-xs font-bold text-gray-700 mb-2">
+                    Précisez votre thème :
+                  </label>
                   <input
                     type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-4 py-3 border border-[var(--grey-light)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--beige-gold)]"
-                    placeholder="Votre nom"
+                    value={themeCustom}
+                    onChange={(e) => setThemeCustom(e.target.value)}
+                    placeholder="Ex: Baptême, Célébration de réussite, Baby Shower, Retraite..."
+                    className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm"
                   />
-                </div>
-                <div>
-                  <label className="block text-sm mb-2 opacity-70">Téléphone *</label>
-                  <input
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full px-4 py-3 border border-[var(--grey-light)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--beige-gold)]"
-                    placeholder="+216 XX XXX XXX"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm mb-2 opacity-70">Email</label>
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full px-4 py-3 border border-[var(--grey-light)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--beige-gold)]"
-                    placeholder="votre@email.com"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm mb-2 opacity-70">Date de livraison souhaitée *</label>
-                  <input
-                    type="date"
-                    value={formData.date}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    className="w-full px-4 py-3 border border-[var(--grey-light)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--beige-gold)]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm mb-2 opacity-70">Message supplémentaire</label>
-                  <textarea
-                    value={formData.message}
-                    onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                    rows={3}
-                    className="w-full px-4 py-3 border border-[var(--grey-light)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--beige-gold)]"
-                    placeholder="Informations complémentaires..."
-                  />
-                </div>
+                </motion.div>
+              )}
+            </div>
+
+            {/* 2. Description du gâteau par le client */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
+              <h3 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">2</span>
+                Description du gâteau par vos soins
+              </h3>
+              <p className="text-xs text-gray-500 mb-4 font-light">
+                Décrivez librement ce que vous imaginez : couleurs souhaitées, formes, détails artistiques, inscription personnalisée sur le gâteau...
+              </p>
+
+              <textarea
+                rows={4}
+                value={cakeDescription}
+                onChange={(e) => setCakeDescription(e.target.value)}
+                placeholder="Exemple : Gâteau rose poudré et doré avec finitions florales, inscription « Joyeux Anniversaire Léa », décor moderne et élégant sans pâte à sucre excessive..."
+                className="w-full p-4 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm leading-relaxed"
+              />
+            </div>
+
+            {/* 3. Nombre de parts mentionné avec les prix */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                <h3 className="text-base sm:text-lg font-extrabold text-gray-900 flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">3</span>
+                  Nombre de parts & Tarification
+                </h3>
+                {estimatedPrice > 0 && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-100 text-[#581C87] text-xs font-extrabold">
+                    Estimatif : {estimatedPrice.toLocaleString('fr-FR')} FCFA
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-gray-500 mb-6 font-light">
+                Choisissez le calibre de votre gâteau. Les prix indiqués sont clairs et sans surprise.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {portionsOptions.map((opt) => {
+                  const isSelected = selectedPortionId === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setSelectedPortionId(opt.id)}
+                      className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
+                        isSelected 
+                          ? 'border-[#581C87] bg-purple-50/60 shadow-md ring-2 ring-[#581C87]/20' 
+                          : 'border-gray-200 hover:border-purple-200 hover:bg-gray-50/50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-extrabold text-gray-900">{opt.label}</span>
+                        {isSelected && <CheckCircle2 size={16} className="text-[#581C87]" />}
+                      </div>
+                      <div className="text-xs text-gray-500 font-light mb-3">{opt.desc}</div>
+                      <div className="text-sm font-black text-[#581C87]">
+                        {opt.price > 0 ? `${opt.price.toLocaleString('fr-FR')} FCFA` : 'Sur devis (+50 parts)'}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
-          )}
-        </motion.div>
 
-        {/* Price Estimate */}
-        {estimatedPrice > 0 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="bg-[var(--beige-gold)]/10 border border-[var(--beige-gold)] rounded-lg p-6 mb-8"
-          >
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="opacity-70 text-sm mb-1">Prix estimatif</p>
-                <h3 className="text-[var(--beige-gold)]">{estimatedPrice} DT</h3>
-              </div>
-              <p className="text-xs opacity-60 max-w-xs">
-                Le prix final sera confirmé après validation de votre commande
+            {/* 4. Saveur */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
+              <h3 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">4</span>
+                Saveurs gourmandes & garnitures
+              </h3>
+              <p className="text-xs text-gray-500 mb-6 font-light">
+                Sélectionnez le parfum principal de votre biscuit et de sa crème onctueuse.
               </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {flavorOptions.map((flavor) => {
+                  const isSelected = selectedFlavor === flavor;
+                  return (
+                    <button
+                      key={flavor}
+                      type="button"
+                      onClick={() => setSelectedFlavor(flavor)}
+                      className={`p-3.5 px-4 rounded-2xl border text-left text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center justify-between ${
+                        isSelected 
+                          ? 'border-[#581C87] bg-purple-50 text-[#581C87] shadow-sm' 
+                          : 'border-gray-200 hover:border-purple-200 text-gray-700 hover:bg-gray-50/60'
+                      }`}
+                    >
+                      <span>{flavor}</span>
+                      {isSelected ? <Check size={16} className="text-[#581C87] shrink-0" /> : <div className="w-4 h-4 rounded-full border border-gray-300 shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {selectedFlavor === 'Autre saveur personnalisée' && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }} 
+                  animate={{ opacity: 1, height: 'auto' }} 
+                  className="mt-4 pt-4 border-t border-purple-100"
+                >
+                  <label className="block text-xs font-bold text-gray-700 mb-2">
+                    Précisez votre saveur souhaitée :
+                  </label>
+                  <input
+                    type="text"
+                    value={customFlavorText}
+                    onChange={(e) => setCustomFlavorText(e.target.value)}
+                    placeholder="Ex: Chocolat blanc & fruits de la passion, Noisette gianduja..."
+                    className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm"
+                  />
+                </motion.div>
+              )}
+            </div>
+
+            {/* 5. Charger une image d'un gâteau OU choisir parmi les gâteaux du catalogue */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
+              <h3 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">5</span>
+                Modèle de référence visuelle
+              </h3>
+              <p className="text-xs text-gray-500 mb-6 font-light">
+                Choisissez si vous préférez vous inspirer d'une création du catalogue Lê Ci ou importer votre propre photo.
+              </p>
+
+              {/* Onglets de choix */}
+              <div className="flex gap-3 mb-6">
+                <button
+                  type="button"
+                  onClick={() => setModelType('catalog')}
+                  className={`flex-1 py-3 px-4 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                    modelType === 'catalog' 
+                      ? 'bg-[#581C87] text-white shadow-md' 
+                      : 'bg-purple-50 text-gray-700 hover:bg-purple-100/60'
+                  }`}
+                >
+                  Choisir parmi les gâteaux du catalogue
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModelType('upload')}
+                  className={`flex-1 py-3 px-4 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                    modelType === 'upload' 
+                      ? 'bg-[#581C87] text-white shadow-md' 
+                      : 'bg-purple-50 text-gray-700 hover:bg-purple-100/60'
+                  }`}
+                >
+                  Charger une photo / capture de gâteau
+                </button>
+              </div>
+
+              {/* Option A : Choix catalogue */}
+              {modelType === 'catalog' && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  {catalogCakes.map((cake) => {
+                    const isSelected = selectedCatalogCake === cake.name;
+                    return (
+                      <div
+                        key={cake.id}
+                        onClick={() => setSelectedCatalogCake(cake.name)}
+                        className={`group relative rounded-2xl overflow-hidden border-2 cursor-pointer transition-all ${
+                          isSelected 
+                            ? 'border-[#581C87] ring-4 ring-purple-200 shadow-lg' 
+                            : 'border-gray-200 hover:border-purple-300 opacity-80 hover:opacity-100'
+                        }`}
+                      >
+                        <div className="aspect-square bg-gray-100 relative">
+                          <ImageWithFallback
+                            src={cake.image}
+                            alt={cake.name}
+                            className="w-full h-full object-cover"
+                          />
+                          {isSelected && (
+                            <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-[#581C87] text-white flex items-center justify-center shadow">
+                              <Check size={14} />
+                            </div>
+                          )}
+                        </div>
+                        <div className="p-2.5 bg-white text-center">
+                          <p className="text-[11px] font-bold text-gray-800 line-clamp-1 leading-tight">
+                            {cake.name}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Option B : Upload de photo */}
+              {modelType === 'upload' && (
+                <div className="space-y-4">
+                  <div className="border-2 border-dashed border-purple-200 rounded-3xl p-8 text-center hover:bg-purple-50/40 transition">
+                    {uploadedImagePreview ? (
+                      <div className="flex flex-col items-center">
+                        <div className="relative w-48 h-48 rounded-2xl overflow-hidden shadow-md mb-4 border border-purple-200">
+                          <img
+                            src={uploadedImagePreview}
+                            alt="Aperçu modèle personnalisé"
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setUploadedImagePreview(null)}
+                            className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white hover:bg-black transition cursor-pointer"
+                            title="Retirer la photo"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                        <p className="text-xs font-semibold text-emerald-700 flex items-center gap-1.5 mb-2">
+                          <CheckCircle2 size={15} /> Photo chargée avec succès
+                        </p>
+                        <label className="cursor-pointer text-xs font-bold text-[#581C87] hover:underline">
+                          Changer de photo
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="w-14 h-14 rounded-full bg-purple-100 text-[#581C87] flex items-center justify-center mx-auto mb-3">
+                          <Upload size={24} />
+                        </div>
+                        <h4 className="text-sm font-extrabold text-gray-800 mb-1">
+                          Glissez-déposez ou parcourez une photo
+                        </h4>
+                        <p className="text-xs text-gray-500 mb-4 font-light">
+                          Formats acceptés : JPG, PNG, WEBP (max 5 Mo)
+                        </p>
+                        <label className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#581C87] text-white text-xs font-bold shadow-md hover:bg-[#6B21A8] transition cursor-pointer">
+                          <span>Sélectionner une photo</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 6. Avec ou sans carte de petit mot */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
+              <h3 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">6</span>
+                Carte de petit mot personnalisée
+              </h3>
+              <p className="text-xs text-gray-500 mb-6 font-light">
+                Offrez une délicate attention avec une jolie carte de vœux manuscrite glissée dans votre coffret.
+              </p>
+
+              <div className="flex gap-3 mb-4">
+                <button
+                  type="button"
+                  onClick={() => setHasGreetingCard(false)}
+                  className={`flex-1 py-3 px-5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                    !hasGreetingCard 
+                      ? 'bg-[#581C87] text-white shadow-md' 
+                      : 'bg-purple-50 text-gray-700 hover:bg-purple-100/60'
+                  }`}
+                >
+                  Sans carte de petit mot
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHasGreetingCard(true)}
+                  className={`flex-1 py-3 px-5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                    hasGreetingCard 
+                      ? 'bg-[#581C87] text-white shadow-md' 
+                      : 'bg-purple-50 text-gray-700 hover:bg-purple-100/60'
+                  }`}
+                >
+                  ✦ Avec carte de vœux (offerte)
+                </button>
+              </div>
+
+              {hasGreetingCard && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }} 
+                  animate={{ opacity: 1, height: 'auto' }} 
+                  className="mt-4 pt-4 border-t border-purple-100"
+                >
+                  <label className="block text-xs font-bold text-gray-700 mb-2">
+                    Texte à inscrire sur la carte :
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={cardMessage}
+                    onChange={(e) => setCardMessage(e.target.value)}
+                    placeholder="Ex: Joyeux anniversaire ma douce maman ! Que cette nouvelle année t'apporte bonheur et santé. Avec tout notre amour."
+                    className="w-full p-4 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm leading-relaxed"
+                  />
+                </motion.div>
+              )}
+            </div>
+
+            {/* Bouton de Passage à l'Étape 2 */}
+            <div className="flex justify-end pt-4">
+              <button
+                type="button"
+                onClick={handleNextStep}
+                className="w-full sm:w-auto px-10 py-4 rounded-full bg-[#581C87] hover:bg-[#6B21A8] text-white font-extrabold text-sm shadow-xl shadow-purple-900/30 transition-all flex items-center justify-center gap-2 cursor-pointer transform hover:-translate-y-0.5"
+              >
+                <span>Passer à l'étape 2 (Livraison & Contact)</span>
+                <ArrowRight size={18} />
+              </button>
             </div>
           </motion.div>
         )}
 
-        {/* Navigation Buttons */}
-        <div className="flex justify-between">
-          <button
-            onClick={handlePrevious}
-            disabled={currentStep === 1}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-all ${
-              currentStep === 1
-                ? 'opacity-40 cursor-not-allowed'
-                : 'border-2 border-[var(--beige-gold)] text-[var(--brown-deep)] hover:bg-[var(--beige-gold)] hover:text-white'
-            }`}
+        {/* ========================================================================= */}
+        {/* FORMULAIRE : ÉTAPE 2 - INFORMATIONS POUR LA LIVRAISON */}
+        {/* ========================================================================= */}
+        {currentStep === 2 && (
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-10"
           >
-            <ArrowLeft size={20} />
-            Précédent
-          </button>
+            {/* 1. Type de commande (livraison, sur place) */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
+              <h3 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">1</span>
+                Type de commande
+              </h3>
+              <p className="text-xs text-gray-500 mb-6 font-light">
+                Choisissez comment vous souhaitez récupérer votre gâteau d'exception.
+              </p>
 
-          {currentStep < 5 ? (
-            <button
-              onClick={handleNext}
-              disabled={!canProceed()}
-              className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-all ${
-                !canProceed()
-                  ? 'opacity-40 cursor-not-allowed bg-[var(--grey-light)]'
-                  : 'bg-[var(--beige-gold)] text-white hover:opacity-90'
-              }`}
-            >
-              Suivant
-              <ArrowRight size={20} />
-            </button>
-          ) : (
-            <button
-              onClick={handleSubmit}
-              disabled={!canProceed()}
-              className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-all ${
-                !canProceed()
-                  ? 'opacity-40 cursor-not-allowed bg-[var(--grey-light)]'
-                  : 'bg-[var(--beige-gold)] text-white hover:opacity-90'
-              }`}
-            >
-              <Check size={20} />
-              Envoyer la commande via WhatsApp
-            </button>
-          )}
-        </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <button
+                  type="button"
+                  onClick={() => setDeliveryType('livraison')}
+                  className={`p-5 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center gap-4 ${
+                    deliveryType === 'livraison' 
+                      ? 'border-[#581C87] bg-purple-50/60 shadow-md ring-2 ring-[#581C87]/20' 
+                      : 'border-gray-200 hover:border-purple-200 hover:bg-gray-50/50'
+                  }`}
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-purple-100 text-[#581C87] flex items-center justify-center shrink-0">
+                    <Truck size={22} />
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-extrabold text-gray-900 text-sm">Livraison à domicile</div>
+                    <div className="text-[11px] text-gray-500 font-light mt-0.5">Livraison soignée et climatisée à votre porte</div>
+                  </div>
+                  {deliveryType === 'livraison' && <CheckCircle2 size={18} className="text-[#581C87]" />}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setDeliveryType('sur_place')}
+                  className={`p-5 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center gap-4 ${
+                    deliveryType === 'sur_place' 
+                      ? 'border-[#581C87] bg-purple-50/60 shadow-md ring-2 ring-[#581C87]/20' 
+                      : 'border-gray-200 hover:border-purple-200 hover:bg-gray-50/50'
+                  }`}
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-purple-100 text-[#581C87] flex items-center justify-center shrink-0">
+                    <Store size={22} />
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-extrabold text-gray-900 text-sm">Retrait sur place</div>
+                    <div className="text-[11px] text-gray-500 font-light mt-0.5">À l'Atelier Lê Ci (Ouagadougou)</div>
+                  </div>
+                  {deliveryType === 'sur_place' && <CheckCircle2 size={18} className="text-[#581C87]" />}
+                </button>
+              </div>
+            </div>
+
+            {/* 2. Date et heure de réception */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
+              <h3 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">2</span>
+                Date et heure de réception
+              </h3>
+              <p className="text-xs text-gray-500 mb-6 font-light">
+                Un préavis minimum de 48h est requis pour garantir la fraîcheur et la perfection de votre confection artisanale.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
+                    <Calendar size={14} className="text-[#581C87]" />
+                    Date de réception souhaitée *
+                  </label>
+                  <input
+                    type="date"
+                    min={minDate}
+                    value={receptionDate}
+                    onChange={(e) => setReceptionDate(e.target.value)}
+                    className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm"
+                  />
+                  <span className="block text-[11px] text-gray-400 mt-1">Date minimum : {minDate}</span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
+                    <Clock size={14} className="text-[#581C87]" />
+                    Tranche horaire souhaitée
+                  </label>
+                  <select
+                    value={receptionTime}
+                    onChange={(e) => setReceptionTime(e.target.value)}
+                    className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm bg-white"
+                  >
+                    <option value="09h00 - 12h00">09h00 - 12h00 (Matinée)</option>
+                    <option value="14h00 - 17h00">14h00 - 17h00 (Après-midi)</option>
+                    <option value="17h00 - 19h30">17h00 - 19h30 (Soirée)</option>
+                    <option value="Autre heure précise">Autre heure précise</option>
+                  </select>
+
+                  {receptionTime === 'Autre heure précise' && (
+                    <input
+                      type="text"
+                      value={customTime}
+                      onChange={(e) => setCustomTime(e.target.value)}
+                      placeholder="Ex: Précisément à 15h30"
+                      className="mt-3 w-full px-4 py-2.5 rounded-2xl border border-gray-200 focus:border-[#581C87] outline-none text-xs"
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* 3. Nom et numéro WhatsApp/tél de la personne qui commande */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
+              <h3 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">3</span>
+                Coordonnées de la personne qui commande
+              </h3>
+              <p className="text-xs text-gray-500 mb-6 font-light">
+                Ces informations nous permettront d'échanger avec vous sur WhatsApp pour finaliser les moindres détails.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
+                    <User size={14} className="text-[#581C87]" />
+                    Nom complet de l'acheteur *
+                  </label>
+                  <input
+                    type="text"
+                    value={ordererName}
+                    onChange={(e) => setOrdererName(e.target.value)}
+                    placeholder="Ex: Salimata Traoré"
+                    className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
+                    <Phone size={14} className="text-[#581C87]" />
+                    Numéro WhatsApp / Téléphone *
+                  </label>
+                  <input
+                    type="tel"
+                    value={ordererPhone}
+                    onChange={(e) => setOrdererPhone(e.target.value)}
+                    placeholder="Ex: +226 70 00 00 00"
+                    className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 4. Nom de la personne qui va réceptionner le colis + WhatsApp/tél (second numéro de secours) */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                <h3 className="text-base sm:text-lg font-extrabold text-gray-900 flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">4</span>
+                  Personne qui réceptionnera le colis
+                </h3>
+              </div>
+              <p className="text-xs text-gray-500 mb-4 font-light">
+                Indiquez les coordonnées du destinataire avec un second numéro de secours pour garantir la livraison.
+              </p>
+
+              {/* Checkbox "C'est moi-même" */}
+              <label className="inline-flex items-center gap-2.5 p-3 px-4 rounded-2xl bg-purple-50/70 border border-purple-100 cursor-pointer mb-6 text-xs font-bold text-[#581C87]">
+                <input
+                  type="checkbox"
+                  checked={isSameRecipient}
+                  onChange={(e) => setIsSameRecipient(e.target.checked)}
+                  className="rounded text-[#581C87] focus:ring-[#581C87] w-4 h-4 cursor-pointer"
+                />
+                <span>C'est moi-même qui vais réceptionner la commande</span>
+              </label>
+
+              {!isSameRecipient && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-2">
+                      Nom du réceptionnaire *
+                    </label>
+                    <input
+                      type="text"
+                      value={recipientName}
+                      onChange={(e) => setRecipientName(e.target.value)}
+                      placeholder="Nom de la personne présente pour réceptionner"
+                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-2">
+                      Numéro WhatsApp/tél du réceptionnaire *
+                    </label>
+                    <input
+                      type="tel"
+                      value={recipientPhone}
+                      onChange={(e) => setRecipientPhone(e.target.value)}
+                      placeholder="Numéro principal"
+                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Second numéro de secours OBLIGATOIRE */}
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                <label className="block text-xs font-bold text-[#581C87] mb-2 flex items-center gap-1.5">
+                  <Phone size={14} />
+                  Second numéro WhatsApp/tél de secours (au cas où le premier ne passe pas) *
+                </label>
+                <input
+                  type="tel"
+                  value={recipientPhoneBackup}
+                  onChange={(e) => setRecipientPhoneBackup(e.target.value)}
+                  placeholder="Ex: +226 76 00 00 00 (famille, collègue, conjoint...)"
+                  className="w-full px-4 py-3 rounded-2xl border border-purple-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm bg-purple-50/20"
+                />
+                <span className="block text-[11px] text-gray-400 mt-1">
+                  Ce numéro servira au livreur en cas de boîte vocale ou d'injoignabilité du premier numéro.
+                </span>
+              </div>
+            </div>
+
+            {/* 5. Lieu de livraison (quartier avec précision ou géolocalisation) */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
+              <h3 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">5</span>
+                Lieu de réception
+              </h3>
+
+              {deliveryType === 'sur_place' ? (
+                <div className="p-5 rounded-2xl bg-purple-50/60 border border-purple-200 flex items-start gap-4">
+                  <Store size={24} className="text-[#581C87] shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-extrabold text-gray-900 text-sm">Atelier Les Douceurs de Lê Ci</h4>
+                    <p className="text-xs text-gray-600 mt-1 font-light leading-relaxed">
+                      Ouagadougou, Burkina Faso. Votre commande sera soigneusement emballée et prête à votre créneau choisi.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                    <p className="text-xs text-gray-500 font-light">
+                      Saisissez votre quartier avec le maximum de repères, ou utilisez le bouton de géolocalisation GPS.
+                    </p>
+
+                    <button
+                      type="button"
+                      onClick={handleGetLocation}
+                      disabled={geoLocating}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-purple-100 text-[#581C87] text-xs font-bold hover:bg-purple-200 transition cursor-pointer shrink-0 disabled:opacity-50"
+                    >
+                      <Navigation size={13} className={geoLocating ? 'animate-spin' : ''} />
+                      <span>{geoLocating ? 'Localisation en cours...' : '📍 Utiliser ma position GPS'}</span>
+                    </button>
+                  </div>
+
+                  <textarea
+                    rows={3}
+                    value={deliveryAddress}
+                    onChange={(e) => setDeliveryAddress(e.target.value)}
+                    placeholder="Ex: Quartier Ouaga 2000, non loin de la pharmacie des Nations, Rue 15.24, Villa blanche portail noir..."
+                    className="w-full p-4 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm leading-relaxed"
+                  />
+                  {geoCoords && (
+                    <div className="mt-2 text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
+                      <CheckCircle2 size={13} /> Coordonnées GPS capturées avec succès.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* 6. Avec ou sans carte de petit mot (rappel étape 2) */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
+              <h3 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">6</span>
+                Carte de petit mot (vérification)
+              </h3>
+              
+              <div className="p-4 rounded-2xl bg-purple-50/50 border border-purple-100 text-xs text-gray-700 flex items-start justify-between gap-4">
+                <div>
+                  <div className="font-bold text-gray-900 mb-1">
+                    Statut : {hasGreetingCard ? '✦ Avec carte de vœux offerte' : 'Sans carte de petit mot'}
+                  </div>
+                  {hasGreetingCard && (
+                    <div className="italic text-gray-600 bg-white p-3 rounded-xl border border-purple-200 mt-2 font-serif text-sm">
+                      « {cardMessage || 'Aucun message spécifié'} »
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(1)}
+                  className="text-xs font-bold text-[#581C87] hover:underline shrink-0 cursor-pointer"
+                >
+                  Modifier à l'étape 1
+                </button>
+              </div>
+            </div>
+
+            {/* 7. Informations complémentaires (allergies, demandes spéciales...) */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
+              <h3 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">7</span>
+                Informations complémentaires
+              </h3>
+              <p className="text-xs text-gray-500 mb-4 font-light">
+                Indiquez d'éventuelles allergies alimentaires (gluten, fruits à coque, lactose...), consignes pour le livreur ou demandes spécifiques.
+              </p>
+
+              <textarea
+                rows={3}
+                value={additionalNotes}
+                onChange={(e) => setAdditionalNotes(e.target.value)}
+                placeholder="Ex: Sans arachides svp, intolérance au lactose pour l'un des invités, ou consignes de sonner à la porte gauche..."
+                className="w-full p-4 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm leading-relaxed"
+              />
+            </div>
+
+            {/* Récapitulatif & Actions Finales */}
+            <div className="bg-gradient-to-br from-purple-900 to-[#581C87] rounded-3xl p-6 sm:p-8 text-white shadow-xl">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-6 border-b border-purple-700/60">
+                <div>
+                  <span className="text-xs text-purple-200 uppercase tracking-widest font-bold">Récapitulatif de votre création</span>
+                  <h4 className="text-xl sm:text-2xl font-black mt-1">
+                    {theme === 'autre' ? (themeCustom || 'Gâteau sur-mesure') : `Gâteau de ${theme}`} • {currentPortion.label}
+                  </h4>
+                  <p className="text-xs text-purple-200/80 mt-1">
+                    Saveur : {selectedFlavor === 'Autre saveur personnalisée' ? customFlavorText : selectedFlavor}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs text-purple-200">Tarif indicatif</span>
+                  <div className="text-2xl sm:text-3xl font-black">
+                    {estimatedPrice > 0 ? `${estimatedPrice.toLocaleString('fr-FR')} FCFA` : 'Sur devis'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <button
+                  type="button"
+                  onClick={handlePrevStep}
+                  className="w-full sm:w-auto px-6 py-3.5 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition cursor-pointer flex items-center justify-center gap-2 border border-white/20"
+                >
+                  <ArrowLeft size={16} />
+                  <span>Revenir à l'étape 1</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSubmitOrder}
+                  className="w-full sm:w-auto px-10 py-4 rounded-full bg-white text-[#581C87] hover:bg-purple-50 font-black text-sm shadow-2xl transition cursor-pointer flex items-center justify-center gap-2.5 transform hover:scale-105"
+                >
+                  <MessageSquare size={18} className="text-[#581C87]" />
+                  <span>Valider et envoyer sur WhatsApp</span>
+                </button>
+              </div>
+            </div>
+
+          </motion.div>
+        )}
+
       </div>
+
+      {/* ========================================================================= */}
+      {/* MODALE DE SUCCÈS APRÈS VALIDATION */}
+      {/* ========================================================================= */}
+      <AnimatePresence>
+        {showSuccessModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl p-8 max-w-lg w-full text-center shadow-2xl relative border border-purple-100"
+            >
+              <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-4">
+                <CheckCircle2 size={36} />
+              </div>
+
+              <h3 className="text-2xl font-black text-gray-900 mb-2">
+                Demande transmise avec succès !
+              </h3>
+
+              <p className="text-xs sm:text-sm text-gray-600 mb-6 font-light leading-relaxed">
+                Votre récapitulatif complet a été généré et transmis vers notre WhatsApp officiel. Notre cheffe pâtissière vous répondra sous quelques minutes pour confirmer la faisabilité et le créneau de confection.
+              </p>
+
+              <div className="p-4 rounded-2xl bg-purple-50 text-left text-xs text-gray-700 space-y-1.5 mb-6">
+                <div><span className="font-bold">Gâteau :</span> {currentPortion.label} ({theme})</div>
+                <div><span className="font-bold">Date de réception :</span> {receptionDate} ({receptionTime})</div>
+                <div><span className="font-bold">Mode :</span> {deliveryType === 'livraison' ? 'Livraison à domicile' : 'Retrait atelier'}</div>
+                <div><span className="font-bold">Tarif estimé :</span> {estimatedPrice > 0 ? `${estimatedPrice.toLocaleString('fr-FR')} FCFA` : 'Sur devis'}</div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowSuccessModal(false)}
+                className="w-full py-3.5 px-6 rounded-full bg-[#581C87] text-white text-xs font-bold hover:bg-[#6B21A8] transition shadow-md cursor-pointer"
+              >
+                Fermer et revenir au site
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

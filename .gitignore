@@ -33,3 +33,5 @@ server/*.db
 server/*.sqlite
 
 cloudflared.exe
+
+tunnel_runner.mjs

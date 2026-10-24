@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShoppingBag, Check, Zap, ShieldCheck, Loader2 } from 'lucide-react';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
@@ -257,6 +258,22 @@ export function Catalogue() {
   const [productsList, setProductsList] = useState<any[]>(fallbackProducts);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('Tous');
+  const [searchParams] = useSearchParams();
+  const categoryParam = searchParams.get('category');
+
+  useEffect(() => {
+    if (categoryParam) {
+      if (categoryParam.includes('sal')) {
+        setSelectedCategory('Douceurs salés');
+      } else if (categoryParam.includes('sucr')) {
+        setSelectedCategory('Douceurs sucrées');
+      } else if (categoryParam.includes('Paquet')) {
+        setSelectedCategory('Paquets');
+      } else if (categoryParam.includes('Gât') || categoryParam.includes('Gateau')) {
+        setSelectedCategory('Gâteaux');
+      }
+    }
+  }, [categoryParam]);
   
   const [addedProductId, setAddedProductId] = useState<number | null>(null);
 
