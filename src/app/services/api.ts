@@ -460,6 +460,7 @@ export interface PortionOption {
 export interface Product {
   portions_json?: string;
   portions?: PortionOption[];
+  stock_quantity?: number;
   id: number;
   name: string;
   category: string;

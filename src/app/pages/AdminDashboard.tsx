@@ -155,7 +155,8 @@ export function AdminDashboard() {
     price: 1500,
     description: '',
     image: '',
-    is_available: true
+    is_available: true,
+    stock_quantity: 10
   });
 
   // État Statistiques Ventes Détaillées
@@ -405,7 +406,8 @@ export function AdminDashboard() {
       price: 1500,
       description: '',
       image: 'https://images.unsplash.com/photo-1582180834946-f3d376b18376?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080',
-      is_available: true
+      is_available: true,
+      stock_quantity: 10
     });
     setIsProductModalOpen(true);
   };
@@ -434,7 +436,8 @@ export function AdminDashboard() {
       price: p.price,
       description: p.description || '',
       image: p.image || '',
-      is_available: Boolean(p.is_available)
+      is_available: Boolean(p.is_available),
+      stock_quantity: p.stock_quantity !== undefined ? p.stock_quantity : 10
     });
     setIsProductModalOpen(true);
   };
@@ -1131,8 +1134,28 @@ export function AdminDashboard() {
                       <p className="text-[11px] text-gray-400 line-clamp-2 mb-3">
                         {product.description || 'Pâtisserie fine confectionnée à la main.'}
                       </p>
-                      <div className="text-base font-black text-[#D4AF37] mb-3">
+                      <div className="text-base font-black text-[#D4AF37] mb-2">
                         {product.price.toLocaleString('fr-FR')} FCFA
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5 mb-3">
+                        {(product.stock_quantity ?? 10) > 5 ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                            {product.stock_quantity ?? 10} en stock
+                          </span>
+                        ) : (product.stock_quantity ?? 10) > 0 ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                            Plus que {product.stock_quantity} restant(s)
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                            Rupture de stock
+                          </span>
+                        )}
+                        {product.category === 'Gâteaux' && (
+                          <span className="text-[10px] text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded-full border border-purple-500/30 font-medium">
+                            Multi-parts
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -1660,7 +1683,7 @@ export function AdminDashboard() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
                     Catégorie
@@ -1668,7 +1691,7 @@ export function AdminDashboard() {
                   <select
                     value={productFormData.category}
                     onChange={(e) => setProductFormData({ ...productFormData, category: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-[#0F172A] border border-gray-700 rounded-xl text-white text-xs"
+                    className="w-full px-3 py-2.5 bg-[#0F172A] border border-gray-700 rounded-xl text-white text-xs"
                   >
                     <option value="Douceurs salées">Douceurs salées</option>
                     <option value="Douceurs sucrées">Douceurs sucrées</option>
@@ -1679,7 +1702,7 @@ export function AdminDashboard() {
 
                 <div>
                   <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
-                    Prix (FCFA, min. 500)
+                    Prix de base (FCFA)
                   </label>
                   <input
                     type="number"
@@ -1687,10 +1710,83 @@ export function AdminDashboard() {
                     required
                     value={productFormData.price}
                     onChange={(e) => setProductFormData({ ...productFormData, price: Number(e.target.value) })}
-                    className="w-full px-4 py-2.5 bg-[#0F172A] border border-gray-700 rounded-xl text-white text-xs"
+                    className="w-full px-3 py-2.5 bg-[#0F172A] border border-gray-700 rounded-xl text-white text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                    Quantité en stock
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    required
+                    value={productFormData.stock_quantity}
+                    onChange={(e) => setProductFormData({ ...productFormData, stock_quantity: Number(e.target.value) })}
+                    className="w-full px-3 py-2.5 bg-[#0F172A] border border-gray-700 rounded-xl text-white text-xs"
+                    placeholder="ex: 10"
                   />
                 </div>
               </div>
+
+              {/* Configurateur de tarifs multi-parts (Gâteaux uniquement, Notion #6) */}
+              {(productFormData.category === 'Gâteaux' || productFormData.category?.includes('Gât')) && (
+                <div className="p-3.5 rounded-2xl bg-black/40 border border-purple-500/30 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="block text-[11px] font-bold text-purple-300 uppercase tracking-wider">
+                        Tarifs selon les parts (Gâteaux)
+                      </label>
+                      <p className="text-[10px] text-gray-400">
+                        Définissez les formats (6 parts, 8 parts...) et le prix de chaque part
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAddPortionRow}
+                      className="px-2.5 py-1 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-500/40 text-[11px] font-bold cursor-pointer transition"
+                    >
+                      + Ajouter une part
+                    </button>
+                  </div>
+
+                  <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                    {portionsList.map((pRow, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={pRow.label}
+                          onChange={(e) => handleUpdatePortion(idx, 'label', e.target.value)}
+                          placeholder="ex: 6 parts"
+                          className="w-1/2 px-3 py-1.5 bg-[#0F172A] border border-gray-700 rounded-lg text-white text-xs"
+                        />
+                        <div className="flex items-center gap-1.5 w-1/2">
+                          <input
+                            type="number"
+                            step="500"
+                            min="500"
+                            value={pRow.price}
+                            onChange={(e) => handleUpdatePortion(idx, 'price', Number(e.target.value))}
+                            className="w-full px-3 py-1.5 bg-[#0F172A] border border-gray-700 rounded-lg text-white text-xs"
+                          />
+                          <span className="text-[10px] text-gray-400">FCFA</span>
+                          {portionsList.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemovePortion(idx)}
+                              className="p-1.5 text-rose-400 hover:text-rose-300 hover:bg-rose-900/30 rounded cursor-pointer transition"
+                              title="Supprimer ce palier"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">

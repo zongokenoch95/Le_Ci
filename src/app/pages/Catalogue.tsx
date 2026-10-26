@@ -286,15 +286,25 @@ export function Catalogue() {
       try {
         const data = await getProducts({ available: true });
         if (Array.isArray(data) && data.length > 0) {
-          const formatted = data.map((p: Product) => ({
-            id: p.id,
-            name: p.name,
-            category: p.category || 'Gâteaux',
-            price: `${p.price.toLocaleString('fr-FR')} FCFA`,
-            numericPrice: p.price,
-            image: p.image || '/products/gateau_1.jpeg',
-            description: p.description || "",
-          }));
+          const formatted = data.map((p: Product) => {
+            let portions: any[] = [];
+            if (p.portions && Array.isArray(p.portions)) {
+              portions = p.portions;
+            } else if (p.portions_json) {
+              try { portions = JSON.parse(p.portions_json); } catch(e) {}
+            }
+            return {
+              id: p.id,
+              name: p.name,
+              category: p.category || 'Gâteaux',
+              price: `${p.price.toLocaleString('fr-FR')} FCFA`,
+              numericPrice: p.price,
+              image: p.image || '/products/gateau_1.jpeg',
+              description: p.description || "",
+              stock_quantity: p.stock_quantity !== undefined ? p.stock_quantity : 10,
+              portions
+            };
+          });
           setProductsList(formatted);
         }
       } catch (err) {
@@ -437,6 +447,15 @@ export function Catalogue() {
                         <span className="absolute top-3 left-3 px-3 py-1 bg-white/90 backdrop-blur-md rounded-full text-[11px] font-bold text-gray-800 shadow-sm">
                           {product.category}
                         </span>
+                        {product.stock_quantity !== undefined && product.stock_quantity <= 0 ? (
+                          <span className="absolute top-3 right-3 px-3 py-1 bg-red-600 text-white rounded-full text-[10px] font-black uppercase tracking-wider shadow-md">
+                            Épuisé
+                          </span>
+                        ) : (product.stock_quantity !== undefined && product.stock_quantity <= 5 ? (
+                          <span className="absolute top-3 right-3 px-2.5 py-1 bg-amber-500 text-white rounded-full text-[10px] font-bold shadow-sm">
+                            Plus que {product.stock_quantity} en stock !
+                          </span>
+                        ) : null)}
                       </div>
 
                       <div className="p-5">
@@ -454,14 +473,20 @@ export function Catalogue() {
                               <Cake size={12} /> Format & Nombre de parts :
                             </label>
                             <select
-                              value={selectedCakePortions[product.id]?.label || '6-8 parts'}
+                              value={selectedCakePortions[product.id]?.label || (product.portions?.[0]?.label || '6-8 parts')}
                               onChange={(e) => {
                                 const selectedLabel = e.target.value;
-                                let mult = 1;
-                                if (selectedLabel.includes('8')) mult = 1.25;
-                                if (selectedLabel.includes('10') || selectedLabel.includes('12')) mult = 1.5;
-                                if (selectedLabel.includes('15') || selectedLabel.includes('20')) mult = 2;
-                                const calculatedPrice = Math.round((product.numericPrice * mult) / 500) * 500;
+                                let calculatedPrice = product.numericPrice;
+                                if (product.portions && product.portions.length > 0) {
+                                  const matched = product.portions.find((p: any) => p.label === selectedLabel);
+                                  if (matched) calculatedPrice = matched.price;
+                                } else {
+                                  let mult = 1;
+                                  if (selectedLabel.includes('8')) mult = 1.25;
+                                  if (selectedLabel.includes('10') || selectedLabel.includes('12')) mult = 1.5;
+                                  if (selectedLabel.includes('15') || selectedLabel.includes('20')) mult = 2;
+                                  calculatedPrice = Math.round((product.numericPrice * mult) / 500) * 500;
+                                }
                                 setSelectedCakePortions({
                                   ...selectedCakePortions,
                                   [product.id]: { label: selectedLabel, price: calculatedPrice }
@@ -469,10 +494,20 @@ export function Catalogue() {
                               }}
                               className="w-full p-1.5 rounded-lg border border-purple-200 bg-white font-bold text-gray-800 text-[11px] outline-none"
                             >
-                              <option value="6-8 parts">6 à 8 parts ({product.numericPrice.toLocaleString('fr-FR')} FCFA)</option>
-                              <option value="8-10 parts">8 à 10 parts ({Math.round(product.numericPrice * 1.25).toLocaleString('fr-FR')} FCFA)</option>
-                              <option value="10-12 parts">10 à 12 parts ({Math.round(product.numericPrice * 1.5).toLocaleString('fr-FR')} FCFA)</option>
-                              <option value="15-20 parts">15 à 20 parts ({Math.round(product.numericPrice * 2).toLocaleString('fr-FR')} FCFA)</option>
+                              {product.portions && product.portions.length > 0 ? (
+                                product.portions.map((port: any, pIdx: number) => (
+                                  <option key={pIdx} value={port.label}>
+                                    {port.label} ({port.price.toLocaleString('fr-FR')} FCFA)
+                                  </option>
+                                ))
+                              ) : (
+                                <>
+                                  <option value="6-8 parts">6 à 8 parts ({product.numericPrice.toLocaleString('fr-FR')} FCFA)</option>
+                                  <option value="8-10 parts">8 à 10 parts ({Math.round(product.numericPrice * 1.25).toLocaleString('fr-FR')} FCFA)</option>
+                                  <option value="10-12 parts">10 à 12 parts ({Math.round(product.numericPrice * 1.5).toLocaleString('fr-FR')} FCFA)</option>
+                                  <option value="15-20 parts">15 à 20 parts ({Math.round(product.numericPrice * 2).toLocaleString('fr-FR')} FCFA)</option>
+                                </>
+                              )}
                             </select>
                           </div>
                         )}
@@ -483,9 +518,18 @@ export function Catalogue() {
                       </div>
                     </div>
 
-                    <div className="p-5 pt-0 flex gap-2">
-                      <button
-                        onClick={() => handleAddToCart(product, false)}
+                    <div className="p-5 pt-0">
+                      {product.stock_quantity !== undefined && product.stock_quantity <= 0 ? (
+                        <button
+                          disabled
+                          className="w-full py-2.5 px-3 rounded-full font-bold text-xs bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed flex items-center justify-center gap-1.5"
+                        >
+                          <span>Rupture temporaire</span>
+                        </button>
+                      ) : (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleAddToCart(product, false)}
                         className={`flex-1 py-2.5 px-3 rounded-full font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                           isAdded
                             ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
@@ -508,10 +552,12 @@ export function Catalogue() {
                         onClick={() => handleAddToCart(product, true)}
                         className="flex-1 py-2.5 px-3 rounded-full font-extrabold text-xs bg-[#581C87] hover:bg-[#6B21A8] text-white shadow-md shadow-purple-900/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
                         title="Commander immédiatement"
-                      >
-                        <Zap size={15} />
-                        <span>Commander</span>
-                      </button>
+                          >
+                            <Zap size={15} />
+                            <span>Commander</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                 );

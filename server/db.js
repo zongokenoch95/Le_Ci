@@ -280,7 +280,7 @@ export async function initDb() {
       is_active INTEGER NOT NULL DEFAULT 1,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     )
-  );
+  `);
 
   await run(`
     INSERT OR IGNORE INTO delivery_settings (id, price_per_km, min_fee, free_threshold, origin_lat, origin_lng, origin_address, is_active)
@@ -310,6 +310,9 @@ export async function initDb() {
   
   try {
     await run(`ALTER TABLE products ADD COLUMN portions_json TEXT DEFAULT '[]'`);
+    try {
+      await run(`ALTER TABLE products ADD COLUMN stock_quantity INTEGER DEFAULT 10`);
+    } catch (e) {}
   } catch (e) {
     // Colonne déjà existante
   }
@@ -1103,6 +1106,7 @@ export async function creditOrderPoints(order) {
       initialPoints,
       tier,
       amount,
+      Math.max(0, Number(stock_quantity) || 0),
       now,
       now
     ]);
@@ -1424,14 +1428,16 @@ export async function getProductById(id) {
   return await get('SELECT * FROM products WHERE id = ?', [id]);
 }
 
-export async function createProduct({ name, category, price, description, image, is_available = 1, portions_json }) {
+export async function createProduct({ name, category, price, description, image, is_available = 1, portions_json, stock_quantity = 10 }) {
   if (!name || !price) throw new Error('Le nom et le prix du plat sont obligatoires');
   const now = new Date().toISOString();
   const numPrice = Math.max(500, Number(price)); // Minimum 500 FCFA
+  const numStock = Math.max(0, parseInt(stock_quantity, 10) || 0);
+  const portionsStr = typeof portions_json === 'string' ? portions_json : JSON.stringify(portions_json || []);
 
   const res = await run(`
-    INSERT INTO products (name, category, price, description, image, is_available, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO products (name, category, price, description, image, is_available, portions_json, stock_quantity, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `, [
     name.trim(),
     category ? category.trim() : 'Gâteaux',
@@ -1439,6 +1445,8 @@ export async function createProduct({ name, category, price, description, image,
     description ? description.trim() : '',
     image ? image.trim() : 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=1080',
     is_available ? 1 : 0,
+    portionsStr,
+    numStock,
     now,
     now
   ]);
@@ -1446,12 +1454,14 @@ export async function createProduct({ name, category, price, description, image,
   return getProductById(res.lastID);
 }
 
-export async function updateProduct(id, { name, category, price, description, image, is_available, portions_json }) {
+export async function updateProduct(id, { name, category, price, description, image, is_available, portions_json, stock_quantity }) {
   const prod = await getProductById(id);
   if (!prod) throw new Error('Plat introuvable');
 
   const now = new Date().toISOString();
   const numPrice = price !== undefined ? Math.max(500, Number(price)) : prod.price;
+  const numStock = stock_quantity !== undefined ? Math.max(0, parseInt(stock_quantity, 10) || 0) : (prod.stock_quantity ?? 10);
+  const portionsStr = portions_json !== undefined ? (typeof portions_json === 'string' ? portions_json : JSON.stringify(portions_json)) : (prod.portions_json || '[]');
 
   await run(`
     UPDATE products SET
@@ -1461,6 +1471,8 @@ export async function updateProduct(id, { name, category, price, description, im
       description = COALESCE(?, description),
       image = COALESCE(?, image),
       is_available = COALESCE(?, is_available),
+      portions_json = ?,
+      stock_quantity = ?,
       updated_at = ?
     WHERE id = ?
   `, [
@@ -1470,6 +1482,8 @@ export async function updateProduct(id, { name, category, price, description, im
     description !== undefined ? description.trim() : prod.description,
     image !== undefined ? image.trim() : prod.image,
     is_available !== undefined ? (is_available ? 1 : 0) : prod.is_available,
+    portionsStr,
+    numStock,
     now,
     id
   ]);

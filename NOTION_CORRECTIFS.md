@@ -1,4 +1,4 @@
-# Correctifs & Améliorations Notion (Synchronisé le 25/10/2026 01:20:19)
+# Correctifs & Améliorations Notion (Synchronisé le 26/10/2026 17:15:18)
 
 24 oct. 2026, 23:03:07
 Correction Le CI
@@ -41,14 +41,21 @@ Etape 2: Information pour la livraison
 6. Avec ou sans carte de petit mot
 7. Informations complémentaire ( allergie, demande speciale...)
 Apres avoir sais tout ca le client doit atterir sur la page de recapitulatif da sa commande au niveau de la page panier
+
 Dashboard
 1. La bande d'annonce doit être paramétrable par le gérant ( texte, couleur du texte, de la banderole, période d'affichage, masquer , afficher)
 2. Ajouter une promotion : une section promotion et événement où le gérant peur ajouter des promotions , des évènements.
-3.
-POur le formulaire de commande de gâteau Mettre date de livraison et heure .
+UPDATE 
+26/10/26
+1. Mettre un bouton annuler la commande sur la page d'attente de paiement .
+1. Je remarque que affichage de certaines page commence par le footer ce qui portera confusion car on ne sais pas sur quelle page nous atterrissons. Corrigé cela 
+1. Soit on sépare deux catégories de gâteau : non personnalisé et personnalisé soit on garde que les gâteau personnalisé
+1. Dans le cas où on garde les deux catégories alors quand on clique sur nos produits on retrouve ces deux catégories, ainsi le client a deux choix: soit un simple gâteau ou le seule variable est le nombre de part, soit un gâteau avec plusieurs variables comme un nom a écrire sur le gâteau, la saveur , le design de n'importe quel gâteau 
+1. POur le formulaire de commande de gâteau Mettre date de livraison et heure .
 Supprimer email
 Personna a contacter .
 Message a écrire sur le gâteau
 Mettre la localisation de la livraison
 Numéro de la personne qui reçois
-• 
+1. Au niveau de la création de nouveaux plat côté gérant dans le formulaire. Concernant l'ajout de gâteau on doit pouvoir paramétrer différent nombre de part c'est a dire avoir un gateau peut être de 6 part , mais aussi de 8 part ,… et designer pour chaque part le prix .  Ce ci concerne uniquement les gâteau 
+1. Ajouter de l'ajout de plat on doit pouvoir préciser le quantité du stock 
