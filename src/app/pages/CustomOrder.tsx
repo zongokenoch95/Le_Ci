@@ -145,30 +145,86 @@ export function CustomOrder() {
     }
   };
 
-  // Géolocalisation GPS
+  const [geoStatusMsg, setGeoStatusMsg] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
+
+  // Géolocalisation GPS multi-niveaux ultra robuste (Point 14)
   const handleGetLocation = () => {
+    setGeoStatusMsg(null);
     if (!navigator.geolocation) {
-      alert('La géolocalisation n\'est pas supportée par votre navigateur.');
+      setGeoStatusMsg({ type: 'error', text: "La géolocalisation n'est pas supportée par votre navigateur/appareil." });
       return;
     }
+
     setGeoLocating(true);
+
+    const onLocationFound = async (pos: GeolocationPosition) => {
+      const { latitude, longitude, accuracy } = pos.coords;
+      setGeoCoords({ lat: latitude, lng: longitude });
+
+      let locationLabel = `Position GPS : ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3500);
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=16`,
+          { signal: controller.signal }
+        );
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.display_name) {
+            const shortQ = data.address?.suburb || data.address?.neighbourhood || data.address?.city_district || data.display_name.split(',')[0];
+            locationLabel = `📍 ${shortQ} (GPS: ${latitude.toFixed(5)}, ${longitude.toFixed(5)})`;
+          }
+        }
+      } catch (e) {
+        // Fallback sans nom
+      }
+
+      const mapsLink = `https://maps.google.com/?q=${latitude},${longitude}`;
+      setDeliveryAddress(prev => {
+        if (!prev) return `${locationLabel} - ${mapsLink}`;
+        return `${prev} | ${locationLabel}`;
+      });
+      setGeoStatusMsg({ type: 'success', text: `Position GPS capturée avec succès (${Math.round(accuracy)}m de précision) !` });
+      setGeoLocating(false);
+    };
+
+    const tryLowAccuracy = () => {
+      navigator.geolocation.getCurrentPosition(
+        onLocationFound,
+        (finalErr) => {
+          console.warn('Erreur GPS client:', finalErr);
+          setGeoLocating(false);
+          if (finalErr.code === 1) {
+            setGeoStatusMsg({
+              type: 'error',
+              text: "Accès GPS refusé par le navigateur. Veuillez autoriser la localisation ou choisir votre quartier ci-dessous."
+            });
+          } else if (finalErr.code === 3) {
+            setGeoStatusMsg({
+              type: 'error',
+              text: "Délai GPS dépassé. Veuillez saisir votre quartier manuellement ou choisir un quartier ci-dessous."
+            });
+          } else {
+            setGeoStatusMsg({
+              type: 'error',
+              text: "Signal GPS introuvable. Veuillez indiquer votre quartier dans le champ ci-dessous."
+            });
+          }
+        },
+        { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 }
+      );
+    };
+
+    // 1ère tentative : haute précision (timeout 7s)
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude, longitude } = pos.coords;
-        setGeoCoords({ lat: latitude, lng: longitude });
-        const mapsLink = `https://maps.google.com/?q=${latitude},${longitude}`;
-        setDeliveryAddress(prev => {
-          const prefix = prev ? `${prev} - ` : '';
-          return `${prefix}Position GPS : ${latitude.toFixed(5)}, ${longitude.toFixed(5)} (${mapsLink})`;
-        });
-        setGeoLocating(false);
+      onLocationFound,
+      () => {
+        // 2ème tentative automatique : basse précision / triangulation réseau
+        tryLowAccuracy();
       },
-      (err) => {
-        console.warn('Erreur géolocalisation:', err);
-        alert('Impossible de récupérer votre position. Veuillez saisir votre quartier manuellement.');
-        setGeoLocating(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 7000 }
     );
   };
 
@@ -217,18 +273,13 @@ export function CustomOrder() {
       return false;
     }
 
-    const finalRecipientName = recipientMode === 'self' ? ordererName : recipientName;
-    const finalRecipientPhone = recipientMode === 'self' ? ordererPhone : recipientPhone;
-
-    if (!finalRecipientName.trim()) {
-      setValidationError('Veuillez renseigner le nom de la personne qui réceptionnera la commande.');
-      window.scrollTo({ top: 760, behavior: 'smooth' });
-      return false;
-    }
-    if (!finalRecipientPhone.trim()) {
-      setValidationError('Veuillez renseigner le numéro de la personne qui réceptionnera la commande.');
-      window.scrollTo({ top: 760, behavior: 'smooth' });
-      return false;
+    // Si c'est une autre personne qui réceptionne : pas besoin de nom (Point 15), uniquement son numéro
+    if (recipientMode === 'other') {
+      if (!recipientPhone.trim()) {
+        setValidationError('Veuillez renseigner le numéro de téléphone de la personne qui réceptionnera la commande.');
+        window.scrollTo({ top: 760, behavior: 'smooth' });
+        return false;
+      }
     }
     // Le second numéro est NON OBLIGATOIRE (Point 12)
     if (deliveryType === 'livraison' && !deliveryAddress.trim()) {
@@ -280,7 +331,7 @@ export function CustomOrder() {
       hasGreetingCard ? `Carte: « ${cardMessage} »` : 'Sans carte',
       `Mode: ${deliveryType === 'livraison' ? 'Livraison' : 'Retrait sur place'}`,
       `Date souhaitée: ${receptionDate} (${receptionTime === 'Autre heure précise' ? customTime : receptionTime})`,
-      recipientMode === 'self' ? 'Réceptionnaire: Le commanditaire lui-même' : `Réceptionnaire: ${finalRecipientName} (${finalRecipientPhone})`,
+      recipientMode === 'self' ? 'Réceptionnaire: Le commanditaire lui-même' : `Réceptionnaire (tiers): Tél ${recipientPhone}`,
       `Tél secours: ${recipientPhoneBackup}`,
       deliveryType === 'livraison' ? `Adresse: ${deliveryAddress}` : 'Retrait atelier',
       additionalNotes ? `Allergies/Notes: ${additionalNotes}` : ''
@@ -1038,33 +1089,22 @@ export function CustomOrder() {
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
-                  className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 p-4 rounded-2xl bg-purple-50/40 border border-purple-100"
+                  className="mb-4 p-4 rounded-2xl bg-purple-50/40 border border-purple-100"
                 >
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-2">
-                      Nom complet du réceptionnaire *
-                    </label>
-                    <input
-                      type="text"
-                      value={recipientName}
-                      onChange={(e) => setRecipientName(e.target.value)}
-                      placeholder="Nom de la personne présente pour réceptionner"
-                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm bg-white"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-2">
-                      Numéro WhatsApp / tél du réceptionnaire *
-                    </label>
-                    <input
-                      type="tel"
-                      value={recipientPhone}
-                      onChange={(e) => setRecipientPhone(e.target.value)}
-                      placeholder="Ex: +226 70 00 00 00"
-                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm bg-white"
-                    />
-                  </div>
+                  <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
+                    <Phone size={14} className="text-[#581C87]" />
+                    Numéro WhatsApp / Téléphone de la personne qui réceptionne *
+                  </label>
+                  <input
+                    type="tel"
+                    value={recipientPhone}
+                    onChange={(e) => setRecipientPhone(e.target.value)}
+                    placeholder="Ex: +226 70 00 00 00"
+                    className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm bg-white"
+                  />
+                  <span className="block text-[11px] text-gray-500 mt-1.5">
+                    Le livreur contactera directement ce numéro pour lui remettre le colis en main propre.
+                  </span>
                 </motion.div>
               )}
 
@@ -1129,11 +1169,37 @@ export function CustomOrder() {
                     placeholder="Ex: Quartier Ouaga 2000, non loin de la pharmacie des Nations, Rue 15.24, Villa blanche portail noir..."
                     className="w-full p-4 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm leading-relaxed"
                   />
-                  {geoCoords && (
-                    <div className="mt-2 text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
-                      <CheckCircle2 size={13} /> Coordonnées GPS capturées avec succès.
+
+                  {/* Message d'état de géolocalisation */}
+                  {geoStatusMsg && (
+                    <div className={`mt-2 p-2.5 rounded-xl text-xs flex items-center gap-2 ${
+                      geoStatusMsg.type === 'success' 
+                        ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' 
+                        : 'bg-rose-50 text-rose-800 border border-rose-200'
+                    }`}>
+                      {geoStatusMsg.type === 'success' ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
+                      <span>{geoStatusMsg.text}</span>
                     </div>
                   )}
+
+                  {/* Quartiers fréquents pour sélection rapide en 1 clic */}
+                  <div className="mt-3 pt-3 border-t border-gray-100">
+                    <span className="text-[11px] font-bold text-gray-500 block mb-1.5">
+                      ✦ Remplissage rapide par quartier de Ouagadougou :
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['Ouaga 2000', 'Zone du Bois', 'Koulouba', 'Dassasgho', 'Somgandé', 'Patte d\'Oie', 'Gounghin', 'Pissy', 'Karpala', 'Tampouy', 'Wayalghin', 'Tanghin'].map((q) => (
+                        <button
+                          type="button"
+                          key={q}
+                          onClick={() => setDeliveryAddress(prev => prev ? `${prev}, ${q}` : q)}
+                          className="px-2.5 py-1 rounded-full bg-purple-50 hover:bg-purple-100 text-[#581C87] text-[11px] font-semibold border border-purple-200/80 transition cursor-pointer"
+                        >
+                          + {q}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

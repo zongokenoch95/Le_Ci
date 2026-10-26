@@ -1,4 +1,4 @@
-# Correctifs & Améliorations Notion (Synchronisé le 26/10/2026 20:45:27)
+# Correctifs & Améliorations Notion (Synchronisé le 26/10/2026 21:37:09)
 
 24 oct. 2026, 23:03:07
 Correction Le CI
@@ -65,3 +65,5 @@ Numéro de la personne qui reçois
 1. La commande dun geateau personnalisé se termine comme toute les autres commande c’st a dire avec un paiement 
 1. Champ second numero est non obligatoire
 1. Le bouton de valider et payer avec orange Money ne passe pas du coté personnalisation de gateau
+1. Le bouton de géolocalisation pour récupérer la position pour la livraison ne marche pas 
+1. Au cas c'est une autre personne qui doit récupérer, on n'a pas besoin de son nom

@@ -147,41 +147,54 @@ export const CartDrawer: React.FC = () => {
     }
   }, [distanceKm, totalAmount, deliveryType, deliverySettings]);
 
-  // Géolocalisation GPS en direct
+  // Géolocalisation GPS multi-niveaux ultra robuste
   const handleGetLocation = () => {
     if (!navigator.geolocation) {
       alert('La géolocalisation n\'est pas supportée par votre navigateur.');
       return;
     }
     setGeoLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude, longitude } = pos.coords;
-        try {
-          const res = await calculateDeliveryFee({
-            customerLat: latitude,
-            customerLng: longitude,
-            totalCartAmount: totalAmount
-          });
-          if (res && res.success) {
-            setDistanceKm(res.distanceKm);
-            setDeliveryFee(res.deliveryFee);
-            setIsFreeDelivery(res.isFree);
-            const mapsLink = `https://maps.google.com/?q=${latitude},${longitude}`;
-            setDeliveryAddress(prev => prev ? `${prev} (GPS: ${latitude.toFixed(4)}, ${longitude.toFixed(4)})` : `Position GPS : ${latitude.toFixed(4)}, ${longitude.toFixed(4)} (${mapsLink})`);
-          }
-        } catch (e) {
-          console.warn('Erreur calcul serveur GPS:', e);
-        } finally {
-          setGeoLocating(false);
+
+    const onGpsSuccess = async (pos: GeolocationPosition) => {
+      const { latitude, longitude } = pos.coords;
+      try {
+        const res = await calculateDeliveryFee({
+          customerLat: latitude,
+          customerLng: longitude,
+          totalCartAmount: totalAmount
+        });
+        if (res && res.success) {
+          setDistanceKm(res.distanceKm);
+          setDeliveryFee(res.deliveryFee);
+          setIsFreeDelivery(res.isFree);
+          const mapsLink = `https://maps.google.com/?q=${latitude},${longitude}`;
+          setDeliveryAddress(prev => prev ? `${prev} (GPS: ${latitude.toFixed(4)}, ${longitude.toFixed(4)})` : `Position GPS : ${latitude.toFixed(4)}, ${longitude.toFixed(4)} (${mapsLink})`);
         }
-      },
-      (err) => {
-        console.warn('Erreur GPS client:', err);
-        alert('Position GPS introuvable. Veuillez préciser votre quartier et estimer la distance.');
+      } catch (e) {
+        console.warn('Erreur calcul serveur GPS:', e);
+      } finally {
         setGeoLocating(false);
+      }
+    };
+
+    const tryLowAccuracy = () => {
+      navigator.geolocation.getCurrentPosition(
+        onGpsSuccess,
+        (err) => {
+          console.warn('Erreur GPS client basse précision:', err);
+          alert('Position GPS introuvable ou refusée. Vous pouvez indiquer votre quartier et ajuster le curseur de distance.');
+          setGeoLocating(false);
+        },
+        { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 }
+      );
+    };
+
+    navigator.geolocation.getCurrentPosition(
+      onGpsSuccess,
+      () => {
+        tryLowAccuracy();
       },
-      { timeout: 10000, enableHighAccuracy: true }
+      { timeout: 7000, enableHighAccuracy: true }
     );
   };
 
