@@ -144,6 +144,11 @@ export function AdminDashboard() {
   const [productSearch, setProductSearch] = useState('');
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [portionsList, setPortionsList] = useState<{ label: string; price: number }[]>([
+    { label: '6 parts', price: 15000 },
+    { label: '8 parts', price: 20000 },
+    { label: '10-12 parts', price: 25000 }
+  ]);
   const [productFormData, setProductFormData] = useState({
     name: '',
     category: 'Gâteaux',
@@ -372,8 +377,28 @@ export function AdminDashboard() {
   };
 
   // Actions Gestion des Plats
+  
+  const handleAddPortionRow = () => {
+    setPortionsList([...portionsList, { label: `${portionsList.length * 2 + 6} parts`, price: 20000 }]);
+  };
+
+  const handleUpdatePortion = (idx: number, field: 'label' | 'price', val: any) => {
+    const copy = [...portionsList];
+    copy[idx] = { ...copy[idx], [field]: val };
+    setPortionsList(copy);
+  };
+
+  const handleRemovePortion = (idx: number) => {
+    setPortionsList(portionsList.filter((_, i) => i !== idx));
+  };
+
   const handleOpenAddProduct = () => {
     setEditingProduct(null);
+    setPortionsList([
+      { label: '6 parts', price: 15000 },
+      { label: '8 parts', price: 20000 },
+      { label: '10-12 parts', price: 25000 }
+    ]);
     setProductFormData({
       name: '',
       category: 'Gâteaux',
@@ -387,6 +412,22 @@ export function AdminDashboard() {
 
   const handleOpenEditProduct = (p: Product) => {
     setEditingProduct(p);
+    let parsedPortions: { label: string; price: number }[] = [];
+    try {
+      if (p.portions && Array.isArray(p.portions)) {
+        parsedPortions = p.portions;
+      } else if (p.portions_json) {
+        parsedPortions = JSON.parse(p.portions_json);
+      }
+    } catch (e) {}
+    if (parsedPortions.length === 0 && (p.category === 'Gâteaux' || p.category?.includes('Gât'))) {
+      parsedPortions = [
+        { label: '6 parts', price: p.price },
+        { label: '8 parts', price: Math.round(p.price * 1.3) },
+        { label: '10-12 parts', price: Math.round(p.price * 1.6) }
+      ];
+    }
+    setPortionsList(parsedPortions);
     setProductFormData({
       name: p.name,
       category: p.category || 'Gâteaux',
@@ -402,9 +443,9 @@ export function AdminDashboard() {
     e.preventDefault();
     try {
       if (editingProduct) {
-        await updateProduct(editingProduct.id, productFormData);
+        await updateProduct(editingProduct.id, { ...productFormData, portions_json: JSON.stringify(portionsList) });
       } else {
-        await createProduct(productFormData);
+        await createProduct({ ...productFormData, portions_json: JSON.stringify(portionsList) });
       }
       setIsProductModalOpen(false);
       loadProducts();

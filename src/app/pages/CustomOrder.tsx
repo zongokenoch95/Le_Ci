@@ -69,6 +69,7 @@ export function CustomOrder() {
   const [theme, setTheme] = useState<'mariage' | 'anniversaire' | 'autre'>('anniversaire');
   const [themeCustom, setThemeCustom] = useState('');
   const [cakeDescription, setCakeDescription] = useState('');
+  const [cakeInscriptionMessage, setCakeInscriptionMessage] = useState('');
   const [selectedPortionId, setSelectedPortionId] = useState('10-12');
   const [selectedFlavor, setSelectedFlavor] = useState(flavorOptions[0]);
   const [customFlavorText, setCustomFlavorText] = useState('');
@@ -260,6 +261,7 @@ export function CustomOrder() {
 *ÉTAPE 1 : DESCRIPTION DU GÂTEAU*
 • *Thème :* ${themeDisplay}
 • *Description :* ${cakeDescription}
+• *Inscription sur le gâteau :* ${cakeInscriptionMessage ? `« ${cakeInscriptionMessage} »` : 'Sans inscription spéciale'}
 • *Nombre de parts :* ${currentPortion.label}
 • *Prix estimatif :* ${priceDisplay}
 • *Saveur :* ${flavorDisplay}
@@ -482,6 +484,20 @@ _Demande transmise depuis la plateforme officielle Les Douceurs de Lê Ci._`;
                 placeholder="Exemple : Gâteau rose poudré et doré avec finitions florales, inscription « Joyeux Anniversaire Léa », décor moderne et élégant sans pâte à sucre excessive..."
                 className="w-full p-4 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm leading-relaxed"
               />
+
+              <div className="mt-4 pt-4 border-t border-purple-100/60">
+                <label className="block text-xs font-bold text-gray-800 mb-1.5 flex items-center gap-1.5">
+                  <Sparkles size={14} className="text-[#581C87]" />
+                  Message ou prénom à inscrire sur le gâteau :
+                </label>
+                <input
+                  type="text"
+                  value={cakeInscriptionMessage}
+                  onChange={(e) => setCakeInscriptionMessage(e.target.value)}
+                  placeholder="Ex : « Joyeux Anniversaire Sarah », « Félicitations », « Bienvenue Bébé »..."
+                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm bg-purple-50/20"
+                />
+              </div>
             </div>
 
             {/* 3. Nombre de parts mentionné avec les prix */}

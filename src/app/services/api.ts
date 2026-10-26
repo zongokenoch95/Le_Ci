@@ -452,7 +452,14 @@ export async function loginLoyaltyMember(data: {
 // GESTION DES PLATS / PRODUITS (CRUD GÉRANCE)
 // ==========================================
 
+export interface PortionOption {
+  label: string;
+  price: number;
+}
+
 export interface Product {
+  portions_json?: string;
+  portions?: PortionOption[];
   id: number;
   name: string;
   category: string;

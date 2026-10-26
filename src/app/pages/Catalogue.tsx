@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { ShoppingBag, Check, Zap, ShieldCheck, Loader2 } from 'lucide-react';
+import { ShoppingBag, Check, Zap, ShieldCheck, Loader2, Cake, Sparkles, ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { useCart } from '../context/CartContext';
 import { getProducts, Product } from '../services/api';
@@ -258,6 +259,7 @@ export function Catalogue() {
   const [productsList, setProductsList] = useState<any[]>(fallbackProducts);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('Tous');
+  const [selectedCakePortions, setSelectedCakePortions] = useState<{ [id: number]: { label: string; price: number } }>({});
   const [searchParams] = useSearchParams();
   const categoryParam = searchParams.get('category');
 
@@ -313,11 +315,16 @@ export function Catalogue() {
   });
 
   const handleAddToCart = (product: any, openDrawer = false) => {
+    const chosenPortion = selectedCakePortions[product.id];
+    const finalName = chosenPortion ? `${product.name} (${chosenPortion.label})` : product.name;
+    const finalPrice = chosenPortion ? `${chosenPortion.price.toLocaleString('fr-FR')} FCFA` : product.price;
+    const finalNumericPrice = chosenPortion ? chosenPortion.price : product.numericPrice;
+
     addToCart({
       id: product.id,
-      name: product.name,
-      price: product.price,
-      numericPrice: product.numericPrice,
+      name: finalName,
+      price: finalPrice,
+      numericPrice: finalNumericPrice,
       image: product.image,
       category: product.category
     }, 1);
@@ -370,6 +377,36 @@ export function Catalogue() {
           </div>
         </div>
 
+        
+        {/* Choix entre Gâteau Classique et Gâteau Sur-Mesure (Demande Notion #3 & #4) */}
+        {(selectedCategory === 'Gâteaux' || selectedCategory === 'Tous') && (
+          <div className="mb-10 p-6 rounded-3xl bg-gradient-to-r from-purple-900 to-[#581C87] text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="space-y-1.5 max-w-xl text-center md:text-left">
+              <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#D4AF37] px-3 py-1 rounded-full bg-white/10 inline-block">
+                ✦ Deux formules de gâteaux au choix ✦
+              </span>
+              <h3 className="text-xl sm:text-2xl font-black">
+                Gâteau Simple ou Création Sur-Mesure ?
+              </h3>
+              <p className="text-xs text-purple-200/90 font-light leading-relaxed">
+                • <strong>Gâteau classique</strong> : Choisissez simplement votre recette ci-dessous et le nombre de parts.<br />
+                • <strong>Gâteau sur-mesure</strong> : Personnalisez toutes les variables (nom sur le gâteau, saveurs, thème, décoration, carte).
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto shrink-0">
+              <Link
+                to="/sur-commande"
+                className="px-6 py-3 rounded-full bg-white text-[#581C87] hover:bg-purple-50 font-extrabold text-xs shadow-lg transition flex items-center justify-center gap-2 cursor-pointer transform hover:-translate-y-0.5"
+              >
+                <Sparkles size={14} className="text-[#581C87]" />
+                <span>Créer un gâteau sur-mesure</span>
+                <ArrowRight size={14} />
+              </Link>
+            </div>
+          </div>
+        )}
+
         {/* Grille de Produits */}
         {loading ? (
           <div className="flex flex-col items-center justify-center py-24 text-gray-400 gap-3">
@@ -409,8 +446,39 @@ export function Catalogue() {
                         <p className="text-xs text-gray-500 mb-3 line-clamp-2 leading-relaxed">
                           {product.description || 'Création artisanale raffinée avec des ingrédients d excellence.'}
                         </p>
+                        
+                        {/* Sélecteur de parts pour les Gâteaux (Notion #4) */}
+                        {(product.category === 'Gâteaux' || product.category?.includes('Gât')) && (
+                          <div className="mb-3 p-2.5 rounded-xl bg-purple-50/70 border border-purple-200/60 text-xs">
+                            <label className="block text-[10px] font-extrabold text-[#581C87] uppercase tracking-wider mb-1 flex items-center gap-1">
+                              <Cake size={12} /> Format & Nombre de parts :
+                            </label>
+                            <select
+                              value={selectedCakePortions[product.id]?.label || '6-8 parts'}
+                              onChange={(e) => {
+                                const selectedLabel = e.target.value;
+                                let mult = 1;
+                                if (selectedLabel.includes('8')) mult = 1.25;
+                                if (selectedLabel.includes('10') || selectedLabel.includes('12')) mult = 1.5;
+                                if (selectedLabel.includes('15') || selectedLabel.includes('20')) mult = 2;
+                                const calculatedPrice = Math.round((product.numericPrice * mult) / 500) * 500;
+                                setSelectedCakePortions({
+                                  ...selectedCakePortions,
+                                  [product.id]: { label: selectedLabel, price: calculatedPrice }
+                                });
+                              }}
+                              className="w-full p-1.5 rounded-lg border border-purple-200 bg-white font-bold text-gray-800 text-[11px] outline-none"
+                            >
+                              <option value="6-8 parts">6 à 8 parts ({product.numericPrice.toLocaleString('fr-FR')} FCFA)</option>
+                              <option value="8-10 parts">8 à 10 parts ({Math.round(product.numericPrice * 1.25).toLocaleString('fr-FR')} FCFA)</option>
+                              <option value="10-12 parts">10 à 12 parts ({Math.round(product.numericPrice * 1.5).toLocaleString('fr-FR')} FCFA)</option>
+                              <option value="15-20 parts">15 à 20 parts ({Math.round(product.numericPrice * 2).toLocaleString('fr-FR')} FCFA)</option>
+                            </select>
+                          </div>
+                        )}
+  
                         <div className="text-base font-extrabold text-[#581C87]">
-                          {product.price}
+                          {selectedCakePortions[product.id] ? `${selectedCakePortions[product.id].price.toLocaleString('fr-FR')} FCFA` : product.price}
                         </div>
                       </div>
                     </div>

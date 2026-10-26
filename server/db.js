@@ -307,6 +307,13 @@ export async function initDb() {
   `);
 
   // Seeding initial du catalogue si vide
+  
+  try {
+    await run(`ALTER TABLE products ADD COLUMN portions_json TEXT DEFAULT '[]'`);
+  } catch (e) {
+    // Colonne déjà existante
+  }
+
   const prodCount = await get('SELECT COUNT(*) as count FROM products');
   if (prodCount && prodCount.count === 0) {
     const now = new Date().toISOString();
@@ -1417,7 +1424,7 @@ export async function getProductById(id) {
   return await get('SELECT * FROM products WHERE id = ?', [id]);
 }
 
-export async function createProduct({ name, category, price, description, image, is_available = 1 }) {
+export async function createProduct({ name, category, price, description, image, is_available = 1, portions_json }) {
   if (!name || !price) throw new Error('Le nom et le prix du plat sont obligatoires');
   const now = new Date().toISOString();
   const numPrice = Math.max(500, Number(price)); // Minimum 500 FCFA
@@ -1439,7 +1446,7 @@ export async function createProduct({ name, category, price, description, image,
   return getProductById(res.lastID);
 }
 
-export async function updateProduct(id, { name, category, price, description, image, is_available }) {
+export async function updateProduct(id, { name, category, price, description, image, is_available, portions_json }) {
   const prod = await getProductById(id);
   if (!prod) throw new Error('Plat introuvable');
 
