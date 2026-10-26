@@ -263,6 +263,8 @@ export function Catalogue() {
   const [searchParams] = useSearchParams();
   const categoryParam = searchParams.get('category');
 
+  const navigate = useNavigate();
+
   useEffect(() => {
     if (categoryParam) {
       if (categoryParam.includes('sal')) {
@@ -272,10 +274,10 @@ export function Catalogue() {
       } else if (categoryParam.includes('Paquet')) {
         setSelectedCategory('Paquets');
       } else if (categoryParam.includes('Gât') || categoryParam.includes('Gateau')) {
-        setSelectedCategory('Gâteaux');
+        navigate('/sur-commande');
       }
     }
-  }, [categoryParam]);
+  }, [categoryParam, navigate]);
   
   const [addedProductId, setAddedProductId] = useState<number | null>(null);
 
@@ -374,14 +376,20 @@ export function Catalogue() {
             {categories.map((category) => (
               <button
                 key={category}
-                onClick={() => setSelectedCategory(category)}
+                onClick={() => {
+                  if (category === 'Gâteaux') {
+                    navigate('/sur-commande');
+                  } else {
+                    setSelectedCategory(category);
+                  }
+                }}
                 className={`px-6 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                 selectedCategory === category
                   ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30 scale-105'
                   : 'bg-white text-gray-700 border border-purple-100 hover:border-purple-300 hover:bg-purple-50/50'
               }`}
               >
-                {category}
+                {category === 'Gâteaux' ? 'Gâteaux (Sur-mesure)' : category}
               </button>
             ))}
           </div>

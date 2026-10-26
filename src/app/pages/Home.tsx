@@ -262,10 +262,10 @@ export function Home() {
 
                   {/* Bouton Pill pour explorer la catégorie */}
                   <Link
-                    to={`/catalogue?category=${encodeURIComponent(cat.categoryQuery)}`}
+                    to={cat.id === 'gateaux' ? '/sur-commande' : `/catalogue?category=${encodeURIComponent(cat.categoryQuery)}`}
                     className="w-full py-3 px-5 rounded-full bg-purple-50 hover:bg-[#581C87] text-[#581C87] hover:text-white font-bold text-xs transition-all duration-300 flex items-center justify-center gap-2 group-hover:shadow-md cursor-pointer border border-purple-200 hover:border-[#581C87]"
                   >
-                    <span>Découvrir la sélection</span>
+                    <span>{cat.id === 'gateaux' ? 'Personnaliser mon gâteau' : 'Découvrir la sélection'}</span>
                     <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
                   </Link>
                 </div>

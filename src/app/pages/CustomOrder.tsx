@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { createOrder } from '../services/api';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Cake, 
@@ -17,7 +19,9 @@ import {
   AlertCircle, 
   CheckCircle2, 
   X, 
-  ShieldCheck, 
+  ShieldCheck,
+  CreditCard,
+  Loader2, 
   Navigation, 
   Truck, 
   Store,
@@ -93,8 +97,11 @@ export function CustomOrder() {
   const [ordererName, setOrdererName] = useState('');
   const [ordererPhone, setOrdererPhone] = useState('');
 
-  // Réceptionnaire
-  const [isSameRecipient, setIsSameRecipient] = useState(true);
+  const navigate = useNavigate();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Réceptionnaire (Notion #9 : pas coché par défaut, 2 choix explicites)
+  const [recipientMode, setRecipientMode] = useState<'self' | 'other' | null>(null);
   const [recipientName, setRecipientName] = useState('');
   const [recipientPhone, setRecipientPhone] = useState('');
   const [recipientPhoneBackup, setRecipientPhoneBackup] = useState('');
@@ -201,8 +208,13 @@ export function CustomOrder() {
       setValidationError('Veuillez renseigner votre numéro WhatsApp ou téléphone.');
       return false;
     }
-    const finalRecipientName = isSameRecipient ? ordererName : recipientName;
-    const finalRecipientPhone = isSameRecipient ? ordererPhone : recipientPhone;
+    if (recipientMode === null) {
+      setValidationError('Veuillez cocher qui réceptionnera la commande : vous-même ou une autre personne.');
+      return false;
+    }
+
+    const finalRecipientName = recipientMode === 'self' ? ordererName : recipientName;
+    const finalRecipientPhone = recipientMode === 'self' ? ordererPhone : recipientPhone;
 
     if (!finalRecipientName.trim()) {
       setValidationError('Veuillez renseigner le nom de la personne qui réceptionnera la commande.');
@@ -237,57 +249,62 @@ export function CustomOrder() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Soumission finale vers WhatsApp
-  const handleSubmitOrder = () => {
+  // Soumission finale : création de commande et paiement Orange Money (Notion #11)
+  const handleSubmitOrder = async () => {
     if (!validateStep2()) {
       return;
     }
 
+    setIsSubmitting(true);
+    setValidationError(null);
+
     const themeDisplay = theme === 'autre' ? `Autre (${themeCustom})` : (theme === 'mariage' ? 'Mariage' : 'Anniversaire');
     const flavorDisplay = selectedFlavor === 'Autre saveur personnalisée' ? `Personnalisée : ${customFlavorText}` : selectedFlavor;
     const modelDisplay = modelType === 'catalog' 
-      ? `Modèle du catalogue : ${selectedCatalogCake}` 
-      : (uploadedImagePreview ? 'Photo personnalisée fournie par le client (à joindre sur WhatsApp)' : 'Aucune photo');
+      ? `Modèle catalogue : ${selectedCatalogCake}` 
+      : (uploadedImagePreview ? 'Photo personnalisée transmise' : 'Aucune photo');
 
-    const cardDisplay = hasGreetingCard ? `OUI - Texte : « ${cardMessage} »` : 'NON (sans carte)';
-    const finalRecipientName = isSameRecipient ? ordererName : recipientName;
-    const finalRecipientPhone = isSameRecipient ? ordererPhone : recipientPhone;
-    const priceDisplay = estimatedPrice > 0 ? `${estimatedPrice.toLocaleString('fr-FR')} FCFA (estimatif)` : 'Sur devis personnalisé (+50 parts)';
+    const finalRecipientName = recipientMode === 'self' ? ordererName : recipientName;
+    const finalRecipientPhone = recipientMode === 'self' ? ordererPhone : recipientPhone;
+    const finalAmountToPay = estimatedPrice > 0 ? estimatedPrice : 15000;
 
-    const whatsappMessage = `*NOUVELLE DEMANDE DE GÂTEAU PERSONNALISÉ* 🎂
-*Maison Les Douceurs de Lê Ci*
-──────────────────────
+    const orderNotes = [
+      `Gâteau Sur-Mesure: ${themeDisplay} (${currentPortion.label})`,
+      `Saveur: ${flavorDisplay}`,
+      cakeInscriptionMessage ? `Inscription gâteau: « ${cakeInscriptionMessage} »` : '',
+      `Modèle: ${modelDisplay}`,
+      hasGreetingCard ? `Carte: « ${cardMessage} »` : 'Sans carte',
+      `Mode: ${deliveryType === 'livraison' ? 'Livraison' : 'Retrait sur place'}`,
+      `Date souhaitée: ${receptionDate} (${receptionTime === 'Autre heure précise' ? customTime : receptionTime})`,
+      recipientMode === 'self' ? 'Réceptionnaire: Le commanditaire lui-même' : `Réceptionnaire: ${finalRecipientName} (${finalRecipientPhone})`,
+      `Tél secours: ${recipientPhoneBackup}`,
+      deliveryType === 'livraison' ? `Adresse: ${deliveryAddress}` : 'Retrait atelier',
+      additionalNotes ? `Allergies/Notes: ${additionalNotes}` : ''
+    ].filter(Boolean).join(' | ');
 
-*ÉTAPE 1 : DESCRIPTION DU GÂTEAU*
-• *Thème :* ${themeDisplay}
-• *Description :* ${cakeDescription}
-• *Inscription sur le gâteau :* ${cakeInscriptionMessage ? `« ${cakeInscriptionMessage} »` : 'Sans inscription spéciale'}
-• *Nombre de parts :* ${currentPortion.label}
-• *Prix estimatif :* ${priceDisplay}
-• *Saveur :* ${flavorDisplay}
-• *Référence visuelle :* ${modelDisplay}
-• *Carte de petit mot :* ${cardDisplay}
+    try {
+      const order = await createOrder({
+        customerName: ordererName.trim(),
+        customerPhone: ordererPhone.trim(),
+        items: [{
+          id: 9999,
+          name: `Gâteau Sur-Mesure (${themeDisplay} - ${currentPortion.label})`,
+          price: finalAmountToPay,
+          quantity: 1,
+          image: uploadedImagePreview || '/products/gateau_1.jpeg'
+        }],
+        montantTotal: finalAmountToPay,
+        modePaiement: 'orange_money',
+        notes: orderNotes
+      });
 
-*ÉTAPE 2 : INFORMATIONS LIVRAISON & CONTACT*
-• *Mode de réception :* ${deliveryType === 'livraison' ? '🛵 Livraison à domicile' : '🏪 Retrait sur place (Atelier Lê Ci)'}
-• *Date souhaitée :* ${receptionDate}
-• *Heure / Créneau :* ${receptionTime === 'Autre heure précise' ? customTime : receptionTime}
-• *Commanditaire :* ${ordererName} (${ordererPhone})
-• *Réceptionnaire :* ${finalRecipientName} (${finalRecipientPhone})
-• *Numéro de secours (2nd tél) :* ${recipientPhoneBackup}
-• *Lieu de livraison :* ${deliveryType === 'livraison' ? deliveryAddress : 'Retrait en boutique Lê Ci'}
-• *Informations complémentaires & Allergies :* ${additionalNotes || 'Aucune'}
-
-──────────────────────
-_Demande transmise depuis la plateforme officielle Les Douceurs de Lê Ci._`;
-
-    // Numéro WhatsApp officiel de la boutique
-    const officialPhone = '22670000001';
-    const waUrl = `https://wa.me/${officialPhone}?text=${encodeURIComponent(whatsappMessage)}`;
-    
-    // Ouvrir WhatsApp
-    window.open(waUrl, '_blank');
-    setShowSuccessModal(true);
+      // Redirection immédiate vers la page de paiement Orange Money
+      navigate(`/paiement/${order.id}`);
+    } catch (err: any) {
+      setValidationError(err.message || 'Erreur lors de la validation de la commande');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -957,7 +974,7 @@ _Demande transmise depuis la plateforme officielle Les Douceurs de Lê Ci._`;
               </div>
             </div>
 
-            {/* 4. Nom de la personne qui va réceptionner le colis + WhatsApp/tél (second numéro de secours) */}
+            {/* 4. Nom de la personne qui va réceptionner le colis (Notion #9 : 2 cases non cochées par défaut) */}
             <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
                 <h3 className="text-base sm:text-lg font-extrabold text-gray-900 flex items-center gap-2">
@@ -966,48 +983,85 @@ _Demande transmise depuis la plateforme officielle Les Douceurs de Lê Ci._`;
                 </h3>
               </div>
               <p className="text-xs text-gray-500 mb-4 font-light">
-                Indiquez les coordonnées du destinataire avec un second numéro de secours pour garantir la livraison.
+                Précisez qui recevra la livraison ou le retrait à l'atelier. Aucune case n'est présélectionnée.
               </p>
 
-              {/* Checkbox "C'est moi-même" */}
-              <label className="inline-flex items-center gap-2.5 p-3 px-4 rounded-2xl bg-purple-50/70 border border-purple-100 cursor-pointer mb-6 text-xs font-bold text-[#581C87]">
-                <input
-                  type="checkbox"
-                  checked={isSameRecipient}
-                  onChange={(e) => setIsSameRecipient(e.target.checked)}
-                  className="rounded text-[#581C87] focus:ring-[#581C87] w-4 h-4 cursor-pointer"
-                />
-                <span>C'est moi-même qui vais réceptionner la commande</span>
-              </label>
+              {/* 2 Options à cocher */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+                <label className={`flex items-start gap-3 p-4 rounded-2xl border cursor-pointer transition ${
+                  recipientMode === 'self'
+                    ? 'bg-purple-50/80 border-[#581C87] text-[#581C87] shadow-sm ring-1 ring-[#581C87]'
+                    : 'bg-white border-gray-200 hover:border-purple-200 text-gray-700'
+                }`}>
+                  <input
+                    type="radio"
+                    name="recipientChoice"
+                    checked={recipientMode === 'self'}
+                    onChange={() => setRecipientMode('self')}
+                    className="mt-0.5 w-4 h-4 text-[#581C87] focus:ring-[#581C87] cursor-pointer"
+                  />
+                  <div>
+                    <span className="block text-xs font-bold text-gray-900">C'est moi-même qui vais réceptionner</span>
+                    <span className="block text-[11px] text-gray-500 font-light mt-0.5">
+                      Le colis sera remis à votre nom et numéro ({ordererName || 'votre contact'}).
+                    </span>
+                  </div>
+                </label>
 
-              {!isSameRecipient && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                <label className={`flex items-start gap-3 p-4 rounded-2xl border cursor-pointer transition ${
+                  recipientMode === 'other'
+                    ? 'bg-purple-50/80 border-[#581C87] text-[#581C87] shadow-sm ring-1 ring-[#581C87]'
+                    : 'bg-white border-gray-200 hover:border-purple-200 text-gray-700'
+                }`}>
+                  <input
+                    type="radio"
+                    name="recipientChoice"
+                    checked={recipientMode === 'other'}
+                    onChange={() => setRecipientMode('other')}
+                    className="mt-0.5 w-4 h-4 text-[#581C87] focus:ring-[#581C87] cursor-pointer"
+                  />
+                  <div>
+                    <span className="block text-xs font-bold text-gray-900">C'est une autre personne qui réceptionne</span>
+                    <span className="block text-[11px] text-gray-500 font-light mt-0.5">
+                      Cadeau, surprise ou réceptionnaire présent sur les lieux.
+                    </span>
+                  </div>
+                </label>
+              </div>
+
+              {/* Champs affichés uniquement quand 'other' est coché */}
+              {recipientMode === 'other' && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 p-4 rounded-2xl bg-purple-50/40 border border-purple-100"
+                >
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-2">
-                      Nom du réceptionnaire *
+                      Nom complet du réceptionnaire *
                     </label>
                     <input
                       type="text"
                       value={recipientName}
                       onChange={(e) => setRecipientName(e.target.value)}
                       placeholder="Nom de la personne présente pour réceptionner"
-                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm"
+                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm bg-white"
                     />
                   </div>
 
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-2">
-                      Numéro WhatsApp/tél du réceptionnaire *
+                      Numéro WhatsApp / tél du réceptionnaire *
                     </label>
                     <input
                       type="tel"
                       value={recipientPhone}
                       onChange={(e) => setRecipientPhone(e.target.value)}
-                      placeholder="Numéro principal"
-                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm"
+                      placeholder="Ex: +226 70 00 00 00"
+                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm bg-white"
                     />
                   </div>
-                </div>
+                </motion.div>
               )}
 
               {/* Second numéro de secours OBLIGATOIRE */}
@@ -1080,38 +1134,12 @@ _Demande transmise depuis la plateforme officielle Les Douceurs de Lê Ci._`;
               )}
             </div>
 
-            {/* 6. Avec ou sans carte de petit mot (rappel étape 2) */}
-            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
-              <h3 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">6</span>
-                Carte de petit mot (vérification)
-              </h3>
-              
-              <div className="p-4 rounded-2xl bg-purple-50/50 border border-purple-100 text-xs text-gray-700 flex items-start justify-between gap-4">
-                <div>
-                  <div className="font-bold text-gray-900 mb-1">
-                    Statut : {hasGreetingCard ? '✦ Avec carte de vœux offerte' : 'Sans carte de petit mot'}
-                  </div>
-                  {hasGreetingCard && (
-                    <div className="italic text-gray-600 bg-white p-3 rounded-xl border border-purple-200 mt-2 font-serif text-sm">
-                      « {cardMessage || 'Aucun message spécifié'} »
-                    </div>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setCurrentStep(1)}
-                  className="text-xs font-bold text-[#581C87] hover:underline shrink-0 cursor-pointer"
-                >
-                  Modifier à l'étape 1
-                </button>
-              </div>
-            </div>
+
 
             {/* 7. Informations complémentaires (allergies, demandes spéciales...) */}
             <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
               <h3 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">7</span>
+                <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">6</span>
                 Informations complémentaires
               </h3>
               <p className="text-xs text-gray-500 mb-4 font-light">
@@ -1160,10 +1188,21 @@ _Demande transmise depuis la plateforme officielle Les Douceurs de Lê Ci._`;
                 <button
                   type="button"
                   onClick={handleSubmitOrder}
-                  className="w-full sm:w-auto px-10 py-4 rounded-full bg-white text-[#581C87] hover:bg-purple-50 font-black text-sm shadow-2xl transition cursor-pointer flex items-center justify-center gap-2.5 transform hover:scale-105"
+                  disabled={isSubmitting}
+                  className="w-full sm:w-auto px-10 py-4 rounded-full bg-white text-[#581C87] hover:bg-purple-50 font-black text-sm shadow-2xl transition cursor-pointer flex items-center justify-center gap-2.5 transform hover:scale-105 disabled:opacity-50"
                 >
-                  <MessageSquare size={18} className="text-[#581C87]" />
-                  <span>Valider et envoyer sur WhatsApp</span>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 size={18} className="animate-spin text-[#581C87]" />
+                      <span>Validation en cours...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard size={18} className="text-[#581C87]" />
+                      <span>Valider et Payer avec Orange Money</span>
+                      <ArrowRight size={18} className="text-[#581C87]" />
+                    </>
+                  )}
                 </button>
               </div>
             </div>

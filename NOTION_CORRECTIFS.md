@@ -1,4 +1,4 @@
-# Correctifs & Améliorations Notion (Synchronisé le 26/10/2026 17:15:18)
+# Correctifs & Améliorations Notion (Synchronisé le 26/10/2026 20:32:45)
 
 24 oct. 2026, 23:03:07
 Correction Le CI
@@ -59,3 +59,7 @@ Mettre la localisation de la livraison
 Numéro de la personne qui reçois
 1. Au niveau de la création de nouveaux plat côté gérant dans le formulaire. Concernant l'ajout de gâteau on doit pouvoir paramétrer différent nombre de part c'est a dire avoir un gateau peut être de 6 part , mais aussi de 8 part ,… et designer pour chaque part le prix .  Ce ci concerne uniquement les gâteau 
 1. Ajouter de l'ajout de plat on doit pouvoir préciser le quantité du stock 
+1. Finalement quand on clique sur la categorie  gateaux on doit atterrir sur la page de personnalisation de gateaux
+1. Au niveau du formulaire de personnalisation la case “ c'est moi-même qui vais réceptionner la commande” ne doit pas etre cocher par defaut le client doit cocher de lui.  En realité on doit avoir 2 case a coché : une quand la personne qui commande receptionne  et l’autre quand c’est une personne differente et donc quand c’est cette case qui est coché alors les autre champs pour les coordonnées de la personne soit saisie
+1. Retirer le champ de verification du petit mot
+1. La commande dun geateau personnalisé se termine comme toute les autres commande c’st a dire avec un paiement 
