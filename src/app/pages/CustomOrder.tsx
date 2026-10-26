@@ -194,22 +194,26 @@ export function CustomOrder() {
     return true;
   };
 
-  // Validation Étape 2
+  // Validation Étape 2 (Point 12 Notion : second numéro non obligatoire)
   const validateStep2 = () => {
     if (!receptionDate) {
       setValidationError('Veuillez sélectionner la date souhaitée pour votre commande.');
+      window.scrollTo({ top: 380, behavior: 'smooth' });
       return false;
     }
     if (!ordererName.trim()) {
-      setValidationError('Veuillez renseigner votre nom complet.');
+      setValidationError('Veuillez renseigner votre nom complet (commanditaire).');
+      window.scrollTo({ top: 580, behavior: 'smooth' });
       return false;
     }
     if (!ordererPhone.trim()) {
       setValidationError('Veuillez renseigner votre numéro WhatsApp ou téléphone.');
+      window.scrollTo({ top: 580, behavior: 'smooth' });
       return false;
     }
     if (recipientMode === null) {
       setValidationError('Veuillez cocher qui réceptionnera la commande : vous-même ou une autre personne.');
+      window.scrollTo({ top: 760, behavior: 'smooth' });
       return false;
     }
 
@@ -218,18 +222,18 @@ export function CustomOrder() {
 
     if (!finalRecipientName.trim()) {
       setValidationError('Veuillez renseigner le nom de la personne qui réceptionnera la commande.');
+      window.scrollTo({ top: 760, behavior: 'smooth' });
       return false;
     }
     if (!finalRecipientPhone.trim()) {
       setValidationError('Veuillez renseigner le numéro de la personne qui réceptionnera la commande.');
+      window.scrollTo({ top: 760, behavior: 'smooth' });
       return false;
     }
-    if (!recipientPhoneBackup.trim()) {
-      setValidationError('Veuillez fournir un second numéro de secours pour la réception.');
-      return false;
-    }
+    // Le second numéro est NON OBLIGATOIRE (Point 12)
     if (deliveryType === 'livraison' && !deliveryAddress.trim()) {
-      setValidationError('Veuillez préciser le quartier et lieu de livraison (ou utiliser la géolocalisation).');
+      setValidationError('Veuillez préciser le quartier et lieu de livraison (ou cliquer sur position GPS).');
+      window.scrollTo({ top: 920, behavior: 'smooth' });
       return false;
     }
     setValidationError(null);
@@ -1066,9 +1070,9 @@ export function CustomOrder() {
 
               {/* Second numéro de secours OBLIGATOIRE */}
               <div className="mt-4 pt-4 border-t border-gray-100">
-                <label className="block text-xs font-bold text-[#581C87] mb-2 flex items-center gap-1.5">
-                  <Phone size={14} />
-                  Second numéro WhatsApp/tél de secours (au cas où le premier ne passe pas) *
+                <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
+                  <Phone size={14} className="text-[#581C87]" />
+                  Second numéro WhatsApp / tél de secours <span className="text-[11px] font-normal text-gray-500">(optionnel)</span>
                 </label>
                 <input
                   type="tel"
@@ -1078,7 +1082,7 @@ export function CustomOrder() {
                   className="w-full px-4 py-3 rounded-2xl border border-purple-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm bg-purple-50/20"
                 />
                 <span className="block text-[11px] text-gray-400 mt-1">
-                  Ce numéro servira au livreur en cas de boîte vocale ou d'injoignabilité du premier numéro.
+                  Optionnel : Ce numéro servira au livreur en cas d'injoignabilité du premier contact.
                 </span>
               </div>
             </div>
@@ -1174,6 +1178,17 @@ export function CustomOrder() {
                   </div>
                 </div>
               </div>
+
+              {validationError && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-6 p-4 rounded-2xl bg-rose-500/20 border border-rose-400 text-white flex items-center gap-3 text-xs"
+                >
+                  <AlertCircle size={20} className="text-rose-300 shrink-0" />
+                  <span className="font-bold">{validationError}</span>
+                </motion.div>
+              )}
 
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                 <button

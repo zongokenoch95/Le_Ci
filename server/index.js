@@ -23,11 +23,12 @@ const io = new Server(server, {
 
 app.use(cors());
 app.use(express.json({
+  limit: '20mb',
   verify: (req, res, buf) => {
     req.rawBody = buf.toString();
   }
 }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ limit: '20mb', extended: true }));
 app.use(express.text({ type: ['text/*', 'application/text'] }));
 
 // ==========================================

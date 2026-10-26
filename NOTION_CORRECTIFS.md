@@ -1,4 +1,4 @@
-# Correctifs & Améliorations Notion (Synchronisé le 26/10/2026 20:32:45)
+# Correctifs & Améliorations Notion (Synchronisé le 26/10/2026 20:45:27)
 
 24 oct. 2026, 23:03:07
 Correction Le CI
@@ -63,3 +63,5 @@ Numéro de la personne qui reçois
 1. Au niveau du formulaire de personnalisation la case “ c'est moi-même qui vais réceptionner la commande” ne doit pas etre cocher par defaut le client doit cocher de lui.  En realité on doit avoir 2 case a coché : une quand la personne qui commande receptionne  et l’autre quand c’est une personne differente et donc quand c’est cette case qui est coché alors les autre champs pour les coordonnées de la personne soit saisie
 1. Retirer le champ de verification du petit mot
 1. La commande dun geateau personnalisé se termine comme toute les autres commande c’st a dire avec un paiement 
+1. Champ second numero est non obligatoire
+1. Le bouton de valider et payer avec orange Money ne passe pas du coté personnalisation de gateau
