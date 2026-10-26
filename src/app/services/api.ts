@@ -696,3 +696,67 @@ export async function updateAnnouncementBanner(data: Partial<AnnouncementBanner>
   }
   return res.json();
 }
+
+// ==========================================
+// TYPES & FONCTIONS LIVRAISON AU KILOMÈTRE
+// ==========================================
+export interface DeliverySettings {
+  id: number;
+  price_per_km: number;
+  min_fee: number;
+  free_threshold: number;
+  origin_lat: number;
+  origin_lng: number;
+  origin_address: string;
+  is_active: boolean;
+  success?: boolean;
+}
+
+export interface DeliveryCalculationResult {
+  success: boolean;
+  distanceKm: number;
+  pricePerKm: number;
+  minFee: number;
+  freeThreshold: number;
+  isFree: boolean;
+  deliveryFee: number;
+  originAddress: string;
+}
+
+export async function getDeliverySettings(): Promise<DeliverySettings> {
+  const res = await fetch(`${API_BASE_URL}/delivery/settings`);
+  if (!res.ok) throw new Error('Impossible de charger les paramètres de livraison');
+  return res.json();
+}
+
+export async function updateDeliverySettings(data: Partial<DeliverySettings>): Promise<{ success: boolean; settings: DeliverySettings; message: string }> {
+  const token = localStorage.getItem('admin_token');
+  const res = await fetch(`${API_BASE_URL}/delivery/settings`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Erreur lors de la mise à jour des paramètres de livraison');
+  }
+  return res.json();
+}
+
+export async function calculateDeliveryFee(data: {
+  customerLat?: number;
+  customerLng?: number;
+  totalCartAmount?: number;
+  manualDistanceKm?: number;
+}): Promise<DeliveryCalculationResult> {
+  const res = await fetch(`${API_BASE_URL}/delivery/calculate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) throw new Error('Erreur calcul frais livraison');
+  return res.json();
+}

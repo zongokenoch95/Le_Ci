@@ -2,7 +2,10 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  ShoppingBag, 
+  ShoppingBag,
+  Truck,
+  MapPin,
+  Navigation, 
   Package, 
   CheckCircle2, 
   Clock, 
@@ -96,6 +99,21 @@ export function AdminDashboard() {
     is_active: true
   });
   const [savingBanner, setSavingBanner] = useState(false);
+  // État pour les tarifs et paramètres de livraison au kilomètre
+  const [deliveryData, setDeliveryData] = useState<DeliverySettings>({
+    id: 1,
+    price_per_km: 250,
+    min_fee: 1000,
+    free_threshold: 50000,
+    origin_lat: 12.3714,
+    origin_lng: -1.5197,
+    origin_address: 'Atelier Les Douceurs de Lê Ci, Ouagadougou',
+    is_active: true
+  });
+  const [savingDelivery, setSavingDelivery] = useState(false);
+  const [deliverySuccessMsg, setDeliverySuccessMsg] = useState('');
+  const [simulatedKm, setSimulatedKm] = useState<number>(5);
+
   const [bannerSuccessMsg, setBannerSuccessMsg] = useState('');
   const navigate = useNavigate();
 
@@ -103,7 +121,7 @@ export function AdminDashboard() {
   const [currentUser, setCurrentUser] = useState<AdminUser | null>(getStoredAdminUser());
   const isGerant = currentUser?.role === 'gerant';
 
-  const [activeTab, setActiveTab] = useState<'orders' | 'menu' | 'stats' | 'loyalty' | 'team' | 'simulator'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'menu' | 'stats' | 'loyalty' | 'team' | 'simulator' | 'delivery'>('orders');
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
@@ -569,7 +587,19 @@ export function AdminDashboard() {
                 </button>
 
                 <button
-                  onClick={() => setActiveTab('simulator')}
+                    onClick={() => setActiveTab('delivery')}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
+                      activeTab === 'delivery'
+                        ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30'
+                        : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                    }`}
+                  >
+                    <Truck size={17} className={activeTab === 'delivery' ? 'text-purple-300' : ''} />
+                    <span>Tarifs Livraison</span>
+                  </button>
+
+                  <button
+                    onClick={() => setActiveTab('simulator')}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
                     activeTab === 'simulator' ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30'
                       : 'text-gray-300 hover:bg-white/5 hover:text-white'

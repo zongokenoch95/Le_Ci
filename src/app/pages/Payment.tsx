@@ -669,15 +669,20 @@ export function Payment() {
                   <span>En attente de détection automatique du SMS de caisse...</span>
                 </div>
 
-                {/* Bouton Annulation */}
-                <div className="pt-2 text-center">
+                {/* Bouton Annulation très visible au format Pill */}
+                <div className="pt-6 pb-2 text-center border-t border-purple-100/60 mt-4">
                   <button
+                    type="button"
                     onClick={handleCancel}
                     disabled={cancelling}
-                    className="text-xs font-medium text-gray-400 hover:text-red-600 transition"
+                    className="px-8 py-3 rounded-full border-2 border-red-200 bg-red-50 hover:bg-red-100 text-red-700 hover:text-red-800 font-extrabold text-xs shadow-sm hover:shadow-md transition-all inline-flex items-center gap-2 cursor-pointer disabled:opacity-50 transform hover:-translate-y-0.5"
                   >
-                    {cancelling ? 'Annulation en cours...' : 'Annuler cette commande'}
+                    <XCircle size={17} className="text-red-500" />
+                    <span>{cancelling ? 'Annulation en cours...' : 'Annuler cette commande'}</span>
                   </button>
+                  <p className="text-[11px] text-gray-400 mt-2 font-light">
+                    Vous pouvez annuler sans frais à tout moment avant la confirmation du paiement.
+                  </p>
                 </div>
               </div>
             </motion.div>

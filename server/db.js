@@ -269,6 +269,25 @@ export async function initDb() {
 
   // Table pour le bandeau d'annonces / promotions défilant
   await run(`
+    CREATE TABLE IF NOT EXISTS delivery_settings (
+      id INTEGER PRIMARY KEY,
+      price_per_km REAL NOT NULL DEFAULT 250,
+      min_fee REAL NOT NULL DEFAULT 1000,
+      free_threshold REAL NOT NULL DEFAULT 50000,
+      origin_lat REAL NOT NULL DEFAULT 12.3714,
+      origin_lng REAL NOT NULL DEFAULT -1.5197,
+      origin_address TEXT NOT NULL DEFAULT 'Atelier Les Douceurs de Lê Ci, Ouagadougou',
+      is_active INTEGER NOT NULL DEFAULT 1,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+  );
+
+  await run(`
+    INSERT OR IGNORE INTO delivery_settings (id, price_per_km, min_fee, free_threshold, origin_lat, origin_lng, origin_address, is_active)
+    VALUES (1, 250, 1000, 50000, 12.3714, -1.5197, 'Atelier Les Douceurs de Lê Ci, Ouagadougou', 1)
+  `);
+
+  await run(`
     CREATE TABLE IF NOT EXISTS announcement_banner (
       id INTEGER PRIMARY KEY CHECK (id = 1),
       message TEXT NOT NULL,
@@ -1640,7 +1659,10 @@ export default {
   deleteProduct,
   getAdminDetailedStats,
   getAnnouncementBanner,
-  updateAnnouncementBanner
+  updateAnnouncementBanner,
+  getDeliverySettings,
+  updateDeliverySettings,
+  calculateDeliveryFee
 };
 
 // ==========================================
@@ -1777,4 +1799,91 @@ export async function updateAnnouncementBanner({ message, is_permanent, start_da
     is_active !== undefined ? (is_active ? 1 : 0) : 1
   ]);
   return getAnnouncementBanner();
+}
+
+// ==========================================
+// CONFIGURATION DE LA LIVRAISON AU KILOMÈTRE
+// ==========================================
+export async function getDeliverySettings() {
+  let settings = await get('SELECT * FROM delivery_settings WHERE id = 1');
+  if (!settings) {
+    await run(`INSERT OR IGNORE INTO delivery_settings (id, price_per_km, min_fee, free_threshold, origin_lat, origin_lng, origin_address, is_active)
+      VALUES (1, 250, 1000, 50000, 12.3714, -1.5197, 'Atelier Les Douceurs de Lê Ci, Ouagadougou', 1)`);
+    settings = await get('SELECT * FROM delivery_settings WHERE id = 1');
+  }
+  return {
+    id: 1,
+    price_per_km: Number(settings?.price_per_km) || 250,
+    min_fee: Number(settings?.min_fee) || 1000,
+    free_threshold: Number(settings?.free_threshold) || 50000,
+    origin_lat: Number(settings?.origin_lat) || 12.3714,
+    origin_lng: Number(settings?.origin_lng) || -1.5197,
+    origin_address: settings?.origin_address || 'Atelier Les Douceurs de Lê Ci, Ouagadougou',
+    is_active: settings?.is_active === 1 || settings?.is_active === true
+  };
+}
+
+export async function updateDeliverySettings({ price_per_km, min_fee, free_threshold, origin_lat, origin_lng, origin_address, is_active }) {
+  await getDeliverySettings(); // assure l'existence
+  await run(`
+    UPDATE delivery_settings SET
+      price_per_km = ?,
+      min_fee = ?,
+      free_threshold = ?,
+      origin_lat = ?,
+      origin_lng = ?,
+      origin_address = ?,
+      is_active = ?,
+      updated_at = CURRENT_TIMESTAMP
+    WHERE id = 1
+  `, [
+    price_per_km !== undefined ? Number(price_per_km) : 250,
+    min_fee !== undefined ? Number(min_fee) : 1000,
+    free_threshold !== undefined ? Number(free_threshold) : 50000,
+    origin_lat !== undefined ? Number(origin_lat) : 12.3714,
+    origin_lng !== undefined ? Number(origin_lng) : -1.5197,
+    origin_address || 'Atelier Les Douceurs de Lê Ci, Ouagadougou',
+    is_active !== undefined ? (is_active ? 1 : 0) : 1
+  ]);
+  return getDeliverySettings();
+}
+
+export async function calculateDeliveryFee({ customerLat, customerLng, totalCartAmount = 0, manualDistanceKm = null }) {
+  const settings = await getDeliverySettings();
+  let distanceKm = 0;
+
+  if (manualDistanceKm !== null && manualDistanceKm !== undefined && !isNaN(manualDistanceKm) && manualDistanceKm > 0) {
+    distanceKm = Math.round(Number(manualDistanceKm) * 10) / 10;
+  } else if (customerLat && customerLng) {
+    const toRad = (x) => (x * Math.PI) / 180;
+    const R = 6371; // Rayon moyen Terre en km
+    const dLat = toRad(Number(customerLat) - settings.origin_lat);
+    const dLng = toRad(Number(customerLng) - settings.origin_lng);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(settings.origin_lat)) * Math.cos(toRad(Number(customerLat))) *
+      Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    // Majoration de 1.35x pour tenir compte du trajet réel routier
+    distanceKm = Math.max(1, Math.round((R * c * 1.35) * 10) / 10);
+  }
+
+  // Vérification de gratuité éventuelle
+  const isFree = settings.free_threshold > 0 && totalCartAmount >= settings.free_threshold;
+  const calculatedFee = isFree 
+    ? 0 
+    : (distanceKm > 0 
+        ? Math.max(settings.min_fee, Math.round(distanceKm * settings.price_per_km)) 
+        : settings.min_fee);
+
+  return {
+    success: true,
+    distanceKm,
+    pricePerKm: settings.price_per_km,
+    minFee: settings.min_fee,
+    freeThreshold: settings.free_threshold,
+    isFree,
+    deliveryFee: calculatedFee,
+    originAddress: settings.origin_address
+  };
 }

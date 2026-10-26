@@ -1028,6 +1028,62 @@ app.post('/api/loyalty/record-visit', async (req, res) => {
 // ==========================================
 
 // ==========================================
+
+// ==========================================
+// CONFIGURATION DE LA LIVRAISON AU KILOMÈTRE
+// ==========================================
+app.get('/api/delivery/settings', async (req, res) => {
+  try {
+    const settings = await db.getDeliverySettings();
+    res.json({
+      success: true,
+      ...settings
+    });
+  } catch (err) {
+    console.error('Erreur lecture paramètres livraison:', err);
+    res.status(500).json({ success: false, error: 'Erreur serveur paramètres livraison' });
+  }
+});
+
+app.put('/api/delivery/settings', authenticateJwt, requireRole(['gerant']), async (req, res) => {
+  try {
+    const { price_per_km, min_fee, free_threshold, origin_lat, origin_lng, origin_address, is_active } = req.body;
+    const updated = await db.updateDeliverySettings({
+      price_per_km,
+      min_fee,
+      free_threshold,
+      origin_lat,
+      origin_lng,
+      origin_address,
+      is_active
+    });
+    res.json({
+      success: true,
+      settings: updated,
+      message: 'Paramètres de livraison mis à jour avec succès'
+    });
+  } catch (err) {
+    console.error('Erreur mise à jour livraison:', err);
+    res.status(500).json({ success: false, error: err.message || 'Erreur mise à jour livraison' });
+  }
+});
+
+app.post('/api/delivery/calculate', async (req, res) => {
+  try {
+    const { customerLat, customerLng, totalCartAmount, manualDistanceKm } = req.body;
+    const result = await db.calculateDeliveryFee({
+      customerLat,
+      customerLng,
+      totalCartAmount: Number(totalCartAmount) || 0,
+      manualDistanceKm
+    });
+    res.json(result);
+  } catch (err) {
+    console.error('Erreur calcul livraison:', err);
+    res.status(500).json({ success: false, error: 'Erreur calcul frais livraison' });
+  }
+});
+
 // BANDEAU D'ANNONCE / PROMOTIONS DÉFILANT
 // ==========================================
 app.get('/api/announcement', async (req, res) => {

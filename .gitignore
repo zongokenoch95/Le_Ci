@@ -35,3 +35,5 @@ server/*.sqlite
 cloudflared.exe
 
 tunnel_runner.mjs
+
+.agents/mcp_config.json
