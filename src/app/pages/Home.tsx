@@ -217,6 +217,7 @@ export function Home() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {productCategories.map((cat, idx) => {
             const IconComp = cat.icon;
+            const targetUrl = cat.id === 'gateaux' ? '/sur-commande' : `/catalogue?category=${encodeURIComponent(cat.categoryQuery)}`;
             return (
               <motion.div
                 key={cat.id}
@@ -224,51 +225,56 @@ export function Home() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: idx * 0.1 }}
-                className="group relative bg-white rounded-3xl overflow-hidden border border-purple-100/80 shadow-md hover:shadow-2xl hover:border-purple-300 transition-all duration-300 flex flex-col justify-between"
+                className="h-full"
               >
-                {/* Photo représentative de la catégorie */}
-                <div className="relative aspect-[4/3] overflow-hidden bg-purple-50">
-                  <ImageWithFallback
-                    src={cat.image}
-                    alt={cat.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                  
-                  {/* Badge en haut */}
-                  <span className="absolute top-3.5 left-3.5 px-3 py-1 bg-white/95 backdrop-blur-md rounded-full text-[10px] font-extrabold text-[#581C87] shadow-sm uppercase tracking-wider border border-purple-100">
-                    {cat.tag}
-                  </span>
+                {/* Carte entière cliquable (Notion #16) */}
+                <Link
+                  to={targetUrl}
+                  className="group relative bg-white rounded-3xl overflow-hidden border border-purple-100/80 shadow-md hover:shadow-2xl hover:border-purple-300 transition-all duration-300 flex flex-col justify-between h-full cursor-pointer block transform hover:-translate-y-1.5"
+                >
+                  {/* Photo représentative de la catégorie */}
+                  <div className="relative aspect-[4/3] overflow-hidden bg-purple-50">
+                    <ImageWithFallback
+                      src={cat.image}
+                      alt={cat.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                    
+                    {/* Badge en haut */}
+                    <span className="absolute top-3.5 left-3.5 px-3 py-1 bg-white/95 backdrop-blur-md rounded-full text-[10px] font-extrabold text-[#581C87] shadow-sm uppercase tracking-wider border border-purple-100">
+                      {cat.tag}
+                    </span>
 
-                  <span className="absolute bottom-3.5 right-3.5 px-2.5 py-0.5 bg-black/50 backdrop-blur-md rounded-full text-[10px] font-semibold text-white">
-                    {cat.badge}
-                  </span>
+                    <span className="absolute bottom-3.5 right-3.5 px-2.5 py-0.5 bg-black/50 backdrop-blur-md rounded-full text-[10px] font-semibold text-white">
+                      {cat.badge}
+                    </span>
 
-                  <div className="absolute bottom-3 left-3 flex items-center gap-2 text-white">
-                    <div className="w-8 h-8 rounded-full bg-[#581C87]/90 flex items-center justify-center text-white shadow">
-                      <IconComp size={16} />
+                    <div className="absolute bottom-3 left-3 flex items-center gap-2 text-white">
+                      <div className="w-8 h-8 rounded-full bg-[#581C87]/90 flex items-center justify-center text-white shadow">
+                        <IconComp size={16} />
+                      </div>
+                      <h3 className="text-lg font-extrabold drop-shadow-md">
+                        {cat.title}
+                      </h3>
                     </div>
-                    <h3 className="text-lg font-extrabold drop-shadow-md">
-                      {cat.title}
-                    </h3>
                   </div>
-                </div>
 
-                {/* Corps de la carte */}
-                <div className="p-6 flex-1 flex flex-col justify-between">
-                  <p className="text-xs sm:text-sm text-gray-600 font-light leading-relaxed mb-6">
-                    {cat.description}
-                  </p>
+                  {/* Corps de la carte */}
+                  <div className="p-6 flex-1 flex flex-col justify-between">
+                    <p className="text-xs sm:text-sm text-gray-600 font-light leading-relaxed mb-6">
+                      {cat.description}
+                    </p>
 
-                  {/* Bouton Pill pour explorer la catégorie */}
-                  <Link
-                    to={cat.id === 'gateaux' ? '/sur-commande' : `/catalogue?category=${encodeURIComponent(cat.categoryQuery)}`}
-                    className="w-full py-3 px-5 rounded-full bg-purple-50 hover:bg-[#581C87] text-[#581C87] hover:text-white font-bold text-xs transition-all duration-300 flex items-center justify-center gap-2 group-hover:shadow-md cursor-pointer border border-purple-200 hover:border-[#581C87]"
-                  >
-                    <span>{cat.id === 'gateaux' ? 'Personnaliser mon gâteau' : 'Découvrir la sélection'}</span>
-                    <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                  </Link>
-                </div>
+                    {/* Bouton Pill visuel pour explorer la catégorie */}
+                    <div
+                      className="w-full py-3 px-5 rounded-full bg-purple-50 group-hover:bg-[#581C87] text-[#581C87] group-hover:text-white font-bold text-xs transition-all duration-300 flex items-center justify-center gap-2 shadow-sm border border-purple-200 group-hover:border-[#581C87]"
+                    >
+                      <span>{cat.id === 'gateaux' ? 'Personnaliser mon gâteau' : 'Découvrir la sélection'}</span>
+                      <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </div>
+                </Link>
               </motion.div>
             );
           })}

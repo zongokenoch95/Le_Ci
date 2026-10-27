@@ -118,6 +118,32 @@ export function CustomOrder() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
+  // Erreurs précises par champ avec bordure rouge & message inline (Notion #18)
+  const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({});
+
+  const setSingleError = (key: string, msg: string, elementId: string) => {
+    setFieldErrors({ [key]: msg });
+    setValidationError(msg);
+    setTimeout(() => {
+      const el = document.getElementById(elementId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.focus();
+      }
+    }, 60);
+  };
+
+  const clearFieldError = (key: string) => {
+    if (fieldErrors[key]) {
+      setFieldErrors(prev => {
+        const copy = { ...prev };
+        delete copy[key];
+        return copy;
+      });
+      setValidationError(null);
+    }
+  };
+
   // Calcul du prix estimé
   const currentPortion = portionsOptions.find(p => p.id === selectedPortionId) || portionsOptions[1];
   const estimatedPrice = currentPortion.price;
@@ -228,65 +254,60 @@ export function CustomOrder() {
     );
   };
 
-  // Validation Étape 1
+  // Validation Étape 1 avec bordure rouge & scroll automatique (Notion #18)
   const validateStep1 = () => {
     if (theme === 'autre' && !themeCustom.trim()) {
-      setValidationError('Veuillez préciser le thème de votre gâteau.');
+      setSingleError('themeCustom', 'Veuillez préciser le thème de votre gâteau.', 'field-themeCustom');
       return false;
     }
     if (!cakeDescription.trim()) {
-      setValidationError('Veuillez décrire le style ou les décorations souhaitées pour le gâteau.');
+      setSingleError('cakeDescription', 'Veuillez décrire le style ou les décorations souhaitées pour le gâteau.', 'field-cakeDescription');
       return false;
     }
     if (selectedFlavor === 'Autre saveur personnalisée' && !customFlavorText.trim()) {
-      setValidationError('Veuillez préciser la saveur personnalisée souhaitée.');
+      setSingleError('customFlavorText', 'Veuillez préciser la saveur personnalisée souhaitée.', 'field-customFlavorText');
       return false;
     }
     if (hasGreetingCard && !cardMessage.trim()) {
-      setValidationError('Veuillez saisir le texte à écrire sur votre carte de petit mot.');
+      setSingleError('cardMessage', 'Veuillez saisir le texte à écrire sur votre carte de vœux.', 'field-cardMessage');
       return false;
     }
+    setFieldErrors({});
     setValidationError(null);
     return true;
   };
 
-  // Validation Étape 2 (Point 12 Notion : second numéro non obligatoire)
+  // Validation Étape 2 avec bordure rouge & scroll automatique (Notion #18)
   const validateStep2 = () => {
     if (!receptionDate) {
-      setValidationError('Veuillez sélectionner la date souhaitée pour votre commande.');
-      window.scrollTo({ top: 380, behavior: 'smooth' });
+      setSingleError('receptionDate', 'Veuillez sélectionner la date souhaitée pour votre commande.', 'field-receptionDate');
       return false;
     }
     if (!ordererName.trim()) {
-      setValidationError('Veuillez renseigner votre nom complet (commanditaire).');
-      window.scrollTo({ top: 580, behavior: 'smooth' });
+      setSingleError('ordererName', 'Veuillez renseigner votre nom complet (commanditaire).', 'field-ordererName');
       return false;
     }
     if (!ordererPhone.trim()) {
-      setValidationError('Veuillez renseigner votre numéro WhatsApp ou téléphone.');
-      window.scrollTo({ top: 580, behavior: 'smooth' });
+      setSingleError('ordererPhone', 'Veuillez renseigner votre numéro WhatsApp ou téléphone.', 'field-ordererPhone');
       return false;
     }
     if (recipientMode === null) {
-      setValidationError('Veuillez cocher qui réceptionnera la commande : vous-même ou une autre personne.');
-      window.scrollTo({ top: 760, behavior: 'smooth' });
+      setSingleError('recipientMode', 'Veuillez cocher qui réceptionnera la commande : vous-même ou une autre personne.', 'field-recipientMode');
       return false;
     }
 
     // Si c'est une autre personne qui réceptionne : pas besoin de nom (Point 15), uniquement son numéro
-    if (recipientMode === 'other') {
-      if (!recipientPhone.trim()) {
-        setValidationError('Veuillez renseigner le numéro de téléphone de la personne qui réceptionnera la commande.');
-        window.scrollTo({ top: 760, behavior: 'smooth' });
-        return false;
-      }
-    }
-    // Le second numéro est NON OBLIGATOIRE (Point 12)
-    if (deliveryType === 'livraison' && !deliveryAddress.trim()) {
-      setValidationError('Veuillez préciser le quartier et lieu de livraison (ou cliquer sur position GPS).');
-      window.scrollTo({ top: 920, behavior: 'smooth' });
+    if (recipientMode === 'other' && !recipientPhone.trim()) {
+      setSingleError('recipientPhone', 'Veuillez renseigner le numéro de la personne qui réceptionnera la commande.', 'field-recipientPhone');
       return false;
     }
+
+    // Le second numéro est NON OBLIGATOIRE (Point 12)
+    if (deliveryType === 'livraison' && !deliveryAddress.trim()) {
+      setSingleError('deliveryAddress', 'Veuillez préciser le quartier et lieu de livraison (ou choisir un quartier).', 'field-deliveryAddress');
+      return false;
+    }
+    setFieldErrors({});
     setValidationError(null);
     return true;
   };
@@ -529,12 +550,23 @@ export function CustomOrder() {
                     Précisez votre thème :
                   </label>
                   <input
+                    id="field-themeCustom"
                     type="text"
                     value={themeCustom}
-                    onChange={(e) => setThemeCustom(e.target.value)}
+                    onChange={(e) => { setThemeCustom(e.target.value); clearFieldError('themeCustom'); }}
                     placeholder="Ex: Baptême, Célébration de réussite, Baby Shower, Retraite..."
-                    className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm"
+                    className={`w-full px-4 py-3 rounded-2xl outline-none text-sm transition ${
+                      fieldErrors.themeCustom 
+                        ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200' 
+                        : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
+                    }`}
                   />
+                  {fieldErrors.themeCustom && (
+                    <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
+                      <AlertCircle size={13} className="text-red-500 shrink-0" />
+                      <span>{fieldErrors.themeCustom}</span>
+                    </p>
+                  )}
                 </motion.div>
               )}
             </div>
@@ -550,12 +582,23 @@ export function CustomOrder() {
               </p>
 
               <textarea
+                id="field-cakeDescription"
                 rows={4}
                 value={cakeDescription}
-                onChange={(e) => setCakeDescription(e.target.value)}
+                onChange={(e) => { setCakeDescription(e.target.value); clearFieldError('cakeDescription'); }}
                 placeholder="Exemple : Gâteau rose poudré et doré avec finitions florales, inscription « Joyeux Anniversaire Léa », décor moderne et élégant sans pâte à sucre excessive..."
-                className="w-full p-4 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm leading-relaxed"
+                className={`w-full p-4 rounded-2xl outline-none text-sm leading-relaxed transition ${
+                  fieldErrors.cakeDescription 
+                    ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200' 
+                    : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
+                }`}
               />
+              {fieldErrors.cakeDescription && (
+                <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
+                  <AlertCircle size={13} className="text-red-500 shrink-0" />
+                  <span>{fieldErrors.cakeDescription}</span>
+                </p>
+              )}
 
               <div className="mt-4 pt-4 border-t border-purple-100/60">
                 <label className="block text-xs font-bold text-gray-800 mb-1.5 flex items-center gap-1.5">
@@ -950,12 +993,23 @@ export function CustomOrder() {
                     Date de réception souhaitée *
                   </label>
                   <input
+                    id="field-receptionDate"
                     type="date"
                     min={minDate}
                     value={receptionDate}
-                    onChange={(e) => setReceptionDate(e.target.value)}
-                    className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm"
+                    onChange={(e) => { setReceptionDate(e.target.value); clearFieldError('receptionDate'); }}
+                    className={`w-full px-4 py-3 rounded-2xl outline-none text-sm transition ${
+                      fieldErrors.receptionDate 
+                        ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200' 
+                        : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
+                    }`}
                   />
+                  {fieldErrors.receptionDate && (
+                    <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
+                      <AlertCircle size={13} className="text-red-500 shrink-0" />
+                      <span>{fieldErrors.receptionDate}</span>
+                    </p>
+                  )}
                   <span className="block text-[11px] text-gray-400 mt-1">Date minimum : {minDate}</span>
                 </div>
 
@@ -1005,12 +1059,23 @@ export function CustomOrder() {
                     Nom complet de l'acheteur *
                   </label>
                   <input
+                    id="field-ordererName"
                     type="text"
                     value={ordererName}
-                    onChange={(e) => setOrdererName(e.target.value)}
+                    onChange={(e) => { setOrdererName(e.target.value); clearFieldError('ordererName'); }}
                     placeholder="Ex: Salimata Traoré"
-                    className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm"
+                    className={`w-full px-4 py-3 rounded-2xl outline-none text-sm transition ${
+                      fieldErrors.ordererName 
+                        ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200' 
+                        : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
+                    }`}
                   />
+                  {fieldErrors.ordererName && (
+                    <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
+                      <AlertCircle size={13} className="text-red-500 shrink-0" />
+                      <span>{fieldErrors.ordererName}</span>
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -1019,12 +1084,23 @@ export function CustomOrder() {
                     Numéro WhatsApp / Téléphone *
                   </label>
                   <input
+                    id="field-ordererPhone"
                     type="tel"
                     value={ordererPhone}
-                    onChange={(e) => setOrdererPhone(e.target.value)}
+                    onChange={(e) => { setOrdererPhone(e.target.value); clearFieldError('ordererPhone'); }}
                     placeholder="Ex: +226 70 00 00 00"
-                    className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm"
+                    className={`w-full px-4 py-3 rounded-2xl outline-none text-sm transition ${
+                      fieldErrors.ordererPhone 
+                        ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200' 
+                        : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
+                    }`}
                   />
+                  {fieldErrors.ordererPhone && (
+                    <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
+                      <AlertCircle size={13} className="text-red-500 shrink-0" />
+                      <span>{fieldErrors.ordererPhone}</span>
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -1042,7 +1118,9 @@ export function CustomOrder() {
               </p>
 
               {/* 2 Options à cocher */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+              <div id="field-recipientMode" className={`grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2 p-2 rounded-2xl transition ${
+                fieldErrors.recipientMode ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200' : ''
+              }`}>
                 <label className={`flex items-start gap-3 p-4 rounded-2xl border cursor-pointer transition ${
                   recipientMode === 'self'
                     ? 'bg-purple-50/80 border-[#581C87] text-[#581C87] shadow-sm ring-1 ring-[#581C87]'
@@ -1096,12 +1174,23 @@ export function CustomOrder() {
                     Numéro WhatsApp / Téléphone de la personne qui réceptionne *
                   </label>
                   <input
+                    id="field-recipientPhone"
                     type="tel"
                     value={recipientPhone}
-                    onChange={(e) => setRecipientPhone(e.target.value)}
+                    onChange={(e) => { setRecipientPhone(e.target.value); clearFieldError('recipientPhone'); }}
                     placeholder="Ex: +226 70 00 00 00"
-                    className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm bg-white"
+                    className={`w-full px-4 py-3 rounded-2xl outline-none text-sm bg-white transition ${
+                      fieldErrors.recipientPhone 
+                        ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200' 
+                        : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
+                    }`}
                   />
+                  {fieldErrors.recipientPhone && (
+                    <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
+                      <AlertCircle size={13} className="text-red-500 shrink-0" />
+                      <span>{fieldErrors.recipientPhone}</span>
+                    </p>
+                  )}
                   <span className="block text-[11px] text-gray-500 mt-1.5">
                     Le livreur contactera directement ce numéro pour lui remettre le colis en main propre.
                   </span>
@@ -1163,12 +1252,23 @@ export function CustomOrder() {
                   </div>
 
                   <textarea
+                    id="field-deliveryAddress"
                     rows={3}
                     value={deliveryAddress}
-                    onChange={(e) => setDeliveryAddress(e.target.value)}
+                    onChange={(e) => { setDeliveryAddress(e.target.value); clearFieldError('deliveryAddress'); }}
                     placeholder="Ex: Quartier Ouaga 2000, non loin de la pharmacie des Nations, Rue 15.24, Villa blanche portail noir..."
-                    className="w-full p-4 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm leading-relaxed"
+                    className={`w-full p-4 rounded-2xl outline-none text-sm leading-relaxed transition ${
+                      fieldErrors.deliveryAddress 
+                        ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200' 
+                        : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
+                    }`}
                   />
+                  {fieldErrors.deliveryAddress && (
+                    <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
+                      <AlertCircle size={13} className="text-red-500 shrink-0" />
+                      <span>{fieldErrors.deliveryAddress}</span>
+                    </p>
+                  )}
 
                   {/* Message d'état de géolocalisation */}
                   {geoStatusMsg && (
@@ -1192,7 +1292,7 @@ export function CustomOrder() {
                         <button
                           type="button"
                           key={q}
-                          onClick={() => setDeliveryAddress(prev => prev ? `${prev}, ${q}` : q)}
+                          onClick={() => { setDeliveryAddress(prev => prev ? `${prev}, ${q}` : q); clearFieldError('deliveryAddress'); }}
                           className="px-2.5 py-1 rounded-full bg-purple-50 hover:bg-purple-100 text-[#581C87] text-[11px] font-semibold border border-purple-200/80 transition cursor-pointer"
                         >
                           + {q}

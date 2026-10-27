@@ -1,4 +1,4 @@
-# Correctifs & Améliorations Notion (Synchronisé le 26/10/2026 21:37:09)
+# Correctifs & Améliorations Notion (Synchronisé le 27/10/2026 16:04:03)
 
 24 oct. 2026, 23:03:07
 Correction Le CI
@@ -67,3 +67,7 @@ Numéro de la personne qui reçois
 1. Le bouton de valider et payer avec orange Money ne passe pas du coté personnalisation de gateau
 1. Le bouton de géolocalisation pour récupérer la position pour la livraison ne marche pas 
 1. Au cas c'est une autre personne qui doit récupérer, on n'a pas besoin de son nom
+1. Au niveau de la section nos produits je veux que toute les carte soit cliquable pour explorer la categorie.
+1. Quand on clique sur une categorie rien ne s’affiche ( page blaanche)
+1. Dans le formulaire de creation de gateau quand un champ n’est pas rempli ou mal rempli et quil clique pour passer a letape suivante  on doit afficher le champ en question  et doit etre bordé en rouge avec un petit  message mentionant lerreur
+1. Au niveau footer garder uniquement Contact et commande ete les liens de reseaux sociaux et ajouter le bouton whatsapp au meme niveau que les reseau
