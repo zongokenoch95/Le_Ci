@@ -1908,3 +1908,17 @@ export async function calculateDeliveryFee({ customerLat, customerLng, totalCart
     originAddress: settings.origin_address
   };
 }
+
+export async function updateOrderPaymentInfo(id, { payerName, payerPhone, paymentMethod }) {
+  const row = await get('SELECT * FROM orders WHERE id = ?', [id]);
+  if (!row) throw new Error('Commande non trouvée');
+
+  const notesSuffix = ` [Paiement Mobile: ${paymentMethod || 'Non spécifié'} | Payeur: ${payerName || 'Non précisé'} (${payerPhone || ''})]`;
+  const updatedNotes = (row.notes || '') + notesSuffix;
+
+  await run(
+    `UPDATE orders SET mode_paiement = ?, notes = ? WHERE id = ?`,
+    [paymentMethod || row.mode_paiement, updatedNotes, id]
+  );
+  return getOrderById(id);
+}

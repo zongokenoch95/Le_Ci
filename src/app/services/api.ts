@@ -105,6 +105,23 @@ export async function getOrderStatus(id: string): Promise<{
   return res.json();
 }
 
+export async function updateOrderPaymentInfo(id: string, data: {
+  payerName: string;
+  payerPhone: string;
+  paymentMethod: string;
+}): Promise<{ success: boolean; order: Order }> {
+  const res = await fetch(`${API_BASE}/orders/${id}/payment-info`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Erreur enregistrement coordonnées de paiement');
+  }
+  return res.json();
+}
+
 export async function cancelOrder(id: string): Promise<{ success: boolean; order: Order }> {
   const res = await fetch(`${API_BASE}/orders/${id}/cancel`, { method: 'POST' });
   if (!res.ok) throw new Error('Impossible d\'annuler la commande');

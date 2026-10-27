@@ -304,7 +304,7 @@ export function CustomOrder() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Ajout au panier et passage par la page panier avant paiement (Notion #22)
+  // Validation et passage direct sur la page de paiement
   const handleSubmitOrder = async () => {
     if (!validateStep2()) {
       return;
@@ -335,36 +335,34 @@ export function CustomOrder() {
       additionalNotes.trim() ? `Allergies/Notes: ${additionalNotes.trim()}` : ''
     ].filter(Boolean).join(' | ');
 
-    // 1. Ajouter le gâteau sur-mesure au panier
-    const cakeItemId = `custom-cake-${Date.now()}`;
-    addToCart({
-      id: cakeItemId,
-      name: `Gâteau Sur-Mesure (${eventDetails.trim()} - ${currentPortion.label})`,
-      price: `${finalAmountToPay.toLocaleString('fr-FR')} FCFA`,
-      numericPrice: finalAmountToPay,
-      image: uploadedImagePreview || '/products/gateau_1.jpeg',
-      category: 'Gâteaux',
-      description: customDetailsList
-    }, 1);
-
-    // 2. Mémoriser les choix de livraison pour pré-remplir la page panier
     try {
-      localStorage.setItem('le_ci_checkout_pref', JSON.stringify({
-        deliveryType,
-        deliveryDate: receptionDate,
-        deliveryTimeSlot: receptionTime || '14h00 - 17h00',
-        customerName: recipientName.trim(),
+      const order = await createOrder({
+        customerName: recipientName.trim() || 'Client Destinataire Lê Ci',
         customerPhone: recipientPhone.trim(),
-        backupPhone: recipientPhoneBackup.trim(),
-        deliveryAddress: deliveryAddress.trim(),
+        items: [{
+          id: 9999,
+          name: `Gâteau Sur-Mesure (${eventDetails.trim()} - ${currentPortion.label})`,
+          price: finalAmountToPay,
+          quantity: 1,
+          image: uploadedImagePreview || '/products/gateau_1.jpeg'
+        }],
+        montantTotal: finalAmountToPay,
+        modePaiement: 'orange_money',
         notes: customDetailsList
-      }));
-    } catch (e) {}
+      });
 
-    setIsSubmitting(false);
+      // Mémorisation de la référence
+      try {
+        localStorage.setItem(`le_ci_order_ref_${order.id}`, order.codeReference);
+      } catch (e) {}
 
-    // 3. Naviguer vers la page panier (Point 22 Notion)
-    navigate('/panier');
+      // Passage immédiat sur la page de paiement
+      navigate(`/paiement/${order.id}`);
+    } catch (err: any) {
+      setValidationError(err.message || 'Erreur lors de la validation de la commande');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -1229,12 +1227,12 @@ export function CustomOrder() {
                   {isSubmitting ? (
                     <>
                       <Loader2 size={18} className="animate-spin text-[#581C87]" />
-                      <span>Ajout au panier...</span>
+                      <span>Préparation du paiement...</span>
                     </>
                   ) : (
                     <>
-                      <ShoppingBag size={18} className="text-[#581C87]" />
-                      <span>Ajouter au panier & Finaliser ma commande</span>
+                      <CreditCard size={18} className="text-[#581C87]" />
+                      <span>Passer au paiement</span>
                       <ArrowRight size={18} className="text-[#581C87]" />
                     </>
                   )}

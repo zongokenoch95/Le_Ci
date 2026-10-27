@@ -19,9 +19,23 @@ import {
   Crown,
   Gift,
   UserCheck,
-  ArrowRight
+  ArrowRight,
+  CreditCard,
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
-import { getOrder, getOrderStatus, cancelOrder, registerLoyaltyMember, getLoyaltyMember, getLoyaltySettings, Order, LoyaltyMember, LoyaltySettings } from '../services/api';
+import { 
+  getOrder, 
+  getOrderStatus, 
+  cancelOrder, 
+  registerLoyaltyMember, 
+  getLoyaltyMember, 
+  getLoyaltySettings,
+  updateOrderPaymentInfo,
+  Order, 
+  LoyaltyMember, 
+  LoyaltySettings 
+} from '../services/api';
 import { getSocket, joinOrder, leaveOrder } from '../services/socket';
 
 export function Payment() {
@@ -35,6 +49,34 @@ export function Payment() {
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
   const [selectedOperator, setSelectedOperator] = useState<'orange' | 'wave' | 'moov'>('orange');
   const [remainingSeconds, setRemainingSeconds] = useState(600);
+
+  // État de confirmation du paiement (Étape 1 : Choix moyen + saisie nom & numéro VS Étape 2 : Page d'attente)
+  const [payerName, setPayerName] = useState(() => {
+    try {
+      return localStorage.getItem(`le_ci_payer_name_${orderId}`) || '';
+    } catch {
+      return '';
+    }
+  });
+
+  const [payerPhone, setPayerPhone] = useState(() => {
+    try {
+      return localStorage.getItem(`le_ci_payer_phone_${orderId}`) || '';
+    } catch {
+      return '';
+    }
+  });
+
+  const [isPaymentConfirmed, setIsPaymentConfirmed] = useState(() => {
+    try {
+      return localStorage.getItem(`le_ci_payment_confirmed_${orderId}`) === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const [confirmingPayment, setConfirmingPayment] = useState(false);
+  const [paymentError, setPaymentError] = useState('');
 
   // État Portail 1 Fidélité
   const [loyaltyMember, setLoyaltyMember] = useState<LoyaltyMember | null>(null);
@@ -70,7 +112,6 @@ export function Payment() {
       });
       setLoyaltyMember(res.member);
       setEnrolledSuccess(true);
-      // Sauvegarder dans la session client
       localStorage.setItem('le_ci_customer_loyalty', JSON.stringify({
         phone: res.member.phone,
         name: res.member.name
@@ -117,11 +158,10 @@ export function Payment() {
   // Syntaxes USSD
   const omUssdMarchand = `*144*10*77121289*${amount}#`;
   const omTelUrl = `tel:${encodeURIComponent(omUssdMarchand)}`;
-
   const moovUssd = `*555*4*1*${merchantConfig.moovCode}*${amount}#`;
   const moovTelUrl = `tel:${encodeURIComponent(moovUssd)}`;
 
-  // Chargement initial
+  // Chargement initial de la commande
   useEffect(() => {
     if (!orderId) return;
 
@@ -132,6 +172,9 @@ export function Payment() {
         setOrder(data);
         if (data.remainingSeconds !== undefined) {
           setRemainingSeconds(data.remainingSeconds);
+        }
+        if (data.modePaiement === 'moov' || data.modePaiement === 'wave' || data.modePaiement === 'orange') {
+          setSelectedOperator(data.modePaiement);
         }
         setLoading(false);
       })
@@ -145,6 +188,41 @@ export function Payment() {
     };
   }, [orderId]);
 
+  // Validation du formulaire de paiement (Étape 1 -> Étape 2)
+  const handleConfirmPaymentDetails = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!payerPhone.trim()) {
+      setPaymentError('Veuillez saisir votre numéro Mobile Money utilisé pour le transfert.');
+      return;
+    }
+    if (!payerName.trim()) {
+      setPaymentError('Veuillez renseigner votre nom pour identifier le transfert.');
+      return;
+    }
+
+    setConfirmingPayment(true);
+    setPaymentError('');
+
+    try {
+      if (orderId) {
+        await updateOrderPaymentInfo(orderId, {
+          payerName: payerName.trim(),
+          payerPhone: payerPhone.trim(),
+          paymentMethod: selectedOperator
+        });
+        localStorage.setItem(`le_ci_payer_name_${orderId}`, payerName.trim());
+        localStorage.setItem(`le_ci_payer_phone_${orderId}`, payerPhone.trim());
+        localStorage.setItem(`le_ci_payment_confirmed_${orderId}`, 'true');
+      }
+      setIsPaymentConfirmed(true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err: any) {
+      setPaymentError(err.message || 'Erreur lors de la confirmation des coordonnées.');
+    } finally {
+      setConfirmingPayment(false);
+    }
+  };
+
   // Génération du QR Code Desktop
   useEffect(() => {
     if (!order) return;
@@ -154,9 +232,9 @@ export function Payment() {
       .catch(console.error);
   }, [order, selectedOperator, omUssdMarchand]);
 
-  // Décompte temps restant (10:00)
+  // Décompte temps restant (10:00) sur la page d'attente
   useEffect(() => {
-    if (!order || order.statut !== 'EN_ATTENTE_DE_PAIEMENT') return;
+    if (!order || order.statut !== 'EN_ATTENTE_DE_PAIEMENT' || !isPaymentConfirmed) return;
     const timer = setInterval(() => {
       setRemainingSeconds((prev) => {
         if (prev <= 1) {
@@ -168,7 +246,7 @@ export function Payment() {
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, [order]);
+  }, [order, isPaymentConfirmed]);
 
   // Écoute WebSockets temps réel + Polling 3s
   useEffect(() => {
@@ -213,7 +291,7 @@ export function Payment() {
         particleCount: 90,
         spread: 70,
         origin: { y: 0.6 },
-        colors: ['#D4AF37', '#10B981', '#3B82F6', '#F59E0B']
+        colors: ['#581C87', '#10B981', '#3B82F6', '#F59E0B']
       });
     }
   }, [order?.statut]);
@@ -247,7 +325,7 @@ export function Payment() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FAF8F5]">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-[#D4AF37] border-t-transparent rounded-full animate-spin" />
+          <div className="w-12 h-12 border-4 border-[#581C87] border-t-transparent rounded-full animate-spin" />
           <p className="text-gray-600 font-medium">Chargement des détails de paiement...</p>
         </div>
       </div>
@@ -257,13 +335,13 @@ export function Payment() {
   if (!order) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-[#FAF8F5]">
-        <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md text-center">
+        <div className="bg-white p-8 rounded-3xl shadow-xl max-w-md text-center border border-purple-100">
           <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-gray-900 mb-2">Commande introuvable</h2>
-          <p className="text-gray-600 mb-6">Cette commande n'existe pas ou a expiré.</p>
+          <p className="text-gray-600 mb-6 text-sm font-light">Cette commande n'existe pas ou a expiré.</p>
           <button
             onClick={() => navigate('/catalogue')}
-            className="w-full py-3 bg-[#D4AF37] hover:bg-[#c29d2b] text-white font-semibold rounded-xl transition"
+            className="w-full py-3.5 bg-[#581C87] hover:bg-[#6B21A8] text-white font-bold rounded-full transition shadow-md"
           >
             Retour au Catalogue
           </button>
@@ -276,18 +354,22 @@ export function Payment() {
   const isCancelled = order.statut === 'ANNULEE';
 
   return (
-    <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-[#FDFBF7] to-[#F5F0E6] text-gray-900">
+    <div className="min-h-screen py-10 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-[#FDFBF7] to-[#F5F0E6] text-gray-900">
       <div className="max-w-3xl mx-auto">
+        
         {/* Navigation retour */}
         <button
           onClick={() => navigate('/catalogue')}
-          className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 mb-6 transition"
+          className="inline-flex items-center gap-2 text-xs font-semibold text-gray-500 hover:text-gray-900 mb-6 transition cursor-pointer"
         >
           <ArrowLeft size={16} /> Retour au catalogue
         </button>
 
         <AnimatePresence mode="wait">
-          {/* ÉCRAN SUCCÈS : COMMANDE VALIDÉE */}
+          
+          {/* ========================================================================= */}
+          {/* ÉCRAN SUCCÈS : COMMANDE PAYÉE & VALIDÉE */}
+          {/* ========================================================================= */}
           {isPaid && (
             <motion.div
               key="success"
@@ -308,28 +390,24 @@ export function Payment() {
               </motion.div>
 
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 mb-3">
-                <Sparkles size={14} /> Paiement Validé Automatiquement
+                <Sparkles size={14} /> Paiement Validé avec Succès
               </span>
 
               <h1 className="text-3xl font-extrabold text-gray-900 mb-2">Paiement Reçu avec Succès !</h1>
-              <p className="text-gray-600 max-w-lg mx-auto mb-8">
-                Merci <span className="font-semibold text-gray-900">{order.customerName}</span>. Votre commande est validée et nos chefs pâtissiers ont déjà commencé sa préparation.
+              <p className="text-gray-600 max-w-lg mx-auto mb-8 text-sm font-light">
+                Merci <span className="font-semibold text-gray-900">{payerName || order.customerName}</span>. Votre commande est confirmée et nos chefs pâtissiers préparent vos délices.
               </p>
 
-
-              {/* ========================================================================= */}
-              {/* PORTAIL 1 : INSCRIPTION / CONSULTATION PROGRAMME DE FIDÉLITÉ SUR LA MÊME PAGE */}
-              {/* ========================================================================= */}
+              {/* Programme de Fidélité */}
               <div className="max-w-lg mx-auto mb-8">
                 {loyaltyMember ? (
-                  /* Cas A : Le client est déjà membre ou vient de s'inscrire */
-                  <div className="bg-gradient-to-br from-[#111827] to-[#1F2937] text-white p-6 rounded-3xl border border-[#D4AF37]/40 shadow-xl text-left relative overflow-hidden">
+                  <div className="bg-gradient-to-br from-[#111827] to-[#1F2937] text-white p-6 rounded-3xl border border-purple-500/40 shadow-xl text-left relative overflow-hidden">
                     <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2 text-[#D4AF37] font-bold text-xs uppercase tracking-wider">
+                      <div className="flex items-center gap-2 text-purple-300 font-bold text-xs uppercase tracking-wider">
                         <Crown size={16} />
-                        <span>Club Fidélisation ({loyaltyMember.tier})</span>
+                        <span>Club Fidélité ({loyaltyMember.tier})</span>
                       </div>
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-[#D4AF37] text-black">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-purple-500 text-white">
                         Membre Actif
                       </span>
                     </div>
@@ -338,7 +416,7 @@ export function Payment() {
                       {enrolledSuccess ? '🎉 Inscription Réussie !' : 'Vos Points ont été Crédités !'}
                     </h3>
                     <p className="text-xs text-gray-300 mb-4">
-                      Votre solde actuel est de <strong className="text-[#D4AF37] text-sm">{loyaltyMember.points} points</strong>. Échangez-les contre des pâtisseries offertes ou des remises sur vos prochaines commandes.
+                      Votre solde actuel est de <strong className="text-purple-300 text-sm">{loyaltyMember.points} points</strong>.
                     </p>
 
                     <button
@@ -349,7 +427,7 @@ export function Payment() {
                         }));
                         navigate('/fidelite');
                       }}
-                      className="w-full py-2.5 px-4 rounded-xl bg-[#D4AF37] hover:bg-[#c29d2b] text-white font-extrabold text-xs shadow-md transition flex items-center justify-center gap-2"
+                      className="w-full py-2.5 px-4 rounded-full bg-[#581C87] hover:bg-[#6B21A8] text-white font-extrabold text-xs shadow-md transition flex items-center justify-center gap-2"
                     >
                       <Gift size={16} />
                       <span>Accéder à mon Espace Fidélité</span>
@@ -357,18 +435,17 @@ export function Payment() {
                     </button>
                   </div>
                 ) : (
-                  /* Cas B : Le client n'est pas encore membre → Proposition d'inscription immédiate */
-                  <div className="bg-white p-6 rounded-3xl border-2 border-[#D4AF37]/30 shadow-xl text-left relative overflow-hidden">
-                    <div className="flex items-center gap-2 text-[#D4AF37] font-extrabold text-xs uppercase tracking-wider mb-2">
+                  <div className="bg-white p-6 rounded-3xl border-2 border-purple-200 shadow-xl text-left relative overflow-hidden">
+                    <div className="flex items-center gap-2 text-[#581C87] font-extrabold text-xs uppercase tracking-wider mb-2">
                       <Gift size={18} />
-                      <span>Portail Fidélité RestoBoost</span>
+                      <span>Club Fidélité Les Douceurs de Lê Ci</span>
                     </div>
 
                     <h3 className="text-lg font-black text-gray-900 mb-1">
-                      Rejoignez le Programme de Fidélité !
+                      Rejoignez notre Club de Fidélité !
                     </h3>
                     <p className="text-xs text-gray-600 mb-4">
-                      Cette commande vous rapporte des points de fidélité + <strong className="text-[#D4AF37]">{loyaltySettings?.welcome_bonus_points || 50} points de bienvenue</strong> offerts immédiatement à l'inscription.
+                      Cette commande vous rapporte des points + <strong className="text-[#581C87]">{loyaltySettings?.welcome_bonus_points || 50} points de bienvenue</strong> offerts immédiatement.
                     </p>
 
                     <form onSubmit={handleEnrollLoyalty} className="space-y-3">
@@ -380,7 +457,7 @@ export function Payment() {
                             required
                             value={enrollName}
                             onChange={(e) => setEnrollName(e.target.value)}
-                            className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#D4AF37]"
+                            className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#581C87]"
                           />
                         </div>
                         <div>
@@ -390,7 +467,7 @@ export function Payment() {
                             required
                             value={enrollPhone}
                             onChange={(e) => setEnrollPhone(e.target.value)}
-                            className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#D4AF37]"
+                            className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#581C87]"
                           />
                         </div>
                       </div>
@@ -398,7 +475,7 @@ export function Payment() {
                       <button
                         type="submit"
                         disabled={enrolling}
-                        className="w-full py-3 px-4 rounded-xl bg-[#D4AF37] hover:bg-[#c29d2b] text-white font-extrabold text-xs shadow-md transition flex items-center justify-center gap-2"
+                        className="w-full py-3 px-4 rounded-full bg-[#581C87] hover:bg-[#6B21A8] text-white font-extrabold text-xs shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
                       >
                         <UserCheck size={16} />
                         <span>{enrolling ? 'Inscription en cours...' : `M'inscrire & Récupérer mes points offerts`}</span>
@@ -416,22 +493,16 @@ export function Payment() {
                 </div>
                 <div className="flex justify-between text-sm py-1 border-b border-gray-200/60">
                   <span className="text-gray-500">Code Référence</span>
-                  <span className="font-mono font-bold text-[#D4AF37]">{order.codeReference}</span>
+                  <span className="font-mono font-bold text-[#581C87]">{order.codeReference}</span>
                 </div>
-                {order.transactionRef && (
-                  <div className="flex justify-between text-sm py-1 border-b border-gray-200/60">
-                    <span className="text-gray-500">Réf Transaction Mobile</span>
-                    <span className="font-mono font-semibold text-emerald-700">{order.transactionRef}</span>
-                  </div>
-                )}
                 <div className="flex justify-between text-sm py-1 border-b border-gray-200/60">
                   <span className="text-gray-500">Montant Réglé</span>
-                  <span className="font-extrabold text-emerald-700 text-base">{order.montantTotal} FCFA / DT</span>
+                  <span className="font-extrabold text-emerald-700 text-base">{amount.toLocaleString('fr-FR')} FCFA</span>
                 </div>
                 <div className="flex justify-between text-sm py-1">
                   <span className="text-gray-500">Statut de Préparation</span>
-                  <span className="inline-flex items-center gap-1 font-semibold text-blue-600">
-                    <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" /> En cuisine
+                  <span className="inline-flex items-center gap-1 font-semibold text-purple-700">
+                    <span className="w-2 h-2 rounded-full bg-purple-600 animate-pulse" /> En préparation à l'atelier
                   </span>
                 </div>
               </div>
@@ -439,7 +510,7 @@ export function Payment() {
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <button
                   onClick={() => navigate('/catalogue')}
-                  className="px-8 py-3.5 bg-[#D4AF37] hover:bg-[#c29d2b] text-white font-bold rounded-xl transition shadow-lg shadow-[#D4AF37]/20"
+                  className="px-8 py-3.5 bg-[#581C87] hover:bg-[#6B21A8] text-white font-bold rounded-full transition shadow-lg shadow-purple-900/20 cursor-pointer"
                 >
                   Continuer mes achats
                 </button>
@@ -447,7 +518,9 @@ export function Payment() {
             </motion.div>
           )}
 
+          {/* ========================================================================= */}
           {/* ÉCRAN ANNULATION / EXPIRATION */}
+          {/* ========================================================================= */}
           {isCancelled && (
             <motion.div
               key="cancelled"
@@ -458,57 +531,292 @@ export function Payment() {
               <div className="w-20 h-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
                 <XCircle size={48} />
               </div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">Commande Expirée ou Annulée</h1>
-              <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                Le délai de paiement de 10 minutes a expiré ou la commande a été annulée. Aucun montant n'a été débité.
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">Commande Annulée</h1>
+              <p className="text-gray-600 mb-6 max-w-md mx-auto text-sm font-light">
+                Cette commande a été annulée. Aucun montant n'a été débité de votre compte.
               </p>
               <button
                 onClick={() => navigate('/catalogue')}
-                className="px-8 py-3 bg-[#D4AF37] hover:bg-[#c29d2b] text-white font-semibold rounded-xl transition"
+                className="px-8 py-3.5 bg-[#581C87] hover:bg-[#6B21A8] text-white font-semibold rounded-full transition cursor-pointer"
               >
                 Passer une nouvelle commande
               </button>
             </motion.div>
           )}
 
-          {/* ÉCRAN ATTENTE DE PAIEMENT ACTIVE */}
-          {!isPaid && !isCancelled && (
+          {/* ========================================================================= */}
+          {/* ÉTAPE 1 : PAGE DE PAIEMENT - CHOIX DU MOYEN DE PAIEMENT & SAISIE NOM + TÉL */}
+          {/* ========================================================================= */}
+          {!isPaid && !isCancelled && !isPaymentConfirmed && (
             <motion.div
-              key="payment"
+              key="payment_form"
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              className="bg-white rounded-3xl shadow-2xl border border-purple-100 overflow-hidden"
+            >
+              {/* En-tête Violet Brand */}
+              <div className="bg-gradient-to-r from-purple-950 via-[#581C87] to-purple-900 text-white p-6 sm:p-8">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-bold bg-white/15 text-purple-200">
+                    <CreditCard size={13} /> Étape 1/2 : Choix du règlement
+                  </span>
+                  <span className="text-xs font-mono font-bold text-amber-300 bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/30">
+                    Réf : {codeRef}
+                  </span>
+                </div>
+                <h1 className="text-2xl sm:text-3xl font-black tracking-tight">Règlement de votre commande</h1>
+                <p className="text-xs sm:text-sm text-purple-200/90 font-light mt-1">
+                  Choisissez votre moyen de paiement mobile puis renseignez vos coordonnées pour initier le transfert.
+                </p>
+
+                <div className="mt-6 pt-4 border-t border-purple-800/80 flex flex-wrap items-baseline justify-between gap-3">
+                  <div className="text-xs sm:text-sm text-purple-200">
+                    Commande <span className="font-mono font-bold text-white">{order.id}</span>
+                  </div>
+                  <div className="text-2xl sm:text-3xl font-black text-white">
+                    {amount.toLocaleString('fr-FR')} FCFA
+                  </div>
+                </div>
+              </div>
+
+              {/* Corps du formulaire de paiement */}
+              <div className="p-6 sm:p-8 space-y-8">
+                
+                {/* Récapitulatif commande */}
+                <div className="bg-purple-50/50 p-5 rounded-2xl border border-purple-100 text-xs sm:text-sm text-gray-700 space-y-2">
+                  <div className="font-extrabold text-gray-900 flex items-center gap-2 mb-2">
+                    <Sparkles size={16} className="text-[#581C87]" />
+                    <span>Détails de la commande</span>
+                  </div>
+                  {order.items && order.items.map((item, idx) => (
+                    <div key={idx} className="flex justify-between items-center py-1 border-b border-purple-100/60 last:border-none">
+                      <span className="font-semibold text-gray-800">{item.name} (x{item.quantity})</span>
+                      <span className="font-black text-[#581C87]">{(item.price * item.quantity).toLocaleString('fr-FR')} FCFA</span>
+                    </div>
+                  ))}
+                  {order.customerPhone && (
+                    <div className="pt-2 text-xs text-gray-500">
+                      <strong>Personne qui reçoit le colis :</strong> {order.customerName ? `${order.customerName} • ` : ''}Tél : {order.customerPhone}
+                    </div>
+                  )}
+                </div>
+
+                <form onSubmit={handleConfirmPaymentDetails} className="space-y-8">
+                  {/* 1. Choix du moyen de paiement mobile */}
+                  <div>
+                    <label className="block text-xs font-extrabold uppercase tracking-wider text-gray-600 mb-3 flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-purple-100 text-[#581C87] text-[11px] font-black flex items-center justify-center">1</span>
+                      Choisissez votre moyen de paiement mobile *
+                    </label>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {/* Orange Money */}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedOperator('orange')}
+                        className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
+                          selectedOperator === 'orange'
+                            ? 'border-[#FF6600] bg-orange-50/40 text-gray-900 shadow-md ring-2 ring-orange-400/20'
+                            : 'border-gray-200 hover:border-orange-200 text-gray-600 hover:bg-gray-50/50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="w-10 h-10 rounded-2xl bg-[#FF6600] text-white flex items-center justify-center font-black text-xs shadow-sm">
+                            OM
+                          </div>
+                          {selectedOperator === 'orange' && <CheckCircle2 size={18} className="text-[#FF6600]" />}
+                        </div>
+                        <div>
+                          <span className="font-extrabold text-sm block text-gray-900">Orange Money</span>
+                          <span className="text-[11px] text-gray-500 font-light">Burkina Faso (Code *144#)</span>
+                        </div>
+                      </button>
+
+                      {/* Moov Money */}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedOperator('moov')}
+                        className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
+                          selectedOperator === 'moov'
+                            ? 'border-[#0055A5] bg-blue-50/40 text-gray-900 shadow-md ring-2 ring-blue-400/20'
+                            : 'border-gray-200 hover:border-blue-200 text-gray-600 hover:bg-gray-50/50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="w-10 h-10 rounded-2xl bg-[#0055A5] text-white flex items-center justify-center font-black text-xs shadow-sm">
+                            M
+                          </div>
+                          {selectedOperator === 'moov' && <CheckCircle2 size={18} className="text-[#0055A5]" />}
+                        </div>
+                        <div>
+                          <span className="font-extrabold text-sm block text-gray-900">Moov Money</span>
+                          <span className="text-[11px] text-gray-500 font-light">Burkina Faso (Code *555#)</span>
+                        </div>
+                      </button>
+
+                      {/* Wave */}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedOperator('wave')}
+                        className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
+                          selectedOperator === 'wave'
+                            ? 'border-[#1DA1F2] bg-sky-50/40 text-gray-900 shadow-md ring-2 ring-sky-400/20'
+                            : 'border-gray-200 hover:border-sky-200 text-gray-600 hover:bg-gray-50/50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="w-10 h-10 rounded-2xl bg-[#1DA1F2] text-white flex items-center justify-center font-black text-xs shadow-sm">
+                            W
+                          </div>
+                          {selectedOperator === 'wave' && <CheckCircle2 size={18} className="text-[#1DA1F2]" />}
+                        </div>
+                        <div>
+                          <span className="font-extrabold text-sm block text-gray-900">Wave</span>
+                          <span className="text-[11px] text-gray-500 font-light">Paiement direct Wave</span>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 2. Saisie du numéro de transfert et du nom du payeur */}
+                  <div className="bg-gray-50/80 p-6 rounded-3xl border border-gray-200 space-y-4">
+                    <label className="block text-xs font-extrabold uppercase tracking-wider text-gray-600 mb-1 flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-purple-100 text-[#581C87] text-[11px] font-black flex items-center justify-center">2</span>
+                      Coordonnées de l'émetteur du transfert mobile
+                    </label>
+                    <p className="text-xs text-gray-500 font-light">
+                      Indiquez le numéro et le nom depuis lesquels vous allez envoyer les fonds pour la validation immédiate de votre commande.
+                    </p>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-2">
+                          Votre Nom & Prénom *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={payerName}
+                          onChange={(e) => { setPayerName(e.target.value); setPaymentError(''); }}
+                          placeholder="Ex: Alassane Ouédraogo"
+                          className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 bg-white focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm font-semibold"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-2">
+                          Votre Numéro Mobile Money de transfert *
+                        </label>
+                        <input
+                          type="tel"
+                          required
+                          value={payerPhone}
+                          onChange={(e) => { setPayerPhone(e.target.value); setPaymentError(''); }}
+                          placeholder="Ex: 70 00 00 00 ou 76 00 00 00"
+                          className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 bg-white focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm font-semibold"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {paymentError && (
+                    <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-2">
+                      <AlertTriangle size={16} className="text-rose-600 shrink-0" />
+                      <span>{paymentError}</span>
+                    </div>
+                  )}
+
+                  {/* Bouton de confirmation vers la page d'attente */}
+                  <div className="pt-2">
+                    <button
+                      type="submit"
+                      disabled={confirmingPayment}
+                      className="w-full py-4 px-8 rounded-full bg-[#581C87] hover:bg-[#6B21A8] text-white font-black text-sm sm:text-base shadow-xl shadow-purple-900/30 transition-all flex items-center justify-center gap-2.5 cursor-pointer transform hover:-translate-y-0.5 disabled:opacity-50"
+                    >
+                      {confirmingPayment ? (
+                        <>
+                          <Loader2 size={18} className="animate-spin text-white" />
+                          <span>Validation en cours...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Confirmer et passer à l'attente de paiement</span>
+                          <ArrowRight size={18} />
+                        </>
+                      )}
+                    </button>
+                    <p className="text-[11px] text-center text-gray-400 mt-3 font-light">
+                      À l'étape suivante, vous accéderez à la page d'attente avec le code USSD direct ou le lien de paiement.
+                    </p>
+                  </div>
+                </form>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* ÉTAPE 2 : PAGE D'ATTENTE DE PAIEMENT ACTIVE (AVEC MINUTEUR & CODE RÉF) */}
+          {/* ========================================================================= */}
+          {!isPaid && !isCancelled && isPaymentConfirmed && (
+            <motion.div
+              key="waiting_screen"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
               className="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden"
             >
-              {/* Entête avec minuterie TTL */}
-              <div className="bg-[#111827] text-white p-6 sm:p-8 relative">
-                <div className="flex flex-wrap items-center justify-between gap-4">
+              {/* En-tête avec minuteur */}
+              <div className="bg-gradient-to-r from-purple-950 via-[#581C87] to-purple-900 text-white p-6 sm:p-8">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
-                    <span className="text-xs uppercase tracking-wider text-[#D4AF37] font-semibold">Paiement Mobile Direct</span>
-                    <h1 className="text-2xl sm:text-3xl font-extrabold mt-1">Finalisez votre règlement</h1>
+                    <span className="text-xs uppercase tracking-wider text-purple-200 font-semibold flex items-center gap-1.5 mb-1">
+                      <Clock size={14} className="text-amber-400" /> Étape 2/2 : Attente de confirmation
+                    </span>
+                    <h1 className="text-2xl sm:text-3xl font-extrabold">Finalisez votre règlement</h1>
                   </div>
 
                   {/* Minuteur TTL 10 min */}
                   <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/15">
-                    <Clock size={20} className="text-[#D4AF37] animate-pulse" />
+                    <Clock size={20} className="text-amber-300 animate-pulse" />
                     <div>
-                      <div className="text-[10px] uppercase text-gray-400 font-semibold tracking-wider">Temps restant</div>
+                      <div className="text-[10px] uppercase text-purple-200 font-semibold tracking-wider">Temps restant</div>
                       <div className="text-lg font-mono font-bold text-white">{formatTimer(remainingSeconds)}</div>
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-6 flex flex-wrap items-baseline justify-between gap-2 border-t border-white/10 pt-4">
-                  <div className="text-sm text-gray-300">
-                    Commande <span className="font-mono font-bold text-white">{order.id}</span> • {order.customerName}
+                <div className="mt-6 flex flex-wrap items-baseline justify-between gap-2 border-t border-purple-800/80 pt-4">
+                  <div className="text-xs sm:text-sm text-purple-200">
+                    Commande <span className="font-mono font-bold text-white">{order.id}</span>
                   </div>
-                  <div className="text-2xl font-black text-[#D4AF37]">
-                    {amount} FCFA / DT
+                  <div className="text-2xl font-black text-amber-300">
+                    {amount.toLocaleString('fr-FR')} FCFA
                   </div>
                 </div>
               </div>
 
-              {/* Corps */}
+              {/* Corps de la page d'attente */}
               <div className="p-6 sm:p-8 space-y-8">
+                
+                {/* Rappel des coordonnées de transfert saisies */}
+                <div className="bg-purple-50/70 p-4 rounded-2xl border border-purple-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs sm:text-sm">
+                  <div>
+                    <span className="text-gray-500 block text-xs">Paiement attendu depuis :</span>
+                    <span className="font-extrabold text-gray-900">
+                      {payerName || 'Client'} ({payerPhone}) • via {selectedOperator === 'orange' ? 'Orange Money' : (selectedOperator === 'moov' ? 'Moov Money' : 'Wave')}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsPaymentConfirmed(false)}
+                    className="inline-flex items-center gap-1 text-xs font-bold text-[#581C87] hover:underline cursor-pointer"
+                  >
+                    <RefreshCw size={13} />
+                    <span>Modifier</span>
+                  </button>
+                </div>
+
                 {/* Alerte WebView Réseaux Sociaux si applicable */}
                 {isInAppBrowser && (
                   <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex gap-3 items-start">
@@ -528,57 +836,7 @@ export function Payment() {
                   </div>
                 )}
 
-                {/* Sélecteur d'opérateur */}
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">
-                    Sélectionnez votre moyen de paiement
-                  </label>
-                  <div className="grid grid-cols-3 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedOperator('orange')}
-                      className={`p-4 rounded-2xl border-2 text-center transition flex flex-col items-center gap-2 ${selectedOperator === 'orange'
-                          ? 'border-[#FF6600] bg-orange-50/50 text-[#FF6600] shadow-md'
-                          : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                        }`}
-                    >
-                      <div className="w-8 h-8 rounded-full bg-[#FF6600] text-white flex items-center justify-center font-black text-xs">
-                        OM
-                      </div>
-                      <span className="text-xs font-bold">Orange Money</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setSelectedOperator('wave')}
-                      className={`p-4 rounded-2xl border-2 text-center transition flex flex-col items-center gap-2 ${selectedOperator === 'wave'
-                          ? 'border-[#1DA1F2] bg-blue-50/50 text-[#1DA1F2] shadow-md'
-                          : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                        }`}
-                    >
-                      <div className="w-8 h-8 rounded-full bg-[#1DA1F2] text-white flex items-center justify-center font-black text-xs">
-                        W
-                      </div>
-                      <span className="text-xs font-bold">Wave</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setSelectedOperator('moov')}
-                      className={`p-4 rounded-2xl border-2 text-center transition flex flex-col items-center gap-2 ${selectedOperator === 'moov'
-                          ? 'border-[#0055A5] bg-blue-50/50 text-[#0055A5] shadow-md'
-                          : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                        }`}
-                    >
-                      <div className="w-8 h-8 rounded-full bg-[#0055A5] text-white flex items-center justify-center font-black text-xs">
-                        M
-                      </div>
-                      <span className="text-xs font-bold">Moov Money</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Bloc d'action paiement */}
+                {/* Bloc d'action paiement USSD / Wave */}
                 <div className="bg-[#FAF8F5] border border-gray-200 rounded-3xl p-6 sm:p-8 text-center space-y-6">
                   {/* Code Référence Unique */}
                   <div className="inline-block bg-white px-5 py-3 rounded-2xl border border-gray-200 shadow-sm">
@@ -586,12 +844,12 @@ export function Payment() {
                       Votre Code Référence Unique
                     </div>
                     <div className="flex items-center justify-center gap-3">
-                      <span className="font-mono text-3xl font-black text-[#D4AF37] tracking-widest">
+                      <span className="font-mono text-3xl font-black text-[#581C87] tracking-widest">
                         {order.codeReference}
                       </span>
                       <button
                         onClick={() => copyCode(order.codeReference || '')}
-                        className="p-1.5 text-gray-400 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition"
+                        className="p-1.5 text-gray-400 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition cursor-pointer"
                         title="Copier le code"
                       >
                         <Copy size={18} />
@@ -605,20 +863,20 @@ export function Payment() {
                     {selectedOperator === 'orange' && (
                       <a
                         href={omTelUrl}
-                        className="w-full py-4 px-6 bg-[#FF6600] hover:bg-[#e65c00] text-white font-bold rounded-2xl shadow-xl shadow-orange-500/25 flex items-center justify-center gap-3 transition transform active:scale-[0.98]"
+                        className="w-full py-4 px-6 bg-[#FF6600] hover:bg-[#e65c00] text-white font-bold rounded-full shadow-xl shadow-orange-500/25 flex items-center justify-center gap-3 transition transform active:scale-[0.98]"
                       >
                         <PhoneCall size={22} />
-                        Lancer le paiement USSD Orange
+                        Lancer le paiement USSD Orange (*144#)
                       </a>
                     )}
 
                     {selectedOperator === 'moov' && (
                       <a
                         href={moovTelUrl}
-                        className="w-full py-4 px-6 bg-[#0055A5] hover:bg-[#004485] text-white font-bold rounded-2xl shadow-xl shadow-blue-500/25 flex items-center justify-center gap-3 transition transform active:scale-[0.98]"
+                        className="w-full py-4 px-6 bg-[#0055A5] hover:bg-[#004485] text-white font-bold rounded-full shadow-xl shadow-blue-500/25 flex items-center justify-center gap-3 transition transform active:scale-[0.98]"
                       >
                         <PhoneCall size={22} />
-                        Lancer le paiement USSD Moov
+                        Lancer le paiement USSD Moov (*555#)
                       </a>
                     )}
 
@@ -627,7 +885,7 @@ export function Payment() {
                         href={merchantConfig.waveUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="w-full py-4 px-6 bg-[#1DA1F2] hover:bg-[#1890d9] text-white font-bold rounded-2xl shadow-xl shadow-sky-500/25 flex items-center justify-center gap-3 transition transform active:scale-[0.98]"
+                        className="w-full py-4 px-6 bg-[#1DA1F2] hover:bg-[#1890d9] text-white font-bold rounded-full shadow-xl shadow-sky-500/25 flex items-center justify-center gap-3 transition transform active:scale-[0.98]"
                       >
                         <Smartphone size={22} />
                         Payer directement via Wave
@@ -637,11 +895,12 @@ export function Payment() {
                     {/* Syntaxe USSD brute copiable */}
                     <div className="text-xs text-gray-500 flex items-center justify-center gap-2">
                       <span className="font-mono bg-white px-2.5 py-1 rounded-lg border border-gray-200">
-                        {selectedOperator === 'orange' ? omUssdMarchand : moovUssd}
+                        {selectedOperator === 'orange' ? omUssdMarchand : (selectedOperator === 'moov' ? moovUssd : 'Paiement Wave')}
                       </span>
                       <button
                         onClick={() => copyCode(selectedOperator === 'orange' ? omUssdMarchand : moovUssd)}
-                        className="text-gray-400 hover:text-gray-900"
+                        className="text-gray-400 hover:text-gray-900 cursor-pointer"
+                        title="Copier la commande USSD"
                       >
                         <Copy size={14} />
                       </button>
@@ -664,18 +923,18 @@ export function Payment() {
                 </div>
 
                 {/* État de synchronisation en direct */}
-                <div className="flex items-center justify-center gap-2 text-xs font-medium text-gray-500 bg-gray-50 py-3 rounded-xl border border-gray-200/50">
+                <div className="flex items-center justify-center gap-2 text-xs font-medium text-gray-500 bg-gray-50 py-3 rounded-2xl border border-gray-200/50">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
-                  <span>En attente de détection automatique du SMS de caisse...</span>
+                  <span>En attente de détection automatique de votre transfert...</span>
                 </div>
 
-                {/* Bouton Annulation très visible au format Pill */}
+                {/* Bouton Annulation très visible au format Pill (Point 1 UPDATE) */}
                 <div className="pt-6 pb-2 text-center border-t border-purple-100/60 mt-4">
                   <button
                     type="button"
                     onClick={handleCancel}
                     disabled={cancelling}
-                    className="px-8 py-3 rounded-full border-2 border-red-200 bg-red-50 hover:bg-red-100 text-red-700 hover:text-red-800 font-extrabold text-xs shadow-sm hover:shadow-md transition-all inline-flex items-center gap-2 cursor-pointer disabled:opacity-50 transform hover:-translate-y-0.5"
+                    className="px-8 py-3.5 rounded-full border-2 border-red-200 bg-red-50 hover:bg-red-100 text-red-700 hover:text-red-800 font-extrabold text-xs shadow-sm hover:shadow-md transition-all inline-flex items-center gap-2 cursor-pointer disabled:opacity-50 transform hover:-translate-y-0.5"
                   >
                     <XCircle size={17} className="text-red-500" />
                     <span>{cancelling ? 'Annulation en cours...' : 'Annuler cette commande'}</span>
@@ -687,7 +946,9 @@ export function Payment() {
               </div>
             </motion.div>
           )}
+
         </AnimatePresence>
+
       </div>
     </div>
   );

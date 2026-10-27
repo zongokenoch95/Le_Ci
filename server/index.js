@@ -509,6 +509,17 @@ app.get('/api/orders/:id/status', async (req, res) => {
   }
 });
 
+// Mise à jour informations paiement mobile (nom payeur, numéro transfert, opérateur)
+app.post('/api/orders/:id/payment-info', async (req, res) => {
+  try {
+    const { payerName, payerPhone, paymentMethod } = req.body;
+    const order = await db.updateOrderPaymentInfo(req.params.id, { payerName, payerPhone, paymentMethod });
+    res.json({ success: true, order });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // Annulation client
 app.post('/api/orders/:id/cancel', async (req, res) => {
   try {
