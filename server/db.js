@@ -1683,7 +1683,8 @@ export default {
   updateAnnouncementBanner,
   getDeliverySettings,
   updateDeliverySettings,
-  calculateDeliveryFee
+  calculateDeliveryFee,
+  updateOrderPaymentInfo
 };
 
 // ==========================================

@@ -205,14 +205,19 @@ export function Payment() {
 
     try {
       if (orderId) {
-        await updateOrderPaymentInfo(orderId, {
-          payerName: payerName.trim(),
-          payerPhone: payerPhone.trim(),
-          paymentMethod: selectedOperator
-        });
         localStorage.setItem(`le_ci_payer_name_${orderId}`, payerName.trim());
         localStorage.setItem(`le_ci_payer_phone_${orderId}`, payerPhone.trim());
         localStorage.setItem(`le_ci_payment_confirmed_${orderId}`, 'true');
+
+        try {
+          await updateOrderPaymentInfo(orderId, {
+            payerName: payerName.trim(),
+            payerPhone: payerPhone.trim(),
+            paymentMethod: selectedOperator
+          });
+        } catch (apiErr) {
+          console.warn('API updateOrderPaymentInfo warning (fallback local actif):', apiErr);
+        }
       }
       setIsPaymentConfirmed(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
