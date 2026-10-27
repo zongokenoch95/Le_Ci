@@ -1,4 +1,4 @@
-# Correctifs & Améliorations Notion (Synchronisé le 27/10/2026 16:04:03)
+# Correctifs & Améliorations Notion (Synchronisé le 27/10/2026 17:46:31)
 
 24 oct. 2026, 23:03:07
 Correction Le CI
@@ -71,3 +71,14 @@ Numéro de la personne qui reçois
 1. Quand on clique sur une categorie rien ne s’affiche ( page blaanche)
 1. Dans le formulaire de creation de gateau quand un champ n’est pas rempli ou mal rempli et quil clique pour passer a letape suivante  on doit afficher le champ en question  et doit etre bordé en rouge avec un petit  message mentionant lerreur
 1. Au niveau footer garder uniquement Contact et commande ete les liens de reseaux sociaux et ajouter le bouton whatsapp au meme niveau que les reseau
+1. Quelques changements sur le formulaire de creation de geteau:
+Champ 1:Mettre un texte libre a la place ou le client pourra tout simplement dire pour quel evement 
+Champ2: Le message a ecrire sur le gateau
+Champ3: On garde Nombre de parts & Tarification 
+Champ4: saveur
+Champ5: Ongarde le catalogue
+Champ6: Carte de petit mot personnalisée qui coute 200f
+Pour la deuxieme partie
+Champ1: on garde Type de commande
+Champ2: Au niveau de la deuxieme partie du formulaire de gateau  changer le champ de la date de reception en un simple bouton selectionner votre date de reception qui quand on lappuie un calandrier ou le client slectionne la date
+Pour lheure laisser un texte libre uniquement 

@@ -69,29 +69,30 @@ const flavorOptions = [
 export function CustomOrder() {
   const [currentStep, setCurrentStep] = useState<1 | 2>(1);
 
-  // Étape 1 : Description du gâteau
-  const [theme, setTheme] = useState<'mariage' | 'anniversaire' | 'autre'>('anniversaire');
-  const [themeCustom, setThemeCustom] = useState('');
-  const [cakeDescription, setCakeDescription] = useState('');
+  // Étape 1 : Description du gâteau (Notion #20)
+  // Champ 1 : Texte libre pour l'événement
+  const [eventDetails, setEventDetails] = useState('');
+  // Champ 2 : Message à inscrire sur le gâteau
   const [cakeInscriptionMessage, setCakeInscriptionMessage] = useState('');
+  // Champ 3 : Nombre de parts & Tarification
   const [selectedPortionId, setSelectedPortionId] = useState('10-12');
+  // Champ 4 : Saveur
   const [selectedFlavor, setSelectedFlavor] = useState(flavorOptions[0]);
   const [customFlavorText, setCustomFlavorText] = useState('');
-  
-  // Modèle : Choix catalogue OU Upload image
+  // Champ 5 : Référence catalogue ou upload
   const [modelType, setModelType] = useState<'catalog' | 'upload'>('catalog');
   const [selectedCatalogCake, setSelectedCatalogCake] = useState<string>(catalogCakes[0].name);
   const [uploadedImagePreview, setUploadedImagePreview] = useState<string | null>(null);
-  
-  // Carte de petit mot
+  // Champ 6 : Carte de petit mot personnalisée (200 FCFA)
   const [hasGreetingCard, setHasGreetingCard] = useState<boolean>(false);
   const [cardMessage, setCardMessage] = useState('');
 
-  // Étape 2 : Informations pour la livraison
+  // Étape 2 : Informations pour la livraison (Notion #20)
+  // Champ 1 : Type de commande
   const [deliveryType, setDeliveryType] = useState<'livraison' | 'sur_place'>('livraison');
+  // Champ 2 : Date via bouton calendrier & Heure en texte libre
   const [receptionDate, setReceptionDate] = useState('');
-  const [receptionTime, setReceptionTime] = useState('14h00 - 17h00');
-  const [customTime, setCustomTime] = useState('');
+  const [receptionTime, setReceptionTime] = useState('');
   
   // Commanditaire
   const [ordererName, setOrdererName] = useState('');
@@ -144,9 +145,10 @@ export function CustomOrder() {
     }
   };
 
-  // Calcul du prix estimé
+  // Calcul du prix estimé avec supplément carte 200 FCFA (Notion #20)
   const currentPortion = portionsOptions.find(p => p.id === selectedPortionId) || portionsOptions[1];
-  const estimatedPrice = currentPortion.price;
+  const cardFee = hasGreetingCard ? 200 : 0;
+  const estimatedPrice = currentPortion.price > 0 ? currentPortion.price + cardFee : 0;
 
   // Calcul de la date minimale : Aujourd'hui + 2 jours pour préparation artisanale
   const minDate = (() => {
@@ -471,148 +473,54 @@ export function CustomOrder() {
             exit={{ opacity: 0, x: 20 }}
             className="space-y-10"
           >
-            {/* 1. Thème */}
+            {/* 1. Événement (Champ 1 : Texte libre, Notion #20) */}
             <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
               <h3 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
                 <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">1</span>
-                Thème de l'événement
-              </h3>
-              <p className="text-xs text-gray-500 mb-6 font-light">
-                Sélectionnez le contexte ou l'occasion célébrée pour adapter le style de votre création.
-              </p>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <button
-                  type="button"
-                  onClick={() => setTheme('mariage')}
-                  className={`p-5 rounded-2xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
-                    theme === 'mariage' 
-                      ? 'border-[#581C87] bg-purple-50/60 shadow-md ring-2 ring-[#581C87]/20' 
-                      : 'border-gray-200 hover:border-purple-200 hover:bg-gray-50/50'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-2xl">💍</span>
-                    {theme === 'mariage' && <CheckCircle2 size={18} className="text-[#581C87]" />}
-                  </div>
-                  <div>
-                    <div className="font-extrabold text-gray-900 text-sm">Autour du mariage</div>
-                    <div className="text-[11px] text-gray-500 font-light mt-0.5">Fiançailles, dot, pièce montée, romantisme</div>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setTheme('anniversaire')}
-                  className={`p-5 rounded-2xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
-                    theme === 'anniversaire' 
-                      ? 'border-[#581C87] bg-purple-50/60 shadow-md ring-2 ring-[#581C87]/20' 
-                      : 'border-gray-200 hover:border-purple-200 hover:bg-gray-50/50'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-2xl">🎂</span>
-                    {theme === 'anniversaire' && <CheckCircle2 size={18} className="text-[#581C87]" />}
-                  </div>
-                  <div>
-                    <div className="font-extrabold text-gray-900 text-sm">Anniversaire</div>
-                    <div className="text-[11px] text-gray-500 font-light mt-0.5">Enfants, adultes, bougies, cake design festif</div>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setTheme('autre')}
-                  className={`p-5 rounded-2xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
-                    theme === 'autre' 
-                      ? 'border-[#581C87] bg-purple-50/60 shadow-md ring-2 ring-[#581C87]/20' 
-                      : 'border-gray-200 hover:border-purple-200 hover:bg-gray-50/50'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-2xl">✨</span>
-                    {theme === 'autre' && <CheckCircle2 size={18} className="text-[#581C87]" />}
-                  </div>
-                  <div>
-                    <div className="font-extrabold text-gray-900 text-sm">Autre célébration</div>
-                    <div className="text-[11px] text-gray-500 font-light mt-0.5">Baptême, baby shower, diplôme, entreprise</div>
-                  </div>
-                </button>
-              </div>
-
-              {theme === 'autre' && (
-                <motion.div 
-                  initial={{ opacity: 0, height: 0 }} 
-                  animate={{ opacity: 1, height: 'auto' }} 
-                  className="mt-4 pt-4 border-t border-purple-100"
-                >
-                  <label className="block text-xs font-bold text-gray-700 mb-2">
-                    Précisez votre thème :
-                  </label>
-                  <input
-                    id="field-themeCustom"
-                    type="text"
-                    value={themeCustom}
-                    onChange={(e) => { setThemeCustom(e.target.value); clearFieldError('themeCustom'); }}
-                    placeholder="Ex: Baptême, Célébration de réussite, Baby Shower, Retraite..."
-                    className={`w-full px-4 py-3 rounded-2xl outline-none text-sm transition ${
-                      fieldErrors.themeCustom 
-                        ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200' 
-                        : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
-                    }`}
-                  />
-                  {fieldErrors.themeCustom && (
-                    <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
-                      <AlertCircle size={13} className="text-red-500 shrink-0" />
-                      <span>{fieldErrors.themeCustom}</span>
-                    </p>
-                  )}
-                </motion.div>
-              )}
-            </div>
-
-            {/* 2. Description du gâteau par le client */}
-            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
-              <h3 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">2</span>
-                Description du gâteau par vos soins
+                Pour quel événement ?
               </h3>
               <p className="text-xs text-gray-500 mb-4 font-light">
-                Décrivez librement ce que vous imaginez : couleurs souhaitées, formes, détails artistiques, inscription personnalisée sur le gâteau...
+                Indiquez simplement l'occasion célébrée pour que nos chefs pâtissiers personnalisent l'esprit et le design de votre gâteau.
               </p>
 
-              <textarea
-                id="field-cakeDescription"
-                rows={4}
-                value={cakeDescription}
-                onChange={(e) => { setCakeDescription(e.target.value); clearFieldError('cakeDescription'); }}
-                placeholder="Exemple : Gâteau rose poudré et doré avec finitions florales, inscription « Joyeux Anniversaire Léa », décor moderne et élégant sans pâte à sucre excessive..."
-                className={`w-full p-4 rounded-2xl outline-none text-sm leading-relaxed transition ${
-                  fieldErrors.cakeDescription 
+              <input
+                id="field-eventDetails"
+                type="text"
+                value={eventDetails}
+                onChange={(e) => { setEventDetails(e.target.value); clearFieldError('eventDetails'); }}
+                placeholder="Ex : Anniversaire des 25 ans de Sarah, Mariage religieux, Baptême, Fête d'entreprise, Réussite au diplôme..."
+                className={`w-full px-4 py-3.5 rounded-2xl outline-none text-sm bg-white transition ${
+                  fieldErrors.eventDetails 
                     ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200' 
                     : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
                 }`}
               />
-              {fieldErrors.cakeDescription && (
-                <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
-                  <AlertCircle size={13} className="text-red-500 shrink-0" />
-                  <span>{fieldErrors.cakeDescription}</span>
+              {fieldErrors.eventDetails && (
+                <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-2 animate-pulse">
+                  <AlertCircle size={14} className="text-red-500 shrink-0" />
+                  <span>{fieldErrors.eventDetails}</span>
                 </p>
               )}
+            </div>
 
-              <div className="mt-4 pt-4 border-t border-purple-100/60">
-                <label className="block text-xs font-bold text-gray-800 mb-1.5 flex items-center gap-1.5">
-                  <Sparkles size={14} className="text-[#581C87]" />
-                  Message ou prénom à inscrire sur le gâteau :
-                </label>
-                <input
-                  type="text"
-                  value={cakeInscriptionMessage}
-                  onChange={(e) => setCakeInscriptionMessage(e.target.value)}
-                  placeholder="Ex : « Joyeux Anniversaire Sarah », « Félicitations », « Bienvenue Bébé »..."
-                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm bg-purple-50/20"
-                />
-              </div>
+            {/* 2. Message à inscrire sur le gâteau (Champ 2, Notion #20) */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
+              <h3 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">2</span>
+                Message à inscrire sur le gâteau
+              </h3>
+              <p className="text-xs text-gray-500 mb-4 font-light">
+                Le texte ou prénom qui sera délicatement calligraphié à la main sur votre gâteau (laisser vide si vous ne souhaitez pas d'inscription).
+              </p>
+
+              <input
+                id="field-cakeInscriptionMessage"
+                type="text"
+                value={cakeInscriptionMessage}
+                onChange={(e) => setCakeInscriptionMessage(e.target.value)}
+                placeholder="Ex : « Joyeux Anniversaire Sarah », « 10 ans d'amour », « Bienvenue Bébé Liam »..."
+                className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm bg-white"
+              />
             </div>
 
             {/* 3. Nombre de parts mentionné avec les prix */}
@@ -976,68 +884,108 @@ export function CustomOrder() {
               </div>
             </div>
 
-            {/* 2. Date et heure de réception */}
+            {/* 2. Date et heure de réception (Bouton calendrier + heure texte libre, Notion #20) */}
             <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
               <h3 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
                 <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">2</span>
                 Date et heure de réception
               </h3>
               <p className="text-xs text-gray-500 mb-6 font-light">
-                Un préavis minimum de 48h est requis pour garantir la fraîcheur et la perfection de votre confection artisanale.
+                Un préavis minimum de 48h est requis pour garantir la fraîcheur et la confection sur-mesure de votre gâteau.
               </p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start">
+                {/* Champ 2a : Bouton pour sélectionner la date de réception */}
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
                     <Calendar size={14} className="text-[#581C87]" />
                     Date de réception souhaitée *
                   </label>
-                  <input
-                    id="field-receptionDate"
-                    type="date"
-                    min={minDate}
-                    value={receptionDate}
-                    onChange={(e) => { setReceptionDate(e.target.value); clearFieldError('receptionDate'); }}
-                    className={`w-full px-4 py-3 rounded-2xl outline-none text-sm transition ${
-                      fieldErrors.receptionDate 
-                        ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200' 
-                        : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
-                    }`}
-                  />
+
+                  <div className="relative">
+                    <button
+                      id="field-receptionDate"
+                      type="button"
+                      onClick={() => {
+                        const picker = document.getElementById('cake-reception-date-input') as HTMLInputElement;
+                        if (picker) {
+                          if (typeof picker.showPicker === 'function') {
+                            picker.showPicker();
+                          } else {
+                            picker.focus();
+                            picker.click();
+                          }
+                        }
+                      }}
+                      className={`w-full py-3.5 px-4 rounded-2xl flex items-center justify-between text-xs sm:text-sm font-bold transition cursor-pointer shadow-sm ${
+                        fieldErrors.receptionDate 
+                          ? 'border-2 border-red-500 bg-red-50/20 text-red-700 ring-2 ring-red-200' 
+                          : receptionDate
+                            ? 'border-2 border-[#581C87] bg-purple-50/80 text-[#581C87]'
+                            : 'border border-gray-200 bg-white text-gray-700 hover:border-purple-300 hover:bg-purple-50/40'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 truncate">
+                        <Calendar size={18} className={receptionDate ? 'text-[#581C87]' : 'text-gray-400'} />
+                        <span className="truncate">
+                          {receptionDate 
+                            ? `Date : ${new Date(receptionDate + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })}`
+                            : 'Sélectionner votre date de réception'}
+                        </span>
+                      </div>
+                      <span className="px-3 py-1 rounded-full bg-[#581C87] text-white text-[11px] font-extrabold shrink-0">
+                        {receptionDate ? 'Modifier' : 'Choisir'}
+                      </span>
+                    </button>
+
+                    {/* Input date caché activé par le bouton */}
+                    <input
+                      id="cake-reception-date-input"
+                      type="date"
+                      min={minDate}
+                      value={receptionDate}
+                      onChange={(e) => { 
+                        setReceptionDate(e.target.value); 
+                        clearFieldError('receptionDate'); 
+                      }}
+                      className="absolute bottom-0 left-0 w-0 h-0 opacity-0 pointer-events-none"
+                    />
+                  </div>
+
                   {fieldErrors.receptionDate && (
                     <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
                       <AlertCircle size={13} className="text-red-500 shrink-0" />
                       <span>{fieldErrors.receptionDate}</span>
                     </p>
                   )}
-                  <span className="block text-[11px] text-gray-400 mt-1">Date minimum : {minDate}</span>
+                  <span className="block text-[11px] text-gray-400 mt-1">Délai minimum de préparation : dès le {minDate}</span>
                 </div>
 
+                {/* Champ 2b : Heure en texte libre uniquement (Notion #20) */}
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
                     <Clock size={14} className="text-[#581C87]" />
-                    Tranche horaire souhaitée
+                    Heure souhaitée pour la réception *
                   </label>
-                  <select
+                  <input
+                    id="field-receptionTime"
+                    type="text"
                     value={receptionTime}
-                    onChange={(e) => setReceptionTime(e.target.value)}
-                    className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm bg-white"
-                  >
-                    <option value="09h00 - 12h00">09h00 - 12h00 (Matinée)</option>
-                    <option value="14h00 - 17h00">14h00 - 17h00 (Après-midi)</option>
-                    <option value="17h00 - 19h30">17h00 - 19h30 (Soirée)</option>
-                    <option value="Autre heure précise">Autre heure précise</option>
-                  </select>
-
-                  {receptionTime === 'Autre heure précise' && (
-                    <input
-                      type="text"
-                      value={customTime}
-                      onChange={(e) => setCustomTime(e.target.value)}
-                      placeholder="Ex: Précisément à 15h30"
-                      className="mt-3 w-full px-4 py-2.5 rounded-2xl border border-gray-200 focus:border-[#581C87] outline-none text-xs"
-                    />
+                    onChange={(e) => { setReceptionTime(e.target.value); clearFieldError('receptionTime'); }}
+                    placeholder="Ex : 15h30, en début d'après-midi, vers 18h..."
+                    className={`w-full px-4 py-3.5 rounded-2xl outline-none text-sm bg-white transition ${
+                      fieldErrors.receptionTime 
+                        ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200' 
+                        : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
+                    }`}
+                  />
+                  {fieldErrors.receptionTime && (
+                    <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
+                      <AlertCircle size={13} className="text-red-500 shrink-0" />
+                      <span>{fieldErrors.receptionTime}</span>
+                    </p>
                   )}
+                  <span className="block text-[11px] text-gray-400 mt-1">Indiquez librement votre créneau horaire idéal.</span>
                 </div>
               </div>
             </div>
@@ -1331,7 +1279,7 @@ export function CustomOrder() {
                 <div>
                   <span className="text-xs text-purple-200 uppercase tracking-widest font-bold">Récapitulatif de votre création</span>
                   <h4 className="text-xl sm:text-2xl font-black mt-1">
-                    {theme === 'autre' ? (themeCustom || 'Gâteau sur-mesure') : `Gâteau de ${theme}`} • {currentPortion.label}
+                    {eventDetails || 'Gâteau de célébration'} • {currentPortion.label}
                   </h4>
                   <p className="text-xs text-purple-200/80 mt-1">
                     Saveur : {selectedFlavor === 'Autre saveur personnalisée' ? customFlavorText : selectedFlavor}
