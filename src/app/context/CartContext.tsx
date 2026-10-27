@@ -8,6 +8,7 @@ export interface CartItem {
   quantity: number;
   image?: string;
   category?: string;
+  description?: string;
 }
 
 export interface CartContextType {
@@ -19,6 +20,7 @@ export interface CartContextType {
     numericPrice: number;
     image?: string;
     category?: string;
+    description?: string;
   }, quantity?: number) => void;
   removeFromCart: (id: number | string) => void;
   updateQuantity: (id: number | string, delta: number) => void;
@@ -62,6 +64,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     numericPrice: number;
     image?: string;
     category?: string;
+    description?: string;
   }, quantity = 1) => {
     setItems((prev) => {
       const existingIndex = prev.findIndex((item) => String(item.id) === String(product.id));
@@ -82,7 +85,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           numericPrice: product.numericPrice,
           quantity,
           image: product.image,
-          category: product.category
+          category: product.category,
+          description: product.description
         }
       ];
     });

@@ -1,4 +1,4 @@
-# Correctifs & Améliorations Notion (Synchronisé le 27/10/2026 17:46:31)
+# Correctifs & Améliorations Notion (Synchronisé le 27/10/2026 18:43:14)
 
 24 oct. 2026, 23:03:07
 Correction Le CI
@@ -82,3 +82,5 @@ Pour la deuxieme partie
 Champ1: on garde Type de commande
 Champ2: Au niveau de la deuxieme partie du formulaire de gateau  changer le champ de la date de reception en un simple bouton selectionner votre date de reception qui quand on lappuie un calandrier ou le client slectionne la date
 Pour lheure laisser un texte libre uniquement 
+1. Au niveau de la deuxieme partie du formulaire de gateau suprime la section coordonnées de celle qui commande et juste garder les coordonnées de la personne qui va recevoir le colis ainsi quun deuxieme numero de secours 
+1. Apres avoir remplile formlaire de gateau  on passe dabord dans la page panier avant de passer a la page de verification de paiement 

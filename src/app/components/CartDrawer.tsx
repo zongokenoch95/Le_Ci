@@ -247,10 +247,7 @@ export const CartDrawer: React.FC = () => {
       setErrorMsg('Veuillez préciser le quartier / adresse de livraison.');
       return;
     }
-    if (deliveryType === 'livraison' && !backupPhone.trim()) {
-      setErrorMsg('Veuillez fournir un second numéro de secours pour la livraison.');
-      return;
-    }
+// Second numéro de secours facultatif (Point 12)
     if (hasGreetingCard && !cardMessage.trim()) {
       setErrorMsg('Veuillez renseigner le mot à inscrire sur la carte de vœux.');
       return;
@@ -344,7 +341,15 @@ export const CartDrawer: React.FC = () => {
                   <ShoppingBag size={20} />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-base">Votre Panier Gourmand</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-extrabold text-base">Votre Panier</h3>
+                    <button
+                      onClick={() => { closeCart(); navigate('/panier'); }}
+                      className="text-[11px] underline text-purple-200 hover:text-white font-medium"
+                    >
+                      (Ouvrir la page)
+                    </button>
+                  </div>
                   <p className="text-[11px] text-purple-200/80">
                     {totalItems} douceur{totalItems > 1 ? 's' : ''} sélectionnée{totalItems > 1 ? 's' : ''}
                   </p>

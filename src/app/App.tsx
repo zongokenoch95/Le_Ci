@@ -13,6 +13,7 @@ import { AdminLogin } from './pages/AdminLogin';
 import { Payment } from './pages/Payment';
 import { Loyalty } from './pages/Loyalty';
 import { About } from './pages/About';
+import { Cart } from './pages/Cart';
 import '../styles/index.css';
 
 export default function App() {
@@ -31,6 +32,7 @@ export default function App() {
               <Route path="/nos-produits" element={<Catalogue />} />
               <Route path="/sur-commande" element={<CustomOrder />} />
               <Route path="/promotions" element={<Promotions />} />
+              <Route path="/panier" element={<Cart />} />
               
               {/* Espace Administration Isolé (Authentification Forte & RBAC) */}
               <Route path="/admin/login" element={<AdminLogin />} />

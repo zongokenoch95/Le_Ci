@@ -30,6 +30,7 @@ import {
   Share2
 } from 'lucide-react';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
+import { useCart } from '../context/CartContext';
 
 // 8 Gâteaux du catalogue de la maison Lê Ci
 const catalogCakes = [
@@ -94,17 +95,13 @@ export function CustomOrder() {
   const [receptionDate, setReceptionDate] = useState('');
   const [receptionTime, setReceptionTime] = useState('');
   
-  // Commanditaire
-  const [ordererName, setOrdererName] = useState('');
-  const [ordererPhone, setOrdererPhone] = useState('');
-
   const navigate = useNavigate();
+  const { addToCart } = useCart();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Réceptionnaire (Notion #9 : pas coché par défaut, 2 choix explicites)
-  const [recipientMode, setRecipientMode] = useState<'self' | 'other' | null>(null);
-  const [recipientName, setRecipientName] = useState('');
+  // Coordonnées de la personne qui va recevoir le colis (Notion #21)
   const [recipientPhone, setRecipientPhone] = useState('');
+  const [recipientName, setRecipientName] = useState('');
   const [recipientPhoneBackup, setRecipientPhoneBackup] = useState('');
 
   // Lieu de livraison & Géolocalisation
@@ -275,32 +272,16 @@ export function CustomOrder() {
     return true;
   };
 
-  // Validation Étape 2 avec bordure rouge & scroll automatique (Notion #18)
+  // Validation Étape 2 avec bordure rouge & scroll automatique (Notion #18 & #21)
   const validateStep2 = () => {
     if (!receptionDate) {
-      setSingleError('receptionDate', 'Veuillez sélectionner la date souhaitée pour votre commande.', 'field-receptionDate');
+      setSingleError('receptionDate', 'Veuillez sélectionner la date souhaitée pour votre commande.', 'cake-reception-date-input');
       return false;
     }
-    if (!ordererName.trim()) {
-      setSingleError('ordererName', 'Veuillez renseigner votre nom complet (commanditaire).', 'field-ordererName');
+    if (!recipientPhone.trim()) {
+      setSingleError('recipientPhone', 'Veuillez renseigner le numéro WhatsApp ou téléphone de la personne qui va recevoir le colis.', 'field-recipientPhone');
       return false;
     }
-    if (!ordererPhone.trim()) {
-      setSingleError('ordererPhone', 'Veuillez renseigner votre numéro WhatsApp ou téléphone.', 'field-ordererPhone');
-      return false;
-    }
-    if (recipientMode === null) {
-      setSingleError('recipientMode', 'Veuillez cocher qui réceptionnera la commande : vous-même ou une autre personne.', 'field-recipientMode');
-      return false;
-    }
-
-    // Si c'est une autre personne qui réceptionne : pas besoin de nom (Point 15), uniquement son numéro
-    if (recipientMode === 'other' && !recipientPhone.trim()) {
-      setSingleError('recipientPhone', 'Veuillez renseigner le numéro de la personne qui réceptionnera la commande.', 'field-recipientPhone');
-      return false;
-    }
-
-    // Le second numéro est NON OBLIGATOIRE (Point 12)
     if (deliveryType === 'livraison' && !deliveryAddress.trim()) {
       setSingleError('deliveryAddress', 'Veuillez préciser le quartier et lieu de livraison (ou choisir un quartier).', 'field-deliveryAddress');
       return false;
@@ -323,7 +304,7 @@ export function CustomOrder() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Soumission finale : création de commande et paiement Orange Money (Notion #11)
+  // Ajout au panier et passage par la page panier avant paiement (Notion #22)
   const handleSubmitOrder = async () => {
     if (!validateStep2()) {
       return;
@@ -337,48 +318,53 @@ export function CustomOrder() {
       ? `Modèle catalogue : ${selectedCatalogCake}` 
       : (uploadedImagePreview ? 'Photo personnalisée transmise' : 'Aucune photo');
 
-    const finalRecipientName = recipientMode === 'self' ? ordererName : recipientName;
-    const finalRecipientPhone = recipientMode === 'self' ? ordererPhone : recipientPhone;
     const finalAmountToPay = estimatedPrice > 0 ? estimatedPrice : 15000;
 
-    const orderNotes = [
+    const customDetailsList = [
       `Événement: ${eventDetails.trim()}`,
       `Format: ${currentPortion.label}`,
       `Saveur: ${flavorDisplay}`,
       cakeInscriptionMessage.trim() ? `Inscription gâteau: « ${cakeInscriptionMessage.trim()} »` : '',
       `Modèle: ${modelDisplay}`,
-      hasGreetingCard ? `Carte de vœux (+200F): « ${cardMessage.trim()} »` : 'Sans carte',
+      hasGreetingCard ? `Carte de vœux (+200F): « ${cardMessage.trim()} »` : '',
       `Mode: ${deliveryType === 'livraison' ? 'Livraison' : 'Retrait sur place'}`,
-      `Date souhaitée: ${receptionDate} (${receptionTime})`,
-      recipientMode === 'self' ? 'Réceptionnaire: Le commanditaire lui-même' : `Réceptionnaire (tiers): Tél ${recipientPhone}`,
-      recipientPhoneBackup ? `Tél secours: ${recipientPhoneBackup}` : '',
-      deliveryType === 'livraison' ? `Adresse: ${deliveryAddress}` : 'Retrait atelier',
-      additionalNotes ? `Allergies/Notes: ${additionalNotes}` : ''
+      `Date souhaitée: ${receptionDate} (${receptionTime || 'Créneau libre'})`,
+      `Réceptionnaire: ${recipientPhone.trim()}${recipientName.trim() ? ` (${recipientName.trim()})` : ''}`,
+      recipientPhoneBackup.trim() ? `Tél secours: ${recipientPhoneBackup.trim()}` : '',
+      deliveryType === 'livraison' ? `Adresse: ${deliveryAddress.trim()}` : 'Retrait atelier',
+      additionalNotes.trim() ? `Allergies/Notes: ${additionalNotes.trim()}` : ''
     ].filter(Boolean).join(' | ');
 
-    try {
-      const order = await createOrder({
-        customerName: ordererName.trim(),
-        customerPhone: ordererPhone.trim(),
-        items: [{
-          id: 9999,
-          name: `Gâteau Sur-Mesure (${eventDetails.trim()} - ${currentPortion.label})`,
-          price: finalAmountToPay,
-          quantity: 1,
-          image: uploadedImagePreview || '/products/gateau_1.jpeg'
-        }],
-        montantTotal: finalAmountToPay,
-        modePaiement: 'orange_money',
-        notes: orderNotes
-      });
+    // 1. Ajouter le gâteau sur-mesure au panier
+    const cakeItemId = `custom-cake-${Date.now()}`;
+    addToCart({
+      id: cakeItemId,
+      name: `Gâteau Sur-Mesure (${eventDetails.trim()} - ${currentPortion.label})`,
+      price: `${finalAmountToPay.toLocaleString('fr-FR')} FCFA`,
+      numericPrice: finalAmountToPay,
+      image: uploadedImagePreview || '/products/gateau_1.jpeg',
+      category: 'Gâteaux',
+      description: customDetailsList
+    }, 1);
 
-      // Redirection immédiate vers la page de paiement Orange Money
-      navigate(`/paiement/${order.id}`);
-    } catch (err: any) {
-      setValidationError(err.message || 'Erreur lors de la validation de la commande');
-    } finally {
-      setIsSubmitting(false);
-    }
+    // 2. Mémoriser les choix de livraison pour pré-remplir la page panier
+    try {
+      localStorage.setItem('le_ci_checkout_pref', JSON.stringify({
+        deliveryType,
+        deliveryDate: receptionDate,
+        deliveryTimeSlot: receptionTime || '14h00 - 17h00',
+        customerName: recipientName.trim(),
+        customerPhone: recipientPhone.trim(),
+        backupPhone: recipientPhoneBackup.trim(),
+        deliveryAddress: deliveryAddress.trim(),
+        notes: customDetailsList
+      }));
+    } catch (e) {}
+
+    setIsSubmitting(false);
+
+    // 3. Naviguer vers la page panier (Point 22 Notion)
+    navigate('/panier');
   };
 
   return (
@@ -1014,136 +1000,21 @@ export function CustomOrder() {
               </div>
             </div>
 
-            {/* 3. Nom et numéro WhatsApp/tél de la personne qui commande */}
+            {/* 3. Coordonnées de la personne qui va recevoir le colis (Point 21 Notion) */}
             <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
               <h3 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
                 <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">3</span>
-                Coordonnées de la personne qui commande
+                Coordonnées de la personne qui va recevoir le colis
               </h3>
               <p className="text-xs text-gray-500 mb-6 font-light">
-                Ces informations nous permettront d'échanger avec vous sur WhatsApp pour finaliser les moindres détails.
+                Le livreur ou l'atelier contactera ce numéro pour la remise de votre création gourmande. Vous pouvez renseigner un second numéro de secours.
               </p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
-                    <User size={14} className="text-[#581C87]" />
-                    Nom complet de l'acheteur *
-                  </label>
-                  <input
-                    id="field-ordererName"
-                    type="text"
-                    value={ordererName}
-                    onChange={(e) => { setOrdererName(e.target.value); clearFieldError('ordererName'); }}
-                    placeholder="Ex: Salimata Traoré"
-                    className={`w-full px-4 py-3 rounded-2xl outline-none text-sm transition ${
-                      fieldErrors.ordererName 
-                        ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200' 
-                        : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
-                    }`}
-                  />
-                  {fieldErrors.ordererName && (
-                    <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
-                      <AlertCircle size={13} className="text-red-500 shrink-0" />
-                      <span>{fieldErrors.ordererName}</span>
-                    </p>
-                  )}
-                </div>
-
+              <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
                     <Phone size={14} className="text-[#581C87]" />
-                    Numéro WhatsApp / Téléphone *
-                  </label>
-                  <input
-                    id="field-ordererPhone"
-                    type="tel"
-                    value={ordererPhone}
-                    onChange={(e) => { setOrdererPhone(e.target.value); clearFieldError('ordererPhone'); }}
-                    placeholder="Ex: +226 70 00 00 00"
-                    className={`w-full px-4 py-3 rounded-2xl outline-none text-sm transition ${
-                      fieldErrors.ordererPhone 
-                        ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200' 
-                        : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
-                    }`}
-                  />
-                  {fieldErrors.ordererPhone && (
-                    <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
-                      <AlertCircle size={13} className="text-red-500 shrink-0" />
-                      <span>{fieldErrors.ordererPhone}</span>
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* 4. Nom de la personne qui va réceptionner le colis (Notion #9 : 2 cases non cochées par défaut) */}
-            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                <h3 className="text-base sm:text-lg font-extrabold text-gray-900 flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">4</span>
-                  Personne qui réceptionnera le colis
-                </h3>
-              </div>
-              <p className="text-xs text-gray-500 mb-4 font-light">
-                Précisez qui recevra la livraison ou le retrait à l'atelier. Aucune case n'est présélectionnée.
-              </p>
-
-              {/* 2 Options à cocher */}
-              <div id="field-recipientMode" className={`grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2 p-2 rounded-2xl transition ${
-                fieldErrors.recipientMode ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200' : ''
-              }`}>
-                <label className={`flex items-start gap-3 p-4 rounded-2xl border cursor-pointer transition ${
-                  recipientMode === 'self'
-                    ? 'bg-purple-50/80 border-[#581C87] text-[#581C87] shadow-sm ring-1 ring-[#581C87]'
-                    : 'bg-white border-gray-200 hover:border-purple-200 text-gray-700'
-                }`}>
-                  <input
-                    type="radio"
-                    name="recipientChoice"
-                    checked={recipientMode === 'self'}
-                    onChange={() => setRecipientMode('self')}
-                    className="mt-0.5 w-4 h-4 text-[#581C87] focus:ring-[#581C87] cursor-pointer"
-                  />
-                  <div>
-                    <span className="block text-xs font-bold text-gray-900">C'est moi-même qui vais réceptionner</span>
-                    <span className="block text-[11px] text-gray-500 font-light mt-0.5">
-                      Le colis sera remis à votre nom et numéro ({ordererName || 'votre contact'}).
-                    </span>
-                  </div>
-                </label>
-
-                <label className={`flex items-start gap-3 p-4 rounded-2xl border cursor-pointer transition ${
-                  recipientMode === 'other'
-                    ? 'bg-purple-50/80 border-[#581C87] text-[#581C87] shadow-sm ring-1 ring-[#581C87]'
-                    : 'bg-white border-gray-200 hover:border-purple-200 text-gray-700'
-                }`}>
-                  <input
-                    type="radio"
-                    name="recipientChoice"
-                    checked={recipientMode === 'other'}
-                    onChange={() => setRecipientMode('other')}
-                    className="mt-0.5 w-4 h-4 text-[#581C87] focus:ring-[#581C87] cursor-pointer"
-                  />
-                  <div>
-                    <span className="block text-xs font-bold text-gray-900">C'est une autre personne qui réceptionne</span>
-                    <span className="block text-[11px] text-gray-500 font-light mt-0.5">
-                      Cadeau, surprise ou réceptionnaire présent sur les lieux.
-                    </span>
-                  </div>
-                </label>
-              </div>
-
-              {/* Champs affichés uniquement quand 'other' est coché */}
-              {recipientMode === 'other' && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  className="mb-4 p-4 rounded-2xl bg-purple-50/40 border border-purple-100"
-                >
-                  <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
-                    <Phone size={14} className="text-[#581C87]" />
-                    Numéro WhatsApp / Téléphone de la personne qui réceptionne *
+                    Numéro WhatsApp / Téléphone de réception *
                   </label>
                   <input
                     id="field-recipientPhone"
@@ -1151,7 +1022,7 @@ export function CustomOrder() {
                     value={recipientPhone}
                     onChange={(e) => { setRecipientPhone(e.target.value); clearFieldError('recipientPhone'); }}
                     placeholder="Ex: +226 70 00 00 00"
-                    className={`w-full px-4 py-3 rounded-2xl outline-none text-sm bg-white transition ${
+                    className={`w-full px-4 py-3.5 rounded-2xl outline-none text-sm bg-white transition ${
                       fieldErrors.recipientPhone 
                         ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200' 
                         : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
@@ -1163,35 +1034,46 @@ export function CustomOrder() {
                       <span>{fieldErrors.recipientPhone}</span>
                     </p>
                   )}
-                  <span className="block text-[11px] text-gray-500 mt-1.5">
-                    Le livreur contactera directement ce numéro pour lui remettre le colis en main propre.
-                  </span>
-                </motion.div>
-              )}
+                  <span className="block text-[11px] text-gray-400 mt-1">Numéro principal contacté le jour de la réception.</span>
+                </div>
 
-              {/* Second numéro de secours OBLIGATOIRE */}
-              <div className="mt-4 pt-4 border-t border-gray-100">
-                <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
-                  <Phone size={14} className="text-[#581C87]" />
-                  Second numéro WhatsApp / tél de secours <span className="text-[11px] font-normal text-gray-500">(optionnel)</span>
-                </label>
-                <input
-                  type="tel"
-                  value={recipientPhoneBackup}
-                  onChange={(e) => setRecipientPhoneBackup(e.target.value)}
-                  placeholder="Ex: +226 76 00 00 00 (famille, collègue, conjoint...)"
-                  className="w-full px-4 py-3 rounded-2xl border border-purple-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm bg-purple-50/20"
-                />
-                <span className="block text-[11px] text-gray-400 mt-1">
-                  Optionnel : Ce numéro servira au livreur en cas d'injoignabilité du premier contact.
-                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
+                      <User size={14} className="text-[#581C87]" />
+                      Nom de la personne qui reçoit <span className="text-[11px] font-normal text-gray-400">(optionnel)</span>
+                    </label>
+                    <input
+                      id="field-recipientName"
+                      type="text"
+                      value={recipientName}
+                      onChange={(e) => setRecipientName(e.target.value)}
+                      placeholder="Ex: Salimata Traoré"
+                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm bg-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
+                      <Phone size={14} className="text-[#581C87]" />
+                      Second numéro de secours <span className="text-[11px] font-normal text-gray-400">(optionnel)</span>
+                    </label>
+                    <input
+                      type="tel"
+                      value={recipientPhoneBackup}
+                      onChange={(e) => setRecipientPhoneBackup(e.target.value)}
+                      placeholder="Ex: +226 76 00 00 00 (famille, conjoint...)"
+                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm bg-white"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 
             {/* 5. Lieu de livraison (quartier avec précision ou géolocalisation) */}
             <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
               <h3 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">5</span>
+                <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">4</span>
                 Lieu de réception
               </h3>
 
@@ -1281,7 +1163,7 @@ export function CustomOrder() {
             {/* 7. Informations complémentaires (allergies, demandes spéciales...) */}
             <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
               <h3 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">6</span>
+                <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">5</span>
                 Informations complémentaires
               </h3>
               <p className="text-xs text-gray-500 mb-4 font-light">
@@ -1347,12 +1229,12 @@ export function CustomOrder() {
                   {isSubmitting ? (
                     <>
                       <Loader2 size={18} className="animate-spin text-[#581C87]" />
-                      <span>Validation en cours...</span>
+                      <span>Ajout au panier...</span>
                     </>
                   ) : (
                     <>
-                      <CreditCard size={18} className="text-[#581C87]" />
-                      <span>Valider et Payer avec Orange Money</span>
+                      <ShoppingBag size={18} className="text-[#581C87]" />
+                      <span>Ajouter au panier & Finaliser ma commande</span>
                       <ArrowRight size={18} className="text-[#581C87]" />
                     </>
                   )}
