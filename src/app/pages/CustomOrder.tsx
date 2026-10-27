@@ -256,14 +256,10 @@ export function CustomOrder() {
     );
   };
 
-  // Validation Étape 1 avec bordure rouge & scroll automatique (Notion #18)
+  // Validation Étape 1 avec bordure rouge & scroll automatique (Notion #18 & #20)
   const validateStep1 = () => {
-    if (theme === 'autre' && !themeCustom.trim()) {
-      setSingleError('themeCustom', 'Veuillez préciser le thème de votre gâteau.', 'field-themeCustom');
-      return false;
-    }
-    if (!cakeDescription.trim()) {
-      setSingleError('cakeDescription', 'Veuillez décrire le style ou les décorations souhaitées pour le gâteau.', 'field-cakeDescription');
+    if (!eventDetails.trim()) {
+      setSingleError('eventDetails', 'Veuillez préciser pour quel événement ce gâteau est destiné.', 'field-eventDetails');
       return false;
     }
     if (selectedFlavor === 'Autre saveur personnalisée' && !customFlavorText.trim()) {
@@ -271,7 +267,7 @@ export function CustomOrder() {
       return false;
     }
     if (hasGreetingCard && !cardMessage.trim()) {
-      setSingleError('cardMessage', 'Veuillez saisir le texte à écrire sur votre carte de vœux.', 'field-cardMessage');
+      setSingleError('cardMessage', 'Veuillez saisir le texte de votre carte de vœux.', 'field-cardMessage');
       return false;
     }
     setFieldErrors({});
@@ -336,7 +332,6 @@ export function CustomOrder() {
     setIsSubmitting(true);
     setValidationError(null);
 
-    const themeDisplay = theme === 'autre' ? `Autre (${themeCustom})` : (theme === 'mariage' ? 'Mariage' : 'Anniversaire');
     const flavorDisplay = selectedFlavor === 'Autre saveur personnalisée' ? `Personnalisée : ${customFlavorText}` : selectedFlavor;
     const modelDisplay = modelType === 'catalog' 
       ? `Modèle catalogue : ${selectedCatalogCake}` 
@@ -347,15 +342,16 @@ export function CustomOrder() {
     const finalAmountToPay = estimatedPrice > 0 ? estimatedPrice : 15000;
 
     const orderNotes = [
-      `Gâteau Sur-Mesure: ${themeDisplay} (${currentPortion.label})`,
+      `Événement: ${eventDetails.trim()}`,
+      `Format: ${currentPortion.label}`,
       `Saveur: ${flavorDisplay}`,
-      cakeInscriptionMessage ? `Inscription gâteau: « ${cakeInscriptionMessage} »` : '',
+      cakeInscriptionMessage.trim() ? `Inscription gâteau: « ${cakeInscriptionMessage.trim()} »` : '',
       `Modèle: ${modelDisplay}`,
-      hasGreetingCard ? `Carte: « ${cardMessage} »` : 'Sans carte',
+      hasGreetingCard ? `Carte de vœux (+200F): « ${cardMessage.trim()} »` : 'Sans carte',
       `Mode: ${deliveryType === 'livraison' ? 'Livraison' : 'Retrait sur place'}`,
-      `Date souhaitée: ${receptionDate} (${receptionTime === 'Autre heure précise' ? customTime : receptionTime})`,
+      `Date souhaitée: ${receptionDate} (${receptionTime})`,
       recipientMode === 'self' ? 'Réceptionnaire: Le commanditaire lui-même' : `Réceptionnaire (tiers): Tél ${recipientPhone}`,
-      `Tél secours: ${recipientPhoneBackup}`,
+      recipientPhoneBackup ? `Tél secours: ${recipientPhoneBackup}` : '',
       deliveryType === 'livraison' ? `Adresse: ${deliveryAddress}` : 'Retrait atelier',
       additionalNotes ? `Allergies/Notes: ${additionalNotes}` : ''
     ].filter(Boolean).join(' | ');
@@ -366,7 +362,7 @@ export function CustomOrder() {
         customerPhone: ordererPhone.trim(),
         items: [{
           id: 9999,
-          name: `Gâteau Sur-Mesure (${themeDisplay} - ${currentPortion.label})`,
+          name: `Gâteau Sur-Mesure (${eventDetails.trim()} - ${currentPortion.label})`,
           price: finalAmountToPay,
           quantity: 1,
           image: uploadedImagePreview || '/products/gateau_1.jpeg'
@@ -609,12 +605,23 @@ export function CustomOrder() {
                     Précisez votre saveur souhaitée :
                   </label>
                   <input
+                    id="field-customFlavorText"
                     type="text"
                     value={customFlavorText}
-                    onChange={(e) => setCustomFlavorText(e.target.value)}
+                    onChange={(e) => { setCustomFlavorText(e.target.value); clearFieldError('customFlavorText'); }}
                     placeholder="Ex: Chocolat blanc & fruits de la passion, Noisette gianduja..."
-                    className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm"
+                    className={`w-full px-4 py-3 rounded-2xl border outline-none text-sm transition ${
+                      fieldErrors.customFlavorText
+                        ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200'
+                        : 'border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
+                    }`}
                   />
+                  {fieldErrors.customFlavorText && (
+                    <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-2 animate-pulse">
+                      <AlertCircle size={14} className="text-red-500 shrink-0" />
+                      <span>{fieldErrors.customFlavorText}</span>
+                    </p>
+                  )}
                 </motion.div>
               )}
             </div>
@@ -799,22 +806,39 @@ export function CustomOrder() {
                     Texte à inscrire sur la carte :
                   </label>
                   <textarea
+                    id="field-cardMessage"
                     rows={3}
                     value={cardMessage}
-                    onChange={(e) => setCardMessage(e.target.value)}
+                    onChange={(e) => { setCardMessage(e.target.value); clearFieldError('cardMessage'); }}
                     placeholder="Ex: Joyeux anniversaire ma douce maman ! Que cette nouvelle année t'apporte bonheur et santé. Avec tout notre amour."
-                    className="w-full p-4 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm leading-relaxed"
+                    className={`w-full p-4 rounded-2xl border outline-none text-sm leading-relaxed transition ${
+                      fieldErrors.cardMessage
+                        ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200'
+                        : 'border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
+                    }`}
                   />
+                  {fieldErrors.cardMessage && (
+                    <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-2 animate-pulse">
+                      <AlertCircle size={14} className="text-red-500 shrink-0" />
+                      <span>{fieldErrors.cardMessage}</span>
+                    </p>
+                  )}
                 </motion.div>
               )}
             </div>
 
             {/* Bouton de Passage à l'Étape 2 */}
-            <div className="flex justify-end pt-4">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4">
+              {validationError && (
+                <div className="text-xs font-bold text-red-600 flex items-center gap-1.5 bg-red-50 px-4 py-3 rounded-2xl border border-red-200 w-full sm:w-auto">
+                  <AlertCircle size={15} className="shrink-0 text-red-500" />
+                  <span>{validationError}</span>
+                </div>
+              )}
               <button
                 type="button"
                 onClick={handleNextStep}
-                className="w-full sm:w-auto px-10 py-4 rounded-full bg-[#581C87] hover:bg-[#6B21A8] text-white font-extrabold text-sm shadow-xl shadow-purple-900/30 transition-all flex items-center justify-center gap-2 cursor-pointer transform hover:-translate-y-0.5"
+                className="w-full sm:w-auto sm:ml-auto px-10 py-4 rounded-full bg-[#581C87] hover:bg-[#6B21A8] text-white font-extrabold text-sm shadow-xl shadow-purple-900/30 transition-all flex items-center justify-center gap-2 cursor-pointer transform hover:-translate-y-0.5"
               >
                 <span>Passer à l'étape 2 (Livraison & Contact)</span>
                 <ArrowRight size={18} />
@@ -1366,7 +1390,7 @@ export function CustomOrder() {
               </p>
 
               <div className="p-4 rounded-2xl bg-purple-50 text-left text-xs text-gray-700 space-y-1.5 mb-6">
-                <div><span className="font-bold">Gâteau :</span> {currentPortion.label} ({theme})</div>
+                <div><span className="font-bold">Gâteau :</span> {currentPortion.label} ({eventDetails})</div>
                 <div><span className="font-bold">Date de réception :</span> {receptionDate} ({receptionTime})</div>
                 <div><span className="font-bold">Mode :</span> {deliveryType === 'livraison' ? 'Livraison à domicile' : 'Retrait atelier'}</div>
                 <div><span className="font-bold">Tarif estimé :</span> {estimatedPrice > 0 ? `${estimatedPrice.toLocaleString('fr-FR')} FCFA` : 'Sur devis'}</div>
