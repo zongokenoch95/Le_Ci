@@ -124,7 +124,7 @@ export function CustomOrder() {
 
   const setSingleError = (key: string, msg: string, elementId: string) => {
     setFieldErrors({ [key]: msg });
-    setValidationError(msg);
+    setValidationError(null); // Notion 28/10/26 : Pas d'erreur au niveau du récapitulatif, uniquement près du champ erroné
     setTimeout(() => {
       const el = document.getElementById(elementId);
       if (el) {
@@ -227,17 +227,17 @@ export function CustomOrder() {
           if (finalErr.code === 1) {
             setGeoStatusMsg({
               type: 'error',
-              text: "Accès GPS refusé par le navigateur. Veuillez autoriser la localisation ou choisir votre quartier ci-dessous."
+              text: "Veuillez activer la géolocalisation sur votre appareil"
             });
           } else if (finalErr.code === 3) {
             setGeoStatusMsg({
               type: 'error',
-              text: "Délai GPS dépassé. Veuillez saisir votre quartier manuellement ou choisir un quartier ci-dessous."
+              text: "Veuillez activer la géolocalisation sur votre appareil"
             });
           } else {
             setGeoStatusMsg({
               type: 'error',
-              text: "Signal GPS introuvable. Veuillez indiquer votre quartier dans le champ ci-dessous."
+              text: "Veuillez activer la géolocalisation sur votre appareil"
             });
           }
         },
@@ -459,18 +459,6 @@ export function CustomOrder() {
             </div>
           </div>
         </div>
-
-        {/* Message d'erreur de validation si applicable */}
-        {validationError && (
-          <motion.div 
-            initial={{ opacity: 0, y: -10 }} 
-            animate={{ opacity: 1, y: 0 }} 
-            className="mb-8 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs sm:text-sm font-semibold flex items-center gap-3 shadow-sm"
-          >
-            <AlertCircle size={18} className="shrink-0 text-rose-600" />
-            <span>{validationError}</span>
-          </motion.div>
-        )}
 
         {/* ========================================================================= */}
         {/* FORMULAIRE : ÉTAPE 1 - DESCRIPTION DU GÂTEAU */}
@@ -842,12 +830,6 @@ export function CustomOrder() {
 
             {/* Bouton de Passage à l'Étape 2 */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4">
-              {validationError && (
-                <div className="text-xs font-bold text-red-600 flex items-center gap-1.5 bg-red-50 px-4 py-3 rounded-2xl border border-red-200 w-full sm:w-auto">
-                  <AlertCircle size={15} className="shrink-0 text-red-500" />
-                  <span>{validationError}</span>
-                </div>
-              )}
               <button
                 type="button"
                 onClick={handleNextStep}
@@ -1181,17 +1163,6 @@ export function CustomOrder() {
                   </div>
                 </div>
               </div>
-
-              {validationError && (
-                <motion.div
-                  initial={{ opacity: 0, y: -8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mb-6 p-4 rounded-2xl bg-rose-500/20 border border-rose-400 text-white flex items-center gap-3 text-xs"
-                >
-                  <AlertCircle size={20} className="text-rose-300 shrink-0" />
-                  <span className="font-bold">{validationError}</span>
-                </motion.div>
-              )}
 
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                 <button

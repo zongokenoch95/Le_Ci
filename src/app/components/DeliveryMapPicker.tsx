@@ -68,7 +68,7 @@ export const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
         setDeliveryFee(res.deliveryFee);
         setIsFree(res.isFree);
 
-        const currentAddr = placeName || address || `Position (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+        const currentAddr = placeName || address || `Position GPS (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
 
         onChange({
           address: currentAddr,
@@ -89,10 +89,11 @@ export const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
   };
 
   // Option 1 : Récupération de la position actuelle GPS
+  // Notion 28/10/26 : Message d'erreur exact : "Veuillez activer la géolocalisation sur votre appareil"
   const handleGetCurrentLocation = () => {
     setStatusMsg(null);
     if (!navigator.geolocation) {
-      setStatusMsg({ type: 'error', text: "La géolocalisation n'est pas supportée par votre navigateur." });
+      setStatusMsg({ type: 'error', text: "Veuillez activer la géolocalisation sur votre appareil" });
       return;
     }
 
@@ -125,48 +126,42 @@ export const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
       setAddress(locationLabel);
       setStatusMsg({
         type: 'success',
-        text: `Position GPS actuelle capturée avec succès (${Math.round(accuracy)}m de précision) !`
+        text: `Position actuelle détectée avec succès (${Math.round(accuracy)}m de précision) !`
       });
 
       await triggerServerCalculation(latitude, longitude, locationLabel);
       setGeoLocating(false);
 
-      // Si la carte est active, déplacer le marqueur
       if (mapInstanceRef.current) {
         mapInstanceRef.current.setView([latitude, longitude], 14);
         updateMapMarkers(latitude, longitude);
       }
     };
 
-    const tryLowAccuracy = () => {
-      navigator.geolocation.getCurrentPosition(
-        onLocationFound,
-        (err) => {
-          setGeoLocating(false);
-          if (err.code === 1) {
-            setStatusMsg({
-              type: 'error',
-              text: "Accès GPS refusé. Veuillez autoriser la localisation ou utiliser l'option carte ci-dessous."
-            });
-          } else {
-            setStatusMsg({
-              type: 'error',
-              text: "Signal GPS introuvable. Utilisez l'option « Indiquer un lieu sur la carte » ci-dessous."
-            });
-          }
-        },
-        { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 }
-      );
+    const onLocationError = () => {
+      setGeoLocating(false);
+      // Règle stricte Notion : "veillez activer la géolocalisation sur votre appareil"
+      setStatusMsg({
+        type: 'error',
+        text: "Veuillez activer la géolocalisation sur votre appareil"
+      });
     };
 
     navigator.geolocation.getCurrentPosition(
       onLocationFound,
-      () => tryLowAccuracy(),
-      { enableHighAccuracy: true, timeout: 7000 }
+      () => {
+        // Deuxième essai avec basse précision avant d'afficher l'erreur
+        navigator.geolocation.getCurrentPosition(
+          onLocationFound,
+          onLocationError,
+          { enableHighAccuracy: false, timeout: 12000, maximumAge: 300000 }
+        );
+      },
+      { enableHighAccuracy: true, timeout: 6000 }
     );
   };
 
-  // Mise à jour visuelle des marqueurs et de la ligne sur Leaflet
+  // Mise à jour visuelle des marqueurs sur la carte Leaflet
   const updateMapMarkers = (userLat: number, userLng: number) => {
     if (!mapInstanceRef.current) return;
 
@@ -204,7 +199,6 @@ export const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
       userMarkerRef.current = marker;
     }
 
-    // Tracer la ligne entre l'Atelier et le lieu de livraison
     if (polylineRef.current) {
       polylineRef.current.setLatLngs([ATELIER_COORDS, [userLat, userLng]]);
     } else {
@@ -244,7 +238,7 @@ export const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
     await triggerServerCalculation(lat, lng, locationLabel);
   };
 
-  // Initialisation de la carte Leaflet
+  // Initialisation de Leaflet
   useEffect(() => {
     if (activeTab === 'map' && mapContainerRef.current && !mapInstanceRef.current) {
       const map = L.map(mapContainerRef.current, {
@@ -258,7 +252,6 @@ export const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
         maxZoom: 19
       }).addTo(map);
 
-      // Marqueur de l'Atelier
       const atelierIcon = L.divIcon({
         className: 'custom-atelier-marker',
         html: `
@@ -275,7 +268,6 @@ export const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
         .addTo(map)
         .bindPopup(`<strong>Atelier Les Douceurs de Lê Ci</strong><br/>Point de départ des livraisons`);
 
-      // Écoute des clics sur la carte
       map.on('click', (e: L.LeafEvent) => {
         const { lat, lng } = (e as L.LeafMouseEvent).latlng;
         handleMapPositionSelected(lat, lng);
@@ -283,12 +275,10 @@ export const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
 
       mapInstanceRef.current = map;
 
-      // Si on avait déjà des coordonnées, afficher le marqueur
       if (coords) {
         updateMapMarkers(coords.lat, coords.lng);
       }
 
-      // Redimensionnement propre
       setTimeout(() => {
         map.invalidateSize();
       }, 200);
@@ -304,11 +294,10 @@ export const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
     };
   }, [activeTab]);
 
-  // Propagation des modifications de repère/adresse
   const handleLandmarkChange = (val: string) => {
     setLandmark(val);
     onChange({
-      address,
+      address: address || 'Position actuelle',
       landmark: val,
       lat: coords?.lat || null,
       lng: coords?.lng || null,
@@ -335,49 +324,87 @@ export const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Sélecteur de méthode (Deux options officielles Notion 28/10/26) */}
-      <div className="grid grid-cols-2 gap-2 bg-purple-50/60 p-1.5 rounded-2xl border border-purple-100">
+      
+      {/* 5. LES DEUX BOUTONS DOIVENT ÊTRE BIEN DISTINCTS (Notion 28/10/26) */}
+      {/* "Votre position actuelle" ET "Un autre endroit" */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* Bouton 1 : Votre position actuelle */}
         <button
           type="button"
-          onClick={() => setActiveTab('gps')}
-          className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+          onClick={() => {
+            setActiveTab('gps');
+            if (!address) {
+              setAddress('Position GPS actuelle');
+            }
+          }}
+          className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center gap-3.5 ${
             activeTab === 'gps'
-              ? 'bg-[#581C87] text-white shadow-md shadow-purple-950/20'
-              : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+              ? 'border-[#581C87] bg-purple-50 text-[#581C87] shadow-md ring-2 ring-purple-200'
+              : 'border-gray-200 bg-white text-gray-700 hover:border-purple-200 hover:bg-gray-50/50'
           }`}
         >
-          <Navigation size={14} />
-          <span>Position actuelle (GPS)</span>
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+            activeTab === 'gps' ? 'bg-[#581C87] text-white shadow-sm' : 'bg-purple-100 text-[#581C87]'
+          }`}>
+            <Navigation size={20} />
+          </div>
+          <div className="flex-1">
+            <span className="block font-black text-sm">Votre position actuelle</span>
+            <span className="block text-[11px] text-gray-500 font-light mt-0.5">
+              Détection automatique par GPS
+            </span>
+          </div>
+          {activeTab === 'gps' && (
+            <div className="w-5 h-5 rounded-full bg-[#581C87] text-white flex items-center justify-center shrink-0">
+              <CheckCircle2 size={14} />
+            </div>
+          )}
         </button>
 
+        {/* Bouton 2 : Un autre endroit */}
         <button
           type="button"
           onClick={() => setActiveTab('map')}
-          className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+          className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center gap-3.5 ${
             activeTab === 'map'
-              ? 'bg-[#581C87] text-white shadow-md shadow-purple-950/20'
-              : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+              ? 'border-[#581C87] bg-purple-50 text-[#581C87] shadow-md ring-2 ring-purple-200'
+              : 'border-gray-200 bg-white text-gray-700 hover:border-purple-200 hover:bg-gray-50/50'
           }`}
         >
-          <MapPin size={14} />
-          <span>Indiquer sur la carte</span>
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+            activeTab === 'map' ? 'bg-[#581C87] text-white shadow-sm' : 'bg-purple-100 text-[#581C87]'
+          }`}>
+            <MapPin size={20} />
+          </div>
+          <div className="flex-1">
+            <span className="block font-black text-sm">Un autre endroit</span>
+            <span className="block text-[11px] text-gray-500 font-light mt-0.5">
+              Choisir un lieu sur la carte
+            </span>
+          </div>
+          {activeTab === 'map' && (
+            <div className="w-5 h-5 rounded-full bg-[#581C87] text-white flex items-center justify-center shrink-0">
+              <CheckCircle2 size={14} />
+            </div>
+          )}
         </button>
       </div>
 
-      {/* CONTENU OPTION 1 : POSITION ACTUELLE GPS */}
+      {/* CONTENU OPTION 1 : VOTRE POSITION ACTUELLE */}
+      {/* Notion : Masquer les champs quartier et la liste des quartiers. Garder champ point de repère. */}
       {activeTab === 'gps' && (
-        <div className="p-4 rounded-2xl bg-white border border-purple-100 shadow-sm space-y-3">
+        <div className="p-5 rounded-2xl bg-white border border-purple-100 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="text-xs text-gray-600">
               <span className="font-bold text-gray-900 block mb-0.5">Localisation en 1 clic :</span>
-              <span>Le site utilise votre position GPS actuelle pour calculer automatiquement la distance exacte.</span>
+              <span>Cliquez sur le bouton pour récupérer instantanément vos coordonnées GPS.</span>
             </div>
 
             <button
               type="button"
               onClick={handleGetCurrentLocation}
               disabled={geoLocating}
-              className="w-full sm:w-auto px-5 py-3 rounded-full bg-[#581C87] hover:bg-[#6B21A8] text-white text-xs font-bold shadow-md shadow-purple-900/20 transition flex items-center justify-center gap-2 cursor-pointer shrink-0 disabled:opacity-50"
+              className="w-full sm:w-auto px-6 py-3 rounded-full bg-[#581C87] hover:bg-[#6B21A8] text-white text-xs font-black shadow-md shadow-purple-900/20 transition flex items-center justify-center gap-2 cursor-pointer shrink-0 disabled:opacity-50"
             >
               {geoLocating ? (
                 <>
@@ -387,7 +414,7 @@ export const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
               ) : (
                 <>
                   <Navigation size={15} />
-                  <span>Capturer ma position GPS</span>
+                  <span>Activer ma position actuelle</span>
                 </>
               )}
             </button>
@@ -400,69 +427,128 @@ export const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
                 : 'bg-rose-50 text-rose-800 border border-rose-200'
             }`}>
               {statusMsg.type === 'success' ? <CheckCircle2 size={15} className="shrink-0" /> : <AlertCircle size={15} className="shrink-0" />}
-              <span>{statusMsg.text}</span>
+              <span className="font-medium">{statusMsg.text}</span>
             </div>
           )}
+
+          {/* Point de repère conservé (Obligatoire) */}
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center gap-1.5">
+              <Info size={13} className="text-[#581C87]" />
+              Point de repère précis (Ex : en face de la pharmacie, portail blanc...) *
+            </label>
+            <input
+              type="text"
+              value={landmark}
+              onChange={(e) => handleLandmarkChange(e.target.value)}
+              placeholder="Ex : En face de la pharmacie, villa blanche portail marron..."
+              className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-xs sm:text-sm bg-white"
+            />
+          </div>
         </div>
       )}
 
-      {/* CONTENU OPTION 2 : CHOISIR UN ENDROIT SUR LA CARTE */}
+      {/* CONTENU OPTION 2 : UN AUTRE ENDROIT (CARTE INTERACTIVE) */}
       {activeTab === 'map' && (
-        <div className="p-4 rounded-2xl bg-white border border-purple-100 shadow-sm space-y-3">
+        <div className="p-5 rounded-2xl bg-white border border-purple-100 shadow-sm space-y-4">
           <div className="flex items-center justify-between text-xs text-gray-600">
             <span className="font-bold text-gray-900 flex items-center gap-1.5">
               <Compass size={15} className="text-[#581C87]" />
-              Cliquez sur la carte ou déplacez le repère violet :
+              Cliquez sur la carte ou déplacez le repère :
             </span>
             <span className="text-[11px] text-[#581C87] font-semibold">
               ✦ Atelier Lê Ci marqué en doré
             </span>
           </div>
 
-          {/* Conteneur de carte Leaflet */}
           <div
             ref={mapContainerRef}
             className="w-full h-64 sm:h-80 rounded-2xl border border-purple-200 overflow-hidden relative shadow-inner z-0"
           />
 
           <p className="text-[11px] text-gray-500 font-light italic">
-            Astuce : vous pouvez zoomer, faire glisser la carte et cliquer sur votre rue ou quartier pour définir votre point exact de livraison.
+            Astuce : cliquez sur le lieu où vous souhaitez être livré pour positionner le repère de livraison.
           </p>
+
+          {/* Champs d'adresse et de repère */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center gap-1.5">
+                <MapPin size={13} className="text-[#581C87]" />
+                Quartier / Adresse du lieu *
+              </label>
+              <input
+                type="text"
+                value={address}
+                onChange={(e) => handleAddressChange(e.target.value)}
+                placeholder="Ex : Ouaga 2000, Koulouba, Zone du Bois..."
+                className={`w-full px-3.5 py-3 rounded-2xl outline-none text-xs sm:text-sm bg-white transition ${
+                  error ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200' : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
+                }`}
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center gap-1.5">
+                <Info size={13} className="text-[#581C87]" />
+                Point de repère précis *
+              </label>
+              <input
+                type="text"
+                value={landmark}
+                onChange={(e) => handleLandmarkChange(e.target.value)}
+                placeholder="Ex : En face de la pharmacie, portail noir..."
+                className="w-full px-3.5 py-3 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-xs sm:text-sm bg-white"
+              />
+            </div>
+          </div>
+
+          {/* Chips des quartiers (uniquement affichés en mode Un autre endroit) */}
+          <div className="pt-2">
+            <span className="text-[11px] font-bold text-gray-500 block mb-1.5">
+              ✦ Ou sélectionnez directement votre quartier :
+            </span>
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                { name: 'Ouaga 2000', km: 4.8 },
+                { name: 'Zone du Bois', km: 2.5 },
+                { name: 'Koulouba', km: 1.8 },
+                { name: 'Dassasgho', km: 3.2 },
+                { name: 'Somgandé', km: 5.0 },
+                { name: 'Patte d\'Oie', km: 4.0 },
+                { name: 'Gounghin', km: 3.5 },
+                { name: 'Pissy', km: 6.2 },
+                { name: 'Karpala', km: 7.0 },
+                { name: 'Tampouy', km: 7.5 }
+              ].map((q) => (
+                <button
+                  type="button"
+                  key={q.name}
+                  onClick={() => {
+                    setAddress(q.name);
+                    setDistanceKm(q.km);
+                    const calculated = q.km <= 3.5 ? 1000 : Math.round(((q.km / 3.5) * 1000) / 100) * 100;
+                    setDeliveryFee(calculated);
+                    onChange({
+                      address: q.name,
+                      landmark,
+                      lat: null,
+                      lng: null,
+                      distanceKm: q.km,
+                      deliveryFee: calculated,
+                      isFree: false,
+                      mode: 'manual'
+                    });
+                  }}
+                  className="px-2.5 py-1 rounded-full bg-purple-50 hover:bg-purple-100 text-[#581C87] text-[11px] font-semibold border border-purple-200/80 transition cursor-pointer"
+                >
+                  + {q.name} ({q.km} km)
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
-
-      {/* CHAMPS D'ADRESSE ET POINT DE REPÈRE */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center gap-1.5">
-            <MapPin size={13} className="text-[#581C87]" />
-            Quartier / Adresse détectée *
-          </label>
-          <input
-            type="text"
-            value={address}
-            onChange={(e) => handleAddressChange(e.target.value)}
-            placeholder="Ex : Ouaga 2000, Koulouba, Zone du Bois..."
-            className={`w-full px-3.5 py-3 rounded-2xl outline-none text-xs sm:text-sm bg-white transition ${
-              error ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200' : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
-            }`}
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center gap-1.5">
-            <Info size={13} className="text-[#581C87]" />
-            Point de repère précis (Ex : en face de la pharmacie) *
-          </label>
-          <input
-            type="text"
-            value={landmark}
-            onChange={(e) => handleLandmarkChange(e.target.value)}
-            placeholder="Ex : En face de la pharmacie, portail noir, 2e ruelle..."
-            className="w-full px-3.5 py-3 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-xs sm:text-sm bg-white"
-          />
-        </div>
-      </div>
 
       {error && (
         <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 animate-pulse">
@@ -471,76 +557,20 @@ export const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
         </p>
       )}
 
-      {/* Chips des quartiers populaires de Ouagadougou */}
-      <div className="pt-2">
-        <span className="text-[11px] font-bold text-gray-500 block mb-1.5">
-          ✦ Sélection rapide de quartier :
+      {/* 3. FRAIS DE LIVRAISON : ÉCRIRE SIMPLEMENT (Notion 28/10/26) */}
+      {/* "Pour les frais de livraison Écrire simplement : Frais de livraison : montant" */}
+      <div className="p-4 px-5 rounded-2xl bg-[#581C87] text-white shadow-md flex items-center justify-between">
+        <span className="text-sm font-extrabold tracking-wide">
+          Frais de livraison :
         </span>
-        <div className="flex flex-wrap gap-1.5">
-          {[
-            { name: 'Ouaga 2000', km: 4.8 },
-            { name: 'Zone du Bois', km: 2.5 },
-            { name: 'Koulouba', km: 1.8 },
-            { name: 'Dassasgho', km: 3.2 },
-            { name: 'Somgandé', km: 5.0 },
-            { name: 'Patte d\'Oie', km: 4.0 },
-            { name: 'Gounghin', km: 3.5 },
-            { name: 'Pissy', km: 6.2 },
-            { name: 'Karpala', km: 7.0 },
-            { name: 'Tampouy', km: 7.5 }
-          ].map((q) => (
-            <button
-              type="button"
-              key={q.name}
-              onClick={() => {
-                setAddress(q.name);
-                setDistanceKm(q.km);
-                // Barème Notion 28/10/26 :
-                // <= 3.5 km : 1000 F ; au-delà : (km / 3.5) * 1000 arrondi à 100
-                const calculated = q.km <= 3.5 ? 1000 : Math.round(((q.km / 3.5) * 1000) / 100) * 100;
-                setDeliveryFee(calculated);
-                onChange({
-                  address: q.name,
-                  landmark,
-                  lat: null,
-                  lng: null,
-                  distanceKm: q.km,
-                  deliveryFee: calculated,
-                  isFree: false,
-                  mode: 'manual'
-                });
-              }}
-              className="px-2.5 py-1 rounded-full bg-purple-50 hover:bg-purple-100 text-[#581C87] text-[11px] font-semibold border border-purple-200/80 transition cursor-pointer"
-            >
-              + {q.name} ({q.km} km)
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          {calcLoading && <Loader2 size={14} className="animate-spin text-purple-200" />}
+          <span className="text-lg sm:text-xl font-black text-amber-300">
+            {isFree ? '0 FCFA (Offerte)' : `${deliveryFee.toLocaleString('fr-FR')} FCFA`}
+          </span>
         </div>
       </div>
 
-      {/* BANDEAU RÉSULTAT DU CALCUL SÉCURISÉ CÔTÉ SERVEUR */}
-      <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-900 to-[#581C87] text-white shadow-md flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="space-y-0.5 text-center sm:text-left">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-purple-200 flex items-center justify-center sm:justify-start gap-1.5">
-            <CheckCircle2 size={13} className="text-emerald-400" />
-            <span>Frais calculés par le serveur :</span>
-            {calcLoading && <Loader2 size={12} className="animate-spin text-white" />}
-          </div>
-          <div className="text-xs text-purple-100 font-light">
-            Distance estimée : <strong className="text-white font-extrabold">{distanceKm} km</strong> depuis l'atelier
-          </div>
-        </div>
-
-        <div className="text-center sm:text-right">
-          <div className="text-xl sm:text-2xl font-black text-amber-300">
-            {isFree ? 'Livraison Offerte' : `${deliveryFee.toLocaleString('fr-FR')} FCFA`}
-          </div>
-          <div className="text-[10px] text-purple-200/80 font-light">
-            (0 à 3,5 km : 1000 F • 7 km : 2000 F)
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
-

@@ -1,4 +1,4 @@
-# Correctifs & Améliorations Notion (Synchronisé le 28/10/2026 15:39:44)
+# Correctifs & Améliorations Notion (Synchronisé le 28/10/2026 16:47:53)
 
 24 oct. 2026, 23:03:07
 Correction Le CI
@@ -105,3 +105,8 @@ Ce que voit le client
 Avant de confirmer, il voit le prix des pâtisseries, les frais de livraison et le total à payer. Le reçu reprend les mêmes lignes.
 La sécurité
 Le calcul est fait par le serveur du site, pas par le téléphone du client. Personne ne peut donc modifier le prix de la livraison.
+1. Changer le message d'erreur (Accès GPS refusé. Veuillez autoriser la localisation ou utiliser l'option carte ci-dessous.) par : veillez activer la géolocalisation sur votre appareil Masquer  les champ quartier et la liste des quartiers quand on clique sur position actuelle. Garder champ point de repère.
+Pour les frais de livraison Écrire simplement : Frais de livraison : montant 
+Pour le message d'erreur ne pas le signaler au niveau du récapitulatif juste près u champ qui erroné.
+Les deux bouton doivent être bien distincts :
+Votre position actuelle   et  Un autre endroit a4

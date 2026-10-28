@@ -123,7 +123,7 @@ export const Cart: React.FC = () => {
 
   const setSingleError = (key: string, msg: string, elementId: string) => {
     setFieldErrors({ [key]: msg });
-    setErrorMsg(msg);
+    setErrorMsg(''); // Notion 28/10/26 : Ne pas signaler au niveau du récapitulatif, uniquement près du champ erroné
     setTimeout(() => {
       const el = document.getElementById(elementId);
       if (el) {
@@ -240,7 +240,7 @@ export const Cart: React.FC = () => {
       navigator.geolocation.getCurrentPosition(
         onLocationFound,
         () => {
-          setGeoStatusMsg({ type: 'error', text: "Position GPS introuvable. Veuillez choisir un quartier ci-dessous." });
+          setGeoStatusMsg({ type: 'error', text: "Veuillez activer la géolocalisation sur votre appareil" });
           setGeoLocating(false);
         },
         { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 }
