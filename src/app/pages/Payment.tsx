@@ -37,6 +37,7 @@ import {
   LoyaltySettings 
 } from '../services/api';
 import { getSocket, joinOrder, leaveOrder } from '../services/socket';
+import { validateBurkinaPhone } from '../utils/phoneValidation';
 
 export function Payment() {
   const { orderId } = useParams<{ orderId: string }>();
@@ -155,6 +156,17 @@ export function Payment() {
   const codeRef = order?.codeReference || '';
   const amount = order?.montantTotal || 0;
 
+  // Calcul du détail transparent de la commande (Notion 28/10/26 : Pâtisseries, Livraison, Total)
+  const itemsSubtotal = useMemo(() => {
+    if (!order?.items) return 0;
+    return order.items.reduce((acc, it) => acc + (Number(it.price) || 0) * (Number(it.quantity) || 1), 0);
+  }, [order]);
+
+  const hasCard = Boolean(order?.notes && order.notes.includes('Carte de vœux'));
+  const isDelivery = Boolean(order?.notes && (order.notes.includes('Livraison') || order.notes.includes('km')));
+  const cardFee = hasCard ? 200 : 0;
+  const calculatedDeliveryFee = isDelivery ? Math.max(0, amount - itemsSubtotal - cardFee) : 0;
+
   // Syntaxes USSD
   const omUssdMarchand = `*144*10*77121289*${amount}#`;
   const omTelUrl = `tel:${encodeURIComponent(omUssdMarchand)}`;
@@ -188,13 +200,21 @@ export function Payment() {
     };
   }, [orderId]);
 
-  // Validation du formulaire de paiement (Étape 1 -> Étape 2)
+  // Validation du formulaire de paiement (Étape 1 -> Étape 2) avec validation stricte numéro BF
   const handleConfirmPaymentDetails = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!payerPhone.trim()) {
       setPaymentError('Veuillez saisir votre numéro Mobile Money utilisé pour le transfert.');
       return;
     }
+
+    // Validation du numéro de téléphone émetteur (Burkina Faso : 8 chiffres)
+    const phoneVal = validateBurkinaPhone(payerPhone);
+    if (!phoneVal.isValid) {
+      setPaymentError(phoneVal.error || 'Veuillez saisir un numéro de téléphone valide du Burkina Faso (8 chiffres).');
+      return;
+    }
+
     if (!payerName.trim()) {
       setPaymentError('Veuillez renseigner votre nom pour identifier le transfert.');
       return;
@@ -490,7 +510,7 @@ export function Payment() {
                 )}
               </div>
 
-              {/* Récapitulatif ticket */}
+              {/* Récapitulatif ticket (Reçu officiel reprenant toutes les lignes, Notion 28/10/26) */}
               <div className="bg-[#FAF8F5] rounded-2xl p-6 border border-gray-100 text-left max-w-lg mx-auto mb-8 space-y-3">
                 <div className="flex justify-between text-sm py-1 border-b border-gray-200/60">
                   <span className="text-gray-500">Numéro Commande</span>
@@ -501,7 +521,25 @@ export function Payment() {
                   <span className="font-mono font-bold text-[#581C87]">{order.codeReference}</span>
                 </div>
                 <div className="flex justify-between text-sm py-1 border-b border-gray-200/60">
-                  <span className="text-gray-500">Montant Réglé</span>
+                  <span className="text-gray-500">Prix des pâtisseries</span>
+                  <span className="font-bold text-gray-900">{itemsSubtotal.toLocaleString('fr-FR')} FCFA</span>
+                </div>
+                {isDelivery && (
+                  <div className="flex justify-between text-sm py-1 border-b border-gray-200/60">
+                    <span className="text-gray-500">Frais de livraison</span>
+                    <span className="font-bold text-gray-900">
+                      {calculatedDeliveryFee === 0 ? 'Gratuit' : `${calculatedDeliveryFee.toLocaleString('fr-FR')} FCFA`}
+                    </span>
+                  </div>
+                )}
+                {hasCard && (
+                  <div className="flex justify-between text-sm py-1 border-b border-gray-200/60">
+                    <span className="text-gray-500">Carte de vœux</span>
+                    <span className="font-bold text-gray-900">+200 FCFA</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm py-1.5 border-b border-gray-200/60">
+                  <span className="text-gray-800 font-bold">Total Réglé</span>
                   <span className="font-extrabold text-emerald-700 text-base">{amount.toLocaleString('fr-FR')} FCFA</span>
                 </div>
                 <div className="flex justify-between text-sm py-1">
@@ -588,18 +626,49 @@ export function Payment() {
               {/* Corps du formulaire de paiement */}
               <div className="p-6 sm:p-8 space-y-8">
                 
-                {/* Récapitulatif commande */}
-                <div className="bg-purple-50/50 p-5 rounded-2xl border border-purple-100 text-xs sm:text-sm text-gray-700 space-y-2">
+                {/* Récapitulatif commande (Notion 28/10/26 : Pâtisseries, Livraison, Total) */}
+                <div className="bg-purple-50/50 p-5 rounded-2xl border border-purple-100 text-xs sm:text-sm text-gray-700 space-y-2.5">
                   <div className="font-extrabold text-gray-900 flex items-center gap-2 mb-2">
                     <Sparkles size={16} className="text-[#581C87]" />
-                    <span>Détails de la commande</span>
+                    <span>Détails & Facturation de la commande</span>
                   </div>
+
                   {order.items && order.items.map((item, idx) => (
                     <div key={idx} className="flex justify-between items-center py-1 border-b border-purple-100/60 last:border-none">
                       <span className="font-semibold text-gray-800">{item.name} (x{item.quantity})</span>
                       <span className="font-black text-[#581C87]">{(item.price * item.quantity).toLocaleString('fr-FR')} FCFA</span>
                     </div>
                   ))}
+
+                  {/* Lignes de facturation claires (Notion 28/10/26) */}
+                  <div className="pt-2 mt-2 border-t border-purple-200/70 space-y-1.5">
+                    <div className="flex justify-between items-center text-xs text-gray-600">
+                      <span>Prix des pâtisseries :</span>
+                      <span className="font-bold text-gray-900">{itemsSubtotal.toLocaleString('fr-FR')} FCFA</span>
+                    </div>
+
+                    {isDelivery && (
+                      <div className="flex justify-between items-center text-xs text-gray-600">
+                        <span>Frais de livraison :</span>
+                        <span className="font-bold text-gray-900">
+                          {calculatedDeliveryFee === 0 ? 'Gratuit' : `${calculatedDeliveryFee.toLocaleString('fr-FR')} FCFA`}
+                        </span>
+                      </div>
+                    )}
+
+                    {hasCard && (
+                      <div className="flex justify-between items-center text-xs text-gray-600">
+                        <span>Carte de vœux personnalisée :</span>
+                        <span className="font-bold text-[#581C87]">+200 FCFA</span>
+                      </div>
+                    )}
+
+                    <div className="flex justify-between items-center pt-2 border-t border-purple-200/70 font-extrabold text-sm">
+                      <span className="text-gray-900">Total net à régler :</span>
+                      <span className="text-[#581C87] text-base font-black">{amount.toLocaleString('fr-FR')} FCFA</span>
+                    </div>
+                  </div>
+
                   {order.customerPhone && (
                     <div className="pt-2 text-xs text-gray-500">
                       <strong>Personne qui reçoit le colis :</strong> {order.customerName ? `${order.customerName} • ` : ''}Tél : {order.customerPhone}

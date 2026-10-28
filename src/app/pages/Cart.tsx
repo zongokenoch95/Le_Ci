@@ -38,6 +38,8 @@ import {
   calculateDeliveryFee,
   DeliverySettings
 } from '../services/api';
+import { validateBurkinaPhone } from '../utils/phoneValidation';
+import { DeliveryMapPicker, DeliveryLocationData } from '../components/DeliveryMapPicker';
 
 // Options de parts et saveurs standards pour les gâteaux catalogue
 const cakePortions = [
@@ -90,14 +92,14 @@ export const Cart: React.FC = () => {
   const [recipientName, setRecipientName] = useState<string>(savedPref?.customerName || '');
   const [backupPhone, setBackupPhone] = useState<string>(savedPref?.backupPhone || '');
 
-  // 4. Lieu & Livraison au kilomètre
+  // 4. Lieu & Livraison au kilomètre (Notion 28/10/26 : GPS ou carte)
   const [deliveryAddress, setDeliveryAddress] = useState<string>(savedPref?.deliveryAddress || '');
-  const [geoLocating, setGeoLocating] = useState(false);
-  const [distanceKm, setDistanceKm] = useState<number>(5);
+  const [deliveryLandmark, setDeliveryLandmark] = useState<string>(savedPref?.deliveryLandmark || '');
+  const [deliveryLocation, setDeliveryLocation] = useState<DeliveryLocationData | null>(null);
+  const [distanceKm, setDistanceKm] = useState<number>(savedPref?.distanceKm || 3.5);
   const [deliverySettings, setDeliverySettings] = useState<DeliverySettings | null>(null);
-  const [deliveryFee, setDeliveryFee] = useState<number>(1000);
+  const [deliveryFee, setDeliveryFee] = useState<number>(savedPref?.deliveryFee || 1000);
   const [isFreeDelivery, setIsFreeDelivery] = useState(false);
-  const [geoStatusMsg, setGeoStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // 5. Options pour gâteaux standards du catalogue
   const [cakeOptions, setCakeOptions] = useState<{ [itemId: string | number]: { portion: string; flavor: string } }>({});
@@ -290,14 +292,26 @@ export const Cart: React.FC = () => {
   // Montant Net Total
   const finalAmountToPay = Math.max(0, totalAmount + deliveryFee + cardSupplement - loyaltyDiscount - tierDiscountAmount);
 
-  // Validation du formulaire de panier
+  // Validation du formulaire de panier (Conformité téléphonique BF & Livraison, Notion 28/10/26)
   const validateCartCheckout = () => {
-    if (!recipientPhone.trim()) {
-      setSingleError('recipientPhone', 'Veuillez renseigner le numéro WhatsApp ou téléphone de la personne qui va recevoir le colis.', 'field-cart-phone');
+    // Vérification du numéro de téléphone principal (Burkina Faso : 8 chiffres)
+    const phoneVal = validateBurkinaPhone(recipientPhone);
+    if (!phoneVal.isValid) {
+      setSingleError('recipientPhone', phoneVal.error || 'Veuillez saisir un numéro valide du Burkina Faso (8 chiffres).', 'field-cart-phone');
       return false;
     }
+
+    // Vérification du numéro de secours si renseigné
+    if (backupPhone.trim()) {
+      const backupVal = validateBurkinaPhone(backupPhone, true);
+      if (!backupVal.isValid) {
+        setSingleError('backupPhone', backupVal.error || 'Numéro de secours invalide (8 chiffres requis).', 'field-cart-backupPhone');
+        return false;
+      }
+    }
+
     if (deliveryType === 'livraison' && !deliveryAddress.trim()) {
-      setSingleError('deliveryAddress', 'Veuillez préciser le quartier et lieu de livraison.', 'field-cart-address');
+      setSingleError('deliveryAddress', 'Veuillez indiquer le lieu de livraison (sur la carte ou par position GPS).', 'field-cart-address');
       return false;
     }
     if (hasGreetingCard && !cardMessage.trim()) {
@@ -323,18 +337,24 @@ export const Cart: React.FC = () => {
     setErrorMsg('');
 
     try {
+      const fullDeliveryAddress = [
+        deliveryAddress.trim(),
+        deliveryLandmark.trim() ? `Repère: ${deliveryLandmark.trim()}` : ''
+      ].filter(Boolean).join(' | ');
+
       const finalNotes = [
         `Mode: ${deliveryType === 'livraison' ? `Livraison (${distanceKm} km - ${deliveryFee} FCFA)` : 'Retrait atelier'}`,
         `Date souhaitée: ${deliveryDate} (${deliveryTimeSlot})`,
         `Réceptionnaire: ${recipientPhone.trim()}${recipientName.trim() ? ` (${recipientName.trim()})` : ''}`,
         backupPhone.trim() ? `Tél secours: ${backupPhone.trim()}` : '',
-        deliveryType === 'livraison' ? `Adresse: ${deliveryAddress.trim()}` : 'Retrait atelier',
+        deliveryType === 'livraison' ? `Adresse: ${fullDeliveryAddress}` : 'Retrait atelier',
         hasGreetingCard ? `Carte de vœux (+200F): « ${cardMessage.trim()} »` : 'Sans carte',
         useLoyaltyPoints ? `Fidélité: -${loyaltyDiscount} FCFA (${pointsToUse} pts)` : '',
         tierDiscountPercent > 0 ? `Remise VIP ${memberInfo?.tier}: -${tierDiscountAmount} FCFA` : '',
         orderNotes.trim() ? `Notes spéciales: ${orderNotes.trim()}` : ''
       ].filter(Boolean).join(' | ');
 
+      // Sécurité Notion 28/10/26 : Envoi des paramètres de livraison au serveur pour calcul et validation sécurisée
       const order = await createOrder({
         customerName: recipientName.trim() || 'Client Les Douceurs de Lê Ci',
         customerPhone: recipientPhone.trim(),
@@ -352,7 +372,14 @@ export const Cart: React.FC = () => {
         }),
         montantTotal: finalAmountToPay,
         modePaiement: 'orange_money',
-        notes: finalNotes
+        notes: finalNotes,
+        deliveryType,
+        customerLat: deliveryLocation?.lat || undefined,
+        customerLng: deliveryLocation?.lng || undefined,
+        distanceKm,
+        manualDistanceKm: distanceKm,
+        hasGreetingCard,
+        discountAmount: loyaltyDiscount + tierDiscountAmount
       });
 
       // Déduction des points fidélité si activé
@@ -690,7 +717,7 @@ export const Cart: React.FC = () => {
                       type="tel"
                       value={recipientPhone}
                       onChange={(e) => { setRecipientPhone(e.target.value); clearFieldError('recipientPhone'); }}
-                      placeholder="Ex: 70 00 00 00"
+                      placeholder="Ex: 70 00 00 00 ou +226 70 12 34 56"
                       className={`w-full px-4 py-3.5 rounded-2xl outline-none text-sm transition ${
                         fieldErrors.recipientPhone 
                           ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200' 
@@ -703,6 +730,7 @@ export const Cart: React.FC = () => {
                         <span>{fieldErrors.recipientPhone}</span>
                       </p>
                     )}
+                    <span className="block text-[11px] text-gray-400 mt-1">Numéro du Burkina Faso à 8 chiffres (Orange, Moov, Telecel).</span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -726,114 +754,56 @@ export const Cart: React.FC = () => {
                         Second numéro de secours <span className="text-[11px] font-normal text-gray-400">(optionnel)</span>
                       </label>
                       <input
+                        id="field-cart-backupPhone"
                         type="tel"
                         value={backupPhone}
-                        onChange={(e) => setBackupPhone(e.target.value)}
-                        placeholder="Ex: 76 00 00 00"
-                        className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm bg-white"
+                        onChange={(e) => { setBackupPhone(e.target.value); clearFieldError('backupPhone'); }}
+                        placeholder="Ex: 76 00 00 00 (famille, conjoint...)"
+                        className={`w-full px-4 py-3 rounded-2xl border outline-none text-sm bg-white transition ${
+                          fieldErrors.backupPhone
+                            ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200'
+                            : 'border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
+                        }`}
                       />
+                      {fieldErrors.backupPhone && (
+                        <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
+                          <AlertCircle size={13} className="text-red-500 shrink-0" />
+                          <span>{fieldErrors.backupPhone}</span>
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* 5. LIEU DE LIVRAISON (si livraison choisie) */}
+              {/* 5. LIEU DE LIVRAISON (si livraison choisie, Notion 28/10/26 : GPS ou Carte) */}
               {deliveryType === 'livraison' && (
-                <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                    <h2 className="text-base sm:text-lg font-extrabold text-gray-900 flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">5</span>
-                      Lieu & Adresse de livraison
-                    </h2>
-                    
-                    <button
-                      type="button"
-                      onClick={handleGetLocation}
-                      disabled={geoLocating}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-purple-100 text-[#581C87] text-xs font-bold hover:bg-purple-200 transition cursor-pointer shrink-0 disabled:opacity-50"
-                    >
-                      <Navigation size={13} className={geoLocating ? 'animate-spin' : ''} />
-                      <span>{geoLocating ? 'Localisation en cours...' : '📍 Utiliser ma position GPS'}</span>
-                    </button>
-                  </div>
-
+                <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm" id="field-cart-address">
+                  <h2 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">5</span>
+                    Lieu & Adresse de livraison
+                  </h2>
                   <p className="text-xs text-gray-500 mb-4 font-light">
-                    Indiquez votre quartier et repères visuels pour faciliter l'acheminement de vos douceurs.
+                    Indiquez votre quartier par GPS ou sur la carte avec vos repères pour le livreur.
                   </p>
 
-                  <textarea
-                    id="field-cart-address"
-                    rows={3}
-                    value={deliveryAddress}
-                    onChange={(e) => { setDeliveryAddress(e.target.value); clearFieldError('deliveryAddress'); }}
-                    placeholder="Ex: Quartier Ouaga 2000, à 200m de la pharmacie, villa blanche portail marron..."
-                    className={`w-full p-4 rounded-2xl outline-none text-sm leading-relaxed transition ${
-                      fieldErrors.deliveryAddress 
-                        ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200' 
-                        : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
-                    }`}
+                  <DeliveryMapPicker
+                    totalCartAmount={totalAmount}
+                    initialAddress={deliveryAddress}
+                    initialLandmark={deliveryLandmark}
+                    initialDistanceKm={distanceKm}
+                    initialFee={deliveryFee}
+                    error={fieldErrors.deliveryAddress}
+                    onChange={(loc) => {
+                      setDeliveryAddress(loc.address);
+                      setDeliveryLandmark(loc.landmark);
+                      setDeliveryLocation(loc);
+                      setDistanceKm(loc.distanceKm);
+                      setDeliveryFee(loc.deliveryFee);
+                      setIsFreeDelivery(loc.isFree);
+                      clearFieldError('deliveryAddress');
+                    }}
                   />
-                  {fieldErrors.deliveryAddress && (
-                    <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
-                      <AlertCircle size={13} className="text-red-500 shrink-0" />
-                      <span>{fieldErrors.deliveryAddress}</span>
-                    </p>
-                  )}
-
-                  {/* Message GPS */}
-                  {geoStatusMsg && (
-                    <div className={`mt-2 p-2.5 rounded-xl text-xs flex items-center gap-2 ${
-                      geoStatusMsg.type === 'success' 
-                        ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' 
-                        : 'bg-rose-50 text-rose-800 border border-rose-200'
-                    }`}>
-                      {geoStatusMsg.type === 'success' ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
-                      <span>{geoStatusMsg.text}</span>
-                    </div>
-                  )}
-
-                  {/* Curseur de distance kilométrique */}
-                  <div className="mt-4 pt-4 border-t border-gray-100">
-                    <div className="flex items-center justify-between text-xs font-bold text-gray-700 mb-2">
-                      <span className="flex items-center gap-1.5">
-                        <MapPin size={14} className="text-[#581C87]" />
-                        Distance estimée depuis l'atelier :
-                      </span>
-                      <span className="text-[#581C87] font-black">{distanceKm} km</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="1"
-                      max="30"
-                      value={distanceKm}
-                      onChange={(e) => setDistanceKm(Number(e.target.value))}
-                      className="w-full accent-[#581C87] cursor-pointer"
-                    />
-                    <div className="flex justify-between text-[10px] text-gray-400 mt-1">
-                      <span>Proche (1 km)</span>
-                      <span>Moyen (10 km)</span>
-                      <span>Périphérie (30 km)</span>
-                    </div>
-                  </div>
-
-                  {/* Chips des quartiers de Ouagadougou */}
-                  <div className="mt-3 pt-3 border-t border-gray-100">
-                    <span className="text-[11px] font-bold text-gray-500 block mb-1.5">
-                      ✦ Sélection rapide par quartier :
-                    </span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {['Ouaga 2000', 'Zone du Bois', 'Koulouba', 'Dassasgho', 'Somgandé', 'Patte d\'Oie', 'Gounghin', 'Pissy', 'Karpala', 'Tampouy', 'Wayalghin', 'Tanghin'].map((q) => (
-                        <button
-                          type="button"
-                          key={q}
-                          onClick={() => { setDeliveryAddress(prev => prev ? `${prev}, ${q}` : q); clearFieldError('deliveryAddress'); }}
-                          className="px-2.5 py-1 rounded-full bg-purple-50 hover:bg-purple-100 text-[#581C87] text-[11px] font-semibold border border-purple-200/80 transition cursor-pointer"
-                        >
-                          + {q}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
                 </div>
               )}
 

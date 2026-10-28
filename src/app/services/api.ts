@@ -72,6 +72,13 @@ export async function createOrder(data: {
   montantTotal: number;
   modePaiement?: string;
   notes?: string;
+  deliveryType?: 'livraison' | 'sur_place';
+  customerLat?: number;
+  customerLng?: number;
+  manualDistanceKm?: number;
+  distanceKm?: number;
+  hasGreetingCard?: boolean;
+  discountAmount?: number;
 }): Promise<Order> {
   const res = await fetch(`${API_BASE}/orders`, {
     method: 'POST',
@@ -745,6 +752,8 @@ export interface DeliveryCalculationResult {
   freeThreshold: number;
   isFree: boolean;
   deliveryFee: number;
+  originLat?: number;
+  originLng?: number;
   originAddress: string;
 }
 

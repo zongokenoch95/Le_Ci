@@ -7,8 +7,8 @@ import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { useCart } from '../context/CartContext';
 import { getProducts, Product } from '../services/api';
 
-// Les 4 catégories officielles issues des dossiers de img/
-const categories = ['Tous', 'Douceurs salés', 'Douceurs sucrées', 'Paquets', 'Gâteaux'];
+// Les catégories officielles vendues par la maison Lê Ci (avec Signature de la maison, Notion 28/10/26)
+const categories = ['Tous', 'Signature de la maison', 'Douceurs salés', 'Douceurs sucrées', 'Paquets', 'Gâteaux'];
 
 // 26 produits créés à partir des dossiers d'images
 const fallbackProducts = [
@@ -267,7 +267,9 @@ export function Catalogue() {
 
   useEffect(() => {
     if (categoryParam) {
-      if (categoryParam.includes('sal')) {
+      if (categoryParam.toLowerCase().includes('signature')) {
+        setSelectedCategory('Signature de la maison');
+      } else if (categoryParam.includes('sal')) {
         setSelectedCategory('Douceurs salés');
       } else if (categoryParam.includes('sucr')) {
         setSelectedCategory('Douceurs sucrées');
@@ -320,6 +322,16 @@ export function Catalogue() {
 
   const filteredProducts = productsList.filter(product => {
     if (selectedCategory === 'Tous') return true;
+    if (selectedCategory === 'Signature de la maison') {
+      const signatureIds = [1, 4, 6, 7, 12, 14, 18, 19, 20, 22];
+      const nameLower = (product.name || '').toLowerCase();
+      const descLower = (product.description || '').toLowerCase();
+      return signatureIds.includes(product.id) || 
+        nameLower.includes('signature') || 
+        nameLower.includes('prestige') || 
+        descLower.includes('signature') ||
+        product.is_signature;
+    }
     if (selectedCategory === 'Douceurs salés') {
       return product.category === 'Douceurs salés' || product.category === 'Douceurs salées';
     }

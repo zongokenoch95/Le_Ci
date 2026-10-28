@@ -1,4 +1,4 @@
-# Correctifs & Améliorations Notion (Synchronisé le 27/10/2026 18:43:14)
+# Correctifs & Améliorations Notion (Synchronisé le 28/10/2026 15:39:44)
 
 24 oct. 2026, 23:03:07
 Correction Le CI
@@ -83,4 +83,25 @@ Champ1: on garde Type de commande
 Champ2: Au niveau de la deuxieme partie du formulaire de gateau  changer le champ de la date de reception en un simple bouton selectionner votre date de reception qui quand on lappuie un calandrier ou le client slectionne la date
 Pour lheure laisser un texte libre uniquement 
 1. Au niveau de la deuxieme partie du formulaire de gateau suprime la section coordonnées de celle qui commande et juste garder les coordonnées de la personne qui va recevoir le colis ainsi quun deuxieme numero de secours 
-1. Apres avoir remplile formlaire de gateau  on passe dabord dans la page panier avant de passer a la page de verification de paiement 
+1. Apres avoir remplile formlaire de gateau  on passe dabord dans la page panier avant de passer a la page de verification de paiement
+ 
+28/10/26
+1. Ajouter une section signature de la maison qui est une catégorie ou se sont des plats (douceurs , paquet ou gâteau) qui sont des créations phares de la pâtisserie.
+1. Au niveau du footer le Logo WhatsApp doit avoir le même aspect que les autres logo, suprimer le contenu du footer et ne garder que  la partie contact dans laquelle vous aller mettre les 3 boutons des réseaux sociaux, et biensur on garde le copyright 
+1. Pour la géolocalisation du lieu de livraison on peut mettre deux option: la première est la position actuelle où tout simplement le système récupére via la position gps actuelle du client . La deuxième est indiquer un lieu sur la carte où tout simplement le client essayera d'indiquer le lieu où le client ira livrer.
+1. pour tous les champs où c'est un numéro de téléphone qu'on doit saisir il doit être conforme au numéro téléphonique du Burkina, de sorte a ce que quand le client saisi un numéro qui n'est pas conforme,  le client est redirigé sur ce champ en question et un message d'erreur s'affiche 
+1. Résumé du système de livraison
+Le principe
+Quand un client commande, il indique où il veut être livré. Le site calcule la distance depuis la pâtisserie et ajoute le prix de la livraison à la facture.
+Comment le client indique son adresse
+Soit en un clic : le site utilise sa position actuelle.
+Soit en choisissant un endroit sur la carte.
+Il ajoute aussi son numéro de téléphone et un point de repère (par exemple : en face de la pharmacie).
+Comment le prix est calculé
+De 0 à 3,5 km : 1000 F.
+Au-delà : le prix augmente proportionnellement à la distance. Si 3,5 km coûtent 1000 F, alors 7 km coûtent 2000 F.
+Le résultat est arrondi à la centaine de francs.
+Ce que voit le client
+Avant de confirmer, il voit le prix des pâtisseries, les frais de livraison et le total à payer. Le reçu reprend les mêmes lignes.
+La sécurité
+Le calcul est fait par le serveur du site, pas par le téléphone du client. Personne ne peut donc modifier le prix de la livraison.

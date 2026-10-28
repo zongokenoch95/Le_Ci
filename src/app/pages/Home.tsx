@@ -13,9 +13,61 @@ import {
   UtensilsCrossed, 
   Copy, 
   CheckCircle2, 
-  ChevronRight
+  ChevronRight,
+  Crown,
+  ShoppingBag,
+  Check
 } from 'lucide-react';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
+import { useCart } from '../context/CartContext';
+
+// Créations phares : Section Signature de la Maison (Notion 28/10/26)
+const signatureCreations = [
+  {
+    id: 12,
+    name: "Fraisier Signature Suprême",
+    category: "Gâteaux",
+    tag: "Gâteau Signature",
+    price: "6 500 FCFA",
+    numericPrice: 6500,
+    image: "/products/gateau_1.jpeg",
+    description: "Génoise aérienne, fraises fraîches locales et crème mousseline onctueuse à la vanille Bourbon.",
+    isCake: true
+  },
+  {
+    id: 1,
+    name: "Plateau Feuilletés Salés Apéritifs",
+    category: "Douceurs salées",
+    tag: "Douceur Salée",
+    price: "2 500 FCFA",
+    numericPrice: 2500,
+    image: "/products/salee_1.jpeg",
+    description: "Feuilletés croustillants au fromage fondant et épices douces, pur beurre fait main.",
+    isCake: false
+  },
+  {
+    id: 4,
+    name: "Éclairs Fondants Ganache Dorée",
+    category: "Douceurs sucrées",
+    tag: "Douceur Sucrée",
+    price: "1 500 FCFA",
+    numericPrice: 1500,
+    image: "/products/sucree_1.jpeg",
+    description: "Pâte à choux aérée garnie de ganache au chocolat grand cru et fine feuille d'or comestible.",
+    isCake: false
+  },
+  {
+    id: 20,
+    name: "Box Découverte Douceurs de Lê Ci",
+    category: "Paquets",
+    tag: "Paquet Cadeau",
+    price: "5 000 FCFA",
+    numericPrice: 5000,
+    image: "/products/paquet_1.jpeg",
+    description: "Coffret d'exception réunissant nos meilleures douceurs sucrées et salées dans un écrin festif.",
+    isCake: false
+  }
+];
 
 // 4 Catégories officielles vendues par la maison Lê Ci
 const productCategories = [
@@ -116,6 +168,25 @@ const promoEvents = [
 
 export function Home() {
   const [copiedCode, setCopiedCode] = useState(false);
+  const [addedProductId, setAddedProductId] = useState<number | null>(null);
+  const { addToCart, openCart } = useCart();
+
+  const handleAddSignatureToCart = (item: typeof signatureCreations[0], immediate = false) => {
+    addToCart({
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      numericPrice: item.numericPrice,
+      image: item.image,
+      category: item.category,
+      description: item.description
+    }, 1);
+    setAddedProductId(item.id);
+    setTimeout(() => setAddedProductId(null), 1500);
+    if (immediate) {
+      openCart();
+    }
+  };
 
   const scrollToSection = (id: string) => {
     const el = document.getElementById(id);
@@ -297,6 +368,148 @@ export function Home() {
             <Cake size={16} />
             <span>Personnaliser un gâteau</span>
           </Link>
+        </div>
+      </section>
+
+      {/* ========================================================================= */}
+      {/* 2.BIS SECTION SIGNATURE DE LA MAISON (Notion 28/10/26) */}
+      {/* Les créations phares (douceurs, paquets ou gâteaux) de la pâtisserie */}
+      {/* ========================================================================= */}
+      <section id="signature-maison" className="bg-gradient-to-b from-purple-950 via-[#3B0764] to-[#2E0249] py-20 sm:py-24 text-white relative overflow-hidden">
+        {/* Lueur d'ambiance dorée / violette */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-purple-600/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-black bg-gradient-to-r from-[#D4AF37] to-amber-300 text-purple-950 uppercase tracking-widest mb-3 shadow-lg shadow-amber-900/30">
+              <Crown size={14} className="text-purple-950" /> Créations Phares
+            </span>
+            <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
+              Signature de la maison
+            </h2>
+            <p className="text-sm sm:text-base text-purple-200/90 max-w-2xl mx-auto font-light mt-3 leading-relaxed">
+              Découvrez les créations emblématiques de la pâtisserie Lê Ci : des recettes d'exception préparées avec passion pour sublimer vos moments inoubliables.
+            </p>
+          </motion.div>
+
+          {/* Grille des 4 créations phares */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {signatureCreations.map((item, idx) => {
+              const isAdded = addedProductId === item.id;
+              return (
+                <motion.div
+                  key={item.id}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: idx * 0.1 }}
+                  className="bg-white/10 backdrop-blur-md rounded-3xl overflow-hidden border border-white/15 hover:border-[#D4AF37]/50 shadow-2xl transition-all duration-300 flex flex-col justify-between group hover:-translate-y-1.5"
+                >
+                  <div>
+                    {/* Photo de la création signature */}
+                    <div className="relative aspect-square overflow-hidden bg-purple-900/40">
+                      <ImageWithFallback
+                        src={item.image}
+                        alt={item.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+
+                      {/* Tag Signature */}
+                      <span className="absolute top-3 left-3 px-3 py-1 bg-gradient-to-r from-[#D4AF37] to-amber-300 text-purple-950 text-[10px] font-black rounded-full uppercase tracking-wider shadow-md">
+                        {item.tag}
+                      </span>
+
+                      {/* Catégorie */}
+                      <span className="absolute top-3 right-3 px-2.5 py-0.5 bg-black/60 backdrop-blur-md rounded-full text-[10px] font-semibold text-white">
+                        {item.category}
+                      </span>
+
+                      <div className="absolute bottom-3 left-3 right-3">
+                        <h3 className="text-base sm:text-lg font-black text-white drop-shadow leading-snug line-clamp-1">
+                          {item.name}
+                        </h3>
+                        <div className="text-amber-300 text-sm font-black mt-0.5">
+                          {item.price}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Description */}
+                    <div className="p-5">
+                      <p className="text-xs text-purple-100/80 font-light leading-relaxed line-clamp-2">
+                        {item.description}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Boutons d'action */}
+                  <div className="p-5 pt-0 flex gap-2">
+                    {item.isCake ? (
+                      <Link
+                        to="/sur-commande"
+                        className="w-full py-2.5 px-4 rounded-full font-extrabold text-xs bg-gradient-to-r from-[#D4AF37] to-amber-300 hover:from-amber-300 hover:to-[#D4AF37] text-purple-950 shadow-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer transform active:scale-95 text-center"
+                      >
+                        <Cake size={14} />
+                        <span>Personnaliser</span>
+                        <ArrowRight size={13} />
+                      </Link>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleAddSignatureToCart(item, false)}
+                          className={`flex-1 py-2.5 px-3 rounded-full font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                            isAdded
+                              ? 'bg-emerald-500 text-white shadow-md'
+                              : 'bg-white/15 hover:bg-white/25 text-white border border-white/20'
+                          }`}
+                        >
+                          {isAdded ? (
+                            <>
+                              <Check size={14} /> Ajouté !
+                            </>
+                          ) : (
+                            <>
+                              <ShoppingBag size={14} /> Panier
+                            </>
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleAddSignatureToCart(item, true)}
+                          className="flex-1 py-2.5 px-3 rounded-full font-black text-xs bg-gradient-to-r from-[#D4AF37] to-amber-300 hover:from-amber-300 hover:to-[#D4AF37] text-purple-950 shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                        >
+                          <span>Commander</span>
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+
+          {/* Lien vers la catégorie Signature du catalogue */}
+          <div className="mt-12 text-center">
+            <Link
+              to="/catalogue?category=Signature"
+              className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-white/10 hover:bg-white/20 text-white font-extrabold text-xs border border-white/20 transition backdrop-blur-md cursor-pointer hover:scale-105"
+            >
+              <Crown size={15} className="text-[#D4AF37]" />
+              <span>Voir toutes nos créations signatures dans le catalogue</span>
+              <ArrowRight size={14} />
+            </Link>
+          </div>
+
         </div>
       </section>
 

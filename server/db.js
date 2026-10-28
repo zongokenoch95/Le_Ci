@@ -675,8 +675,36 @@ export async function createOrder(data) {
   const now = new Date();
   const expiresAt = new Date(now.getTime() + 10 * 60 * 1000); // TTL 10 minutes
 
-  const itemsJson = JSON.stringify(data.items || []);
-  const amount = parseInt(data.montantTotal || data.amount || 0, 10);
+  const items = data.items || [];
+  const itemsJson = JSON.stringify(items);
+  
+  // Sécurité renforcée Notion 28/10/26 :
+  // Le calcul du montant total et de la livraison est vérifié et validé côté serveur
+  const itemsTotal = items.reduce((acc, it) => acc + (Number(it.price) || 0) * (Number(it.quantity) || 1), 0);
+  let serverDeliveryFee = 0;
+  let distanceKm = 0;
+
+  const isDelivery = data.deliveryType === 'livraison' || (data.notes && data.notes.includes('Livraison')) || data.customerLat || data.manualDistanceKm;
+  if (isDelivery && data.deliveryType !== 'sur_place') {
+    const deliveryCalc = await calculateDeliveryFee({
+      customerLat: data.customerLat,
+      customerLng: data.customerLng,
+      totalCartAmount: itemsTotal,
+      manualDistanceKm: data.manualDistanceKm || data.distanceKm
+    });
+    serverDeliveryFee = deliveryCalc.deliveryFee;
+    distanceKm = deliveryCalc.distanceKm;
+  }
+
+  const cardSupplement = data.hasGreetingCard ? 200 : 0;
+  const discountAmount = Math.max(0, Number(data.discountAmount || 0));
+  
+  // Si le calcul serveur est possible, garantir que le montant total n'est pas manipulable côté client
+  let finalAmount = parseInt(data.montantTotal || data.amount || 0, 10);
+  if (itemsTotal > 0) {
+    const verifiedTotal = Math.max(0, itemsTotal + serverDeliveryFee + cardSupplement - discountAmount);
+    finalAmount = verifiedTotal;
+  }
 
   await run(`
     INSERT INTO orders (id, customer_name, customer_phone, customer_email, items, montant_total, statut, code_reference, mode_paiement, notes, created_at, expires_at)
@@ -687,7 +715,7 @@ export async function createOrder(data) {
     data.customerPhone || '',
     data.customerEmail || '',
     itemsJson,
-    amount,
+    finalAmount,
     'EN_ATTENTE_DE_PAIEMENT',
     codeReference,
     data.modePaiement || 'orange_money',
@@ -1886,26 +1914,37 @@ export async function calculateDeliveryFee({ customerLat, customerLng, totalCart
       Math.cos(toRad(settings.origin_lat)) * Math.cos(toRad(Number(customerLat))) *
       Math.sin(dLng / 2) * Math.sin(dLng / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    // Majoration de 1.35x pour tenir compte du trajet réel routier
-    distanceKm = Math.max(1, Math.round((R * c * 1.35) * 10) / 10);
+    // Majoration de 1.35x pour tenir compte du trajet réel routier à Ouagadougou
+    distanceKm = Math.max(0.5, Math.round((R * c * 1.35) * 10) / 10);
   }
 
-  // Vérification de gratuité éventuelle
+  // Spécification Notion officielle (28/10/26) :
+  // De 0 à 3,5 km : 1000 F.
+  // Au-delà : proportionnel à la distance (si 3,5 km = 1000 F, alors 7 km = 2000 F).
+  // Résultat arrondi à la centaine de francs.
+  let calculatedFee = 1000;
+  if (distanceKm <= 3.5) {
+    calculatedFee = 1000;
+  } else {
+    calculatedFee = Math.round(((distanceKm / 3.5) * 1000) / 100) * 100;
+  }
+
+  // Vérification de gratuité éventuelle si seuil atteint
   const isFree = settings.free_threshold > 0 && totalCartAmount >= settings.free_threshold;
-  const calculatedFee = isFree 
-    ? 0 
-    : (distanceKm > 0 
-        ? Math.max(settings.min_fee, Math.round(distanceKm * settings.price_per_km)) 
-        : settings.min_fee);
+  if (isFree) {
+    calculatedFee = 0;
+  }
 
   return {
     success: true,
     distanceKm,
-    pricePerKm: settings.price_per_km,
-    minFee: settings.min_fee,
+    pricePerKm: Math.round(1000 / 3.5),
+    minFee: 1000,
     freeThreshold: settings.free_threshold,
     isFree,
     deliveryFee: calculatedFee,
+    originLat: settings.origin_lat,
+    originLng: settings.origin_lng,
     originAddress: settings.origin_address
   };
 }

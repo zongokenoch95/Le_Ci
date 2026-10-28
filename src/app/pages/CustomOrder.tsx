@@ -27,10 +27,13 @@ import {
   Store,
   FileText,
   HelpCircle,
-  Share2
+  Share2,
+  ShoppingBag
 } from 'lucide-react';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { useCart } from '../context/CartContext';
+import { validateBurkinaPhone } from '../utils/phoneValidation';
+import { DeliveryMapPicker, DeliveryLocationData } from '../components/DeliveryMapPicker';
 
 // 8 Gâteaux du catalogue de la maison Lê Ci
 const catalogCakes = [
@@ -104,10 +107,10 @@ export function CustomOrder() {
   const [recipientName, setRecipientName] = useState('');
   const [recipientPhoneBackup, setRecipientPhoneBackup] = useState('');
 
-  // Lieu de livraison & Géolocalisation
+  // Lieu de livraison & Géolocalisation (Notion 28/10/26 : GPS ou carte)
   const [deliveryAddress, setDeliveryAddress] = useState('');
-  const [geoLocating, setGeoLocating] = useState(false);
-  const [geoCoords, setGeoCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [deliveryLandmark, setDeliveryLandmark] = useState('');
+  const [deliveryLocation, setDeliveryLocation] = useState<DeliveryLocationData | null>(null);
 
   // Informations complémentaires
   const [additionalNotes, setAdditionalNotes] = useState('');
@@ -272,20 +275,34 @@ export function CustomOrder() {
     return true;
   };
 
-  // Validation Étape 2 avec bordure rouge & scroll automatique (Notion #18 & #21)
+  // Validation Étape 2 avec conformité téléphonique BF & scroll automatique (Notion 28/10/26)
   const validateStep2 = () => {
     if (!receptionDate) {
       setSingleError('receptionDate', 'Veuillez sélectionner la date souhaitée pour votre commande.', 'cake-reception-date-input');
       return false;
     }
-    if (!recipientPhone.trim()) {
-      setSingleError('recipientPhone', 'Veuillez renseigner le numéro WhatsApp ou téléphone de la personne qui va recevoir le colis.', 'field-recipientPhone');
+
+    // Validation stricte du format téléphonique Burkina Faso (8 chiffres)
+    const phoneVal = validateBurkinaPhone(recipientPhone);
+    if (!phoneVal.isValid) {
+      setSingleError('recipientPhone', phoneVal.error || 'Veuillez saisir un numéro valide du Burkina Faso (8 chiffres).', 'field-recipientPhone');
       return false;
     }
+
+    // Validation du numéro de secours s'il a été renseigné
+    if (recipientPhoneBackup.trim()) {
+      const backupVal = validateBurkinaPhone(recipientPhoneBackup, true);
+      if (!backupVal.isValid) {
+        setSingleError('recipientPhoneBackup', backupVal.error || 'Numéro de secours invalide (8 chiffres requis).', 'field-recipientPhoneBackup');
+        return false;
+      }
+    }
+
     if (deliveryType === 'livraison' && !deliveryAddress.trim()) {
-      setSingleError('deliveryAddress', 'Veuillez préciser le quartier et lieu de livraison (ou choisir un quartier).', 'field-deliveryAddress');
+      setSingleError('deliveryAddress', 'Veuillez indiquer le lieu de livraison (position GPS ou carte).', 'field-deliveryAddress');
       return false;
     }
+
     setFieldErrors({});
     setValidationError(null);
     return true;
@@ -304,7 +321,7 @@ export function CustomOrder() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Validation et passage direct sur la page de paiement
+  // Validation et passage d'abord par le panier (Notion point 86 : "Apres avoir remplile formlaire de gateau on passe dabord dans la page panier avant de passer a la page de verification de paiement")
   const handleSubmitOrder = async () => {
     if (!validateStep2()) {
       return;
@@ -318,7 +335,12 @@ export function CustomOrder() {
       ? `Modèle catalogue : ${selectedCatalogCake}` 
       : (uploadedImagePreview ? 'Photo personnalisée transmise' : 'Aucune photo');
 
-    const finalAmountToPay = estimatedPrice > 0 ? estimatedPrice : 15000;
+    const finalCakePrice = estimatedPrice > 0 ? estimatedPrice : 15000;
+
+    const fullDeliveryAddress = [
+      deliveryAddress.trim(),
+      deliveryLandmark.trim() ? `Repère: ${deliveryLandmark.trim()}` : ''
+    ].filter(Boolean).join(' | ');
 
     const customDetailsList = [
       `Événement: ${eventDetails.trim()}`,
@@ -331,35 +353,42 @@ export function CustomOrder() {
       `Date souhaitée: ${receptionDate} (${receptionTime || 'Créneau libre'})`,
       `Réceptionnaire: ${recipientPhone.trim()}${recipientName.trim() ? ` (${recipientName.trim()})` : ''}`,
       recipientPhoneBackup.trim() ? `Tél secours: ${recipientPhoneBackup.trim()}` : '',
-      deliveryType === 'livraison' ? `Adresse: ${deliveryAddress.trim()}` : 'Retrait atelier',
+      deliveryType === 'livraison' ? `Adresse: ${fullDeliveryAddress}` : 'Retrait atelier',
       additionalNotes.trim() ? `Allergies/Notes: ${additionalNotes.trim()}` : ''
     ].filter(Boolean).join(' | ');
 
     try {
-      const order = await createOrder({
-        customerName: recipientName.trim() || 'Client Destinataire Lê Ci',
+      // 1. Ajout de la création personnalisée au panier
+      addToCart({
+        id: `custom-cake-${Date.now()}`,
+        name: `Gâteau Sur-Mesure (${eventDetails.trim()} - ${currentPortion.label})`,
+        price: `${finalCakePrice.toLocaleString('fr-FR')} FCFA`,
+        numericPrice: finalCakePrice,
+        image: uploadedImagePreview || '/products/gateau_1.jpeg',
+        category: 'Gâteaux',
+        description: customDetailsList
+      }, 1);
+
+      // 2. Mémorisation des coordonnées pour pré-remplir le panier de façon fluide
+      localStorage.setItem('le_ci_checkout_pref', JSON.stringify({
+        customerName: recipientName.trim(),
         customerPhone: recipientPhone.trim(),
-        items: [{
-          id: 9999,
-          name: `Gâteau Sur-Mesure (${eventDetails.trim()} - ${currentPortion.label})`,
-          price: finalAmountToPay,
-          quantity: 1,
-          image: uploadedImagePreview || '/products/gateau_1.jpeg'
-        }],
-        montantTotal: finalAmountToPay,
-        modePaiement: 'orange_money',
-        notes: customDetailsList
-      });
+        backupPhone: recipientPhoneBackup.trim(),
+        deliveryType,
+        deliveryDate: receptionDate,
+        deliveryTimeSlot: receptionTime || '14h00 - 17h00',
+        deliveryAddress: fullDeliveryAddress,
+        distanceKm: deliveryLocation?.distanceKm || 3.5,
+        deliveryFee: deliveryLocation?.deliveryFee || 1000,
+        notes: additionalNotes.trim(),
+        hasGreetingCard,
+        cardMessage: cardMessage.trim()
+      }));
 
-      // Mémorisation de la référence
-      try {
-        localStorage.setItem(`le_ci_order_ref_${order.id}`, order.codeReference);
-      } catch (e) {}
-
-      // Passage immédiat sur la page de paiement
-      navigate(`/paiement/${order.id}`);
+      // 3. Redirection vers la page panier pour récapitulatif avant paiement (Notion point 86)
+      navigate('/panier');
     } catch (err: any) {
-      setValidationError(err.message || 'Erreur lors de la validation de la commande');
+      setValidationError(err.message || 'Erreur lors de l\'enregistrement de votre commande');
     } finally {
       setIsSubmitting(false);
     }
@@ -1019,7 +1048,7 @@ export function CustomOrder() {
                     type="tel"
                     value={recipientPhone}
                     onChange={(e) => { setRecipientPhone(e.target.value); clearFieldError('recipientPhone'); }}
-                    placeholder="Ex: +226 70 00 00 00"
+                    placeholder="Ex: 70 00 00 00 ou +226 70 12 34 56"
                     className={`w-full px-4 py-3.5 rounded-2xl outline-none text-sm bg-white transition ${
                       fieldErrors.recipientPhone 
                         ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200' 
@@ -1032,7 +1061,7 @@ export function CustomOrder() {
                       <span>{fieldErrors.recipientPhone}</span>
                     </p>
                   )}
-                  <span className="block text-[11px] text-gray-400 mt-1">Numéro principal contacté le jour de la réception.</span>
+                  <span className="block text-[11px] text-gray-400 mt-1">Numéro du Burkina Faso à 8 chiffres (Orange, Moov, Telecel).</span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1057,19 +1086,30 @@ export function CustomOrder() {
                       Second numéro de secours <span className="text-[11px] font-normal text-gray-400">(optionnel)</span>
                     </label>
                     <input
+                      id="field-recipientPhoneBackup"
                       type="tel"
                       value={recipientPhoneBackup}
-                      onChange={(e) => setRecipientPhoneBackup(e.target.value)}
-                      placeholder="Ex: +226 76 00 00 00 (famille, conjoint...)"
-                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm bg-white"
+                      onChange={(e) => { setRecipientPhoneBackup(e.target.value); clearFieldError('recipientPhoneBackup'); }}
+                      placeholder="Ex: 76 00 00 00 (famille, conjoint...)"
+                      className={`w-full px-4 py-3 rounded-2xl border outline-none text-sm bg-white transition ${
+                        fieldErrors.recipientPhoneBackup
+                          ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200'
+                          : 'border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
+                      }`}
                     />
+                    {fieldErrors.recipientPhoneBackup && (
+                      <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
+                        <AlertCircle size={13} className="text-red-500 shrink-0" />
+                        <span>{fieldErrors.recipientPhoneBackup}</span>
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* 5. Lieu de livraison (quartier avec précision ou géolocalisation) */}
-            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
+            {/* 4. Lieu de réception (Notion 28/10/26 : Deux options - Position actuelle GPS ou Indiquer sur la carte) */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm" id="field-deliveryAddress">
               <h3 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
                 <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">4</span>
                 Lieu de réception
@@ -1086,73 +1126,18 @@ export function CustomOrder() {
                   </div>
                 </div>
               ) : (
-                <div>
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
-                    <p className="text-xs text-gray-500 font-light">
-                      Saisissez votre quartier avec le maximum de repères, ou utilisez le bouton de géolocalisation GPS.
-                    </p>
-
-                    <button
-                      type="button"
-                      onClick={handleGetLocation}
-                      disabled={geoLocating}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-purple-100 text-[#581C87] text-xs font-bold hover:bg-purple-200 transition cursor-pointer shrink-0 disabled:opacity-50"
-                    >
-                      <Navigation size={13} className={geoLocating ? 'animate-spin' : ''} />
-                      <span>{geoLocating ? 'Localisation en cours...' : '📍 Utiliser ma position GPS'}</span>
-                    </button>
-                  </div>
-
-                  <textarea
-                    id="field-deliveryAddress"
-                    rows={3}
-                    value={deliveryAddress}
-                    onChange={(e) => { setDeliveryAddress(e.target.value); clearFieldError('deliveryAddress'); }}
-                    placeholder="Ex: Quartier Ouaga 2000, non loin de la pharmacie des Nations, Rue 15.24, Villa blanche portail noir..."
-                    className={`w-full p-4 rounded-2xl outline-none text-sm leading-relaxed transition ${
-                      fieldErrors.deliveryAddress 
-                        ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200' 
-                        : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
-                    }`}
-                  />
-                  {fieldErrors.deliveryAddress && (
-                    <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
-                      <AlertCircle size={13} className="text-red-500 shrink-0" />
-                      <span>{fieldErrors.deliveryAddress}</span>
-                    </p>
-                  )}
-
-                  {/* Message d'état de géolocalisation */}
-                  {geoStatusMsg && (
-                    <div className={`mt-2 p-2.5 rounded-xl text-xs flex items-center gap-2 ${
-                      geoStatusMsg.type === 'success' 
-                        ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' 
-                        : 'bg-rose-50 text-rose-800 border border-rose-200'
-                    }`}>
-                      {geoStatusMsg.type === 'success' ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
-                      <span>{geoStatusMsg.text}</span>
-                    </div>
-                  )}
-
-                  {/* Quartiers fréquents pour sélection rapide en 1 clic */}
-                  <div className="mt-3 pt-3 border-t border-gray-100">
-                    <span className="text-[11px] font-bold text-gray-500 block mb-1.5">
-                      ✦ Remplissage rapide par quartier de Ouagadougou :
-                    </span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {['Ouaga 2000', 'Zone du Bois', 'Koulouba', 'Dassasgho', 'Somgandé', 'Patte d\'Oie', 'Gounghin', 'Pissy', 'Karpala', 'Tampouy', 'Wayalghin', 'Tanghin'].map((q) => (
-                        <button
-                          type="button"
-                          key={q}
-                          onClick={() => { setDeliveryAddress(prev => prev ? `${prev}, ${q}` : q); clearFieldError('deliveryAddress'); }}
-                          className="px-2.5 py-1 rounded-full bg-purple-50 hover:bg-purple-100 text-[#581C87] text-[11px] font-semibold border border-purple-200/80 transition cursor-pointer"
-                        >
-                          + {q}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+                <DeliveryMapPicker
+                  totalCartAmount={estimatedPrice}
+                  initialAddress={deliveryAddress}
+                  initialLandmark={deliveryLandmark}
+                  error={fieldErrors.deliveryAddress}
+                  onChange={(loc) => {
+                    setDeliveryAddress(loc.address);
+                    setDeliveryLandmark(loc.landmark);
+                    setDeliveryLocation(loc);
+                    clearFieldError('deliveryAddress');
+                  }}
+                />
               )}
             </div>
 
@@ -1227,12 +1212,12 @@ export function CustomOrder() {
                   {isSubmitting ? (
                     <>
                       <Loader2 size={18} className="animate-spin text-[#581C87]" />
-                      <span>Préparation du paiement...</span>
+                      <span>Ajout au panier en cours...</span>
                     </>
                   ) : (
                     <>
-                      <CreditCard size={18} className="text-[#581C87]" />
-                      <span>Passer au paiement</span>
+                      <ShoppingBag size={18} className="text-[#581C87]" />
+                      <span>Vérifier mon panier & Régler</span>
                       <ArrowRight size={18} className="text-[#581C87]" />
                     </>
                   )}
