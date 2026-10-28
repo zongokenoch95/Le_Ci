@@ -48,7 +48,11 @@ import {
   Ban,
   UserCheck,
   AlertTriangle,
-  KeyRound
+  KeyRound,
+  Loader2,
+  Phone,
+  User,
+  CreditCard
 } from 'lucide-react';
 import { 
   getAdminOrders, 
@@ -83,7 +87,14 @@ import {
   AdminDetailedStats,
   LoyaltySettings, 
   LoyaltyMember, 
-  LoyaltyReward 
+  LoyaltyReward,
+  getAnnouncementBanner,
+  updateAnnouncementBanner,
+  AnnouncementBanner,
+  getDeliverySettings,
+  updateDeliverySettings,
+  DeliverySettings,
+  DeliveryNeighborhood
 } from '../services/api';
 import { getSocket, joinAdmin } from '../services/socket';
 
@@ -99,7 +110,7 @@ export function AdminDashboard() {
     is_active: true
   });
   const [savingBanner, setSavingBanner] = useState(false);
-  // État pour les tarifs et paramètres de livraison au kilomètre
+  // État pour les tarifs et paramètres de livraison au kilomètre et par quartier
   const [deliveryData, setDeliveryData] = useState<DeliverySettings>({
     id: 1,
     price_per_km: 250,
@@ -108,8 +119,24 @@ export function AdminDashboard() {
     origin_lat: 12.3714,
     origin_lng: -1.5197,
     origin_address: 'Atelier Les Douceurs de Lê Ci, Ouagadougou',
-    is_active: true
+    is_active: true,
+    neighborhoods: [
+      { name: 'Koulouba', fee: 1000 },
+      { name: 'Zone du Bois', fee: 1000 },
+      { name: 'Dassasgho', fee: 1000 },
+      { name: 'Gounghin', fee: 1000 },
+      { name: 'Patte d\'Oie', fee: 1200 },
+      { name: 'Ouaga 2000', fee: 1500 },
+      { name: 'Somgandé', fee: 1500 },
+      { name: 'Pissy', fee: 1800 },
+      { name: 'Karpala', fee: 2000 },
+      { name: 'Tampouy', fee: 2000 },
+      { name: 'Kossodo', fee: 2000 },
+      { name: 'Saaba', fee: 2500 }
+    ]
   });
+  const [newNeighborhoodName, setNewNeighborhoodName] = useState('');
+  const [newNeighborhoodFee, setNewNeighborhoodFee] = useState<number>(1000);
   const [savingDelivery, setSavingDelivery] = useState(false);
   const [deliverySuccessMsg, setDeliverySuccessMsg] = useState('');
   const [simulatedKm, setSimulatedKm] = useState<number>(5);
@@ -121,7 +148,7 @@ export function AdminDashboard() {
   const [currentUser, setCurrentUser] = useState<AdminUser | null>(getStoredAdminUser());
   const isGerant = currentUser?.role === 'gerant';
 
-  const [activeTab, setActiveTab] = useState<'orders' | 'menu' | 'stats' | 'loyalty' | 'team' | 'simulator' | 'delivery'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'menu' | 'stats' | 'loyalty' | 'team' | 'simulator' | 'delivery' | 'banner'>('orders');
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
@@ -276,6 +303,93 @@ export function AdminDashboard() {
     }
   };
 
+  // Chargement bandeau & livraison (Gérant)
+  const loadBannerAndDelivery = async () => {
+    if (!isGerant) return;
+    try {
+      const [b, d] = await Promise.all([
+        getAnnouncementBanner().catch(() => null),
+        getDeliverySettings().catch(() => null)
+      ]);
+      if (b) setBannerData(b);
+      if (d) setDeliveryData(d);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleSaveBanner = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingBanner(true);
+    setBannerSuccessMsg('');
+    try {
+      const res = await updateAnnouncementBanner(bannerData);
+      if (res && res.banner) setBannerData(res.banner);
+      setBannerSuccessMsg(res.message || 'Bandeau enregistré avec succès !');
+      setTimeout(() => setBannerSuccessMsg(''), 4000);
+    } catch (err: any) {
+      alert(err.message || 'Erreur lors de la sauvegarde du bandeau');
+    } finally {
+      setSavingBanner(false);
+    }
+  };
+
+  const handleAddNeighborhood = () => {
+    const cleanName = newNeighborhoodName.trim();
+    if (!cleanName) return;
+    const feeVal = Math.max(0, Number(newNeighborhoodFee) || 1000);
+    const currentList = deliveryData.neighborhoods || [];
+    const existsIdx = currentList.findIndex(q => q.name.toLowerCase() === cleanName.toLowerCase());
+    let updatedList: DeliveryNeighborhood[];
+    if (existsIdx >= 0) {
+      updatedList = currentList.map((q, idx) => idx === existsIdx ? { name: cleanName, fee: feeVal } : q);
+    } else {
+      updatedList = [...currentList, { name: cleanName, fee: feeVal }];
+    }
+    setDeliveryData(prev => ({ ...prev, neighborhoods: updatedList }));
+    setNewNeighborhoodName('');
+    setNewNeighborhoodFee(1000);
+  };
+
+  const handleUpdateNeighborhoodFee = (index: number, fee: number) => {
+    const currentList = [...(deliveryData.neighborhoods || [])];
+    if (currentList[index]) {
+      currentList[index] = { ...currentList[index], fee: Math.max(0, Number(fee) || 0) };
+      setDeliveryData(prev => ({ ...prev, neighborhoods: currentList }));
+    }
+  };
+
+  const handleUpdateNeighborhoodName = (index: number, name: string) => {
+    const currentList = [...(deliveryData.neighborhoods || [])];
+    if (currentList[index]) {
+      currentList[index] = { ...currentList[index], name };
+      setDeliveryData(prev => ({ ...prev, neighborhoods: currentList }));
+    }
+  };
+
+  const handleRemoveNeighborhood = (index: number) => {
+    const currentList = (deliveryData.neighborhoods || []).filter((_, i) => i !== index);
+    setDeliveryData(prev => ({ ...prev, neighborhoods: currentList }));
+  };
+
+  const handleSaveDeliverySettings = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setSavingDelivery(true);
+    setDeliverySuccessMsg('');
+    try {
+      const res = await updateDeliverySettings(deliveryData);
+      if (res && res.settings) {
+        setDeliveryData(res.settings);
+      }
+      setDeliverySuccessMsg(res.message || 'Liste des quartiers et tarifs de livraison enregistrée avec succès !');
+      setTimeout(() => setDeliverySuccessMsg(''), 4000);
+    } catch (err: any) {
+      alert(err.message || 'Erreur lors de la sauvegarde des paramètres de livraison');
+    } finally {
+      setSavingDelivery(false);
+    }
+  };
+
   useEffect(() => {
     if (!currentUser) return;
     loadOrders();
@@ -284,6 +398,7 @@ export function AdminDashboard() {
       loadTeam();
       loadProducts();
       loadDetailedStats();
+      loadBannerAndDelivery();
     }
     loadLoyaltyData();
 
@@ -726,113 +841,240 @@ export function AdminDashboard() {
               ))}
             </div>
 
-            {/* Grille de cartes de commandes */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-              {filteredOrders.map(order => (
-                <div
-                  key={order.id}
-                  className={`p-5 rounded-3xl border transition flex flex-col justify-between ${
-                    order.statut === 'EN_PREPARATION'
-                      ? 'bg-amber-500/5 border-amber-500/30 shadow-lg shadow-amber-500/5'
-                      : order.statut === 'PRETE'
-                      ? 'bg-emerald-500/5 border-emerald-500/30'
-                      : 'bg-[#1E293B] border-white/10'
-                  }`}
-                >
-                  <div>
-                    {/* Header Carte */}
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <div className="text-xs font-mono font-bold text-gray-400">{order.id}</div>
-                        <div className="text-base font-extrabold text-white mt-0.5">{order.customerName}</div>
-                        {order.customerPhone && (
-                          <div className="text-xs text-gray-400">📞 {order.customerPhone}</div>
-                        )}
-                      </div>
-                      <span className={`text-[11px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider ${
-                        order.statut === 'EN_PREPARATION'
-                          ? 'bg-amber-400 text-black animate-pulse'
-                          : order.statut === 'PRETE'
-                          ? 'bg-emerald-400 text-black'
-                          : order.statut === 'PAYEE'
-                          ? 'bg-blue-400 text-black'
-                          : order.statut === 'ANNULEE'
-                          ? 'bg-rose-500/20 text-rose-300'
-                          : 'bg-white/10 text-gray-300'
-                      }`}>
-                        {order.statut.replace(/_/g, ' ')}
-                      </span>
-                    </div>
+            {/* Grille de cartes de commandes (Facture 3 sections + Payeur + Photo pâtisserie) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {filteredOrders.map(order => {
+                const notesStr = order.notes || '';
+                const itemsSubtotal = (order.items || []).reduce((acc, it) => acc + (Number(it.price) || 0) * (Number(it.quantity) || 1), 0);
+                const hasCard = notesStr.includes('Carte de vœux');
+                const cardTextMatch = notesStr.match(/Carte de vœux\s*\(\+200F\):\s*«\s*([^»]+)\s*»/i);
+                const cardFee = hasCard ? 200 : 0;
+                const isDelivery = Boolean(order.deliveryFee || notesStr.includes('Livraison') || notesStr.includes('km'));
+                const calcDelivFee = order.deliveryFee !== undefined && order.deliveryFee > 0
+                  ? order.deliveryFee
+                  : (isDelivery ? Math.max(0, Number(order.montantTotal || 0) - itemsSubtotal - cardFee) : 0);
 
-                    {/* Articles commandés */}
-                    <div className="my-3 py-3 border-y border-white/10 space-y-2">
-                      {order.items && order.items.map((item, idx) => (
-                        <div key={idx} className="flex justify-between items-center text-xs">
-                          <span className="text-gray-200">
-                            <strong>{item.quantity}x</strong> {item.name}
-                          </span>
-                          {/* Le prix unitaire de la commande n'est affiché qu'au Gérant */}
-                          {isGerant && (
-                            <span className="text-gray-400 font-mono">
-                              {(item.price * item.quantity).toLocaleString('fr-FR')} FCFA
-                            </span>
-                          )}
+                const backupPhoneMatch = notesStr.match(/Tél secours:\s*([^|\[]+)/i);
+                const addrMatch = notesStr.match(/Adresse:\s*([^|\[]+(?:\|\s*Repère:[^|\[]+)?)/i);
+                const dateMatch = notesStr.match(/Date souhaitée:\s*([^|\[]+)/i);
+
+                const payerNameVal = order.payerName || (notesStr.match(/Payeur:\s*([^|(]+?)\s*\(/i)?.[1]?.trim()) || order.customerName || 'En attente';
+                const payerPhoneVal = order.payerPhone || (notesStr.match(/Payeur:[^)]*\(([^)]+)\)/i)?.[1]?.trim()) || order.customerPhone || 'En attente';
+
+                return (
+                  <div
+                    key={order.id}
+                    className={`p-5 sm:p-6 rounded-3xl border transition flex flex-col justify-between ${
+                      order.statut === 'EN_PREPARATION'
+                        ? 'bg-amber-500/5 border-amber-500/30 shadow-lg shadow-amber-500/5'
+                        : order.statut === 'PRETE'
+                        ? 'bg-emerald-500/5 border-emerald-500/30'
+                        : 'bg-[#1E293B] border-white/10'
+                    }`}
+                  >
+                    <div className="space-y-4">
+                      {/* Header Carte */}
+                      <div className="flex justify-between items-start gap-2 pb-3 border-b border-white/10">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-mono font-bold text-[#D4AF37]">{order.id}</span>
+                            {order.codeReference && (
+                              <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                                Réf : {order.codeReference}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-gray-400 mt-1">
+                            Créée le {new Date(order.createdAt).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}
+                          </div>
                         </div>
-                      ))}
-                    </div>
-
-                    {/* Total financier (affiché au Gérant, masqué pour l'employé) */}
-                    {isGerant && (
-                      <div className="flex justify-between items-center mb-4">
-                        <span className="text-xs text-gray-400">Montant Total :</span>
-                        <span className="text-base font-black text-[#D4AF37]">
-                          {Number(order.montantTotal).toLocaleString('fr-FR')} FCFA
+                        <span className={`text-[11px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider shrink-0 ${
+                          order.statut === 'EN_PREPARATION'
+                            ? 'bg-amber-400 text-black animate-pulse'
+                            : order.statut === 'PRETE'
+                            ? 'bg-emerald-400 text-black'
+                            : order.statut === 'PAYEE'
+                            ? 'bg-blue-400 text-black'
+                            : order.statut === 'ANNULEE'
+                            ? 'bg-rose-500/20 text-rose-300'
+                            : 'bg-white/10 text-gray-300'
+                        }`}>
+                          {order.statut.replace(/_/g, ' ')}
                         </span>
                       </div>
-                    )}
 
-                    {order.codeReference && (
-                      <div className="text-[11px] text-gray-400 mb-2">
-                        Réf. Marchand : <strong className="text-white font-mono">{order.codeReference}</strong>
+                      {/* ENCADRÉ PAYEUR : Nom & Numéro de la personne qui paye la commande */}
+                      <div className="p-3.5 rounded-2xl bg-purple-950/40 border border-purple-500/30 flex flex-wrap items-center justify-between gap-2 text-xs">
+                        <div className="flex items-center gap-2 text-purple-200 font-bold">
+                          <CreditCard size={15} className="text-[#D4AF37] shrink-0" />
+                          <span>Personne qui paye :</span>
+                        </div>
+                        <div className="text-white font-extrabold">
+                          {payerNameVal} • <span className="font-mono text-[#D4AF37]">📞 {payerPhoneVal}</span>
+                        </div>
                       </div>
-                    )}
+
+                      {/* SECTION 1 : Désignation du produit, Photo de la pâtisserie, Saveur, Modèle catalogue, Quantité, Parts (si gâteau) */}
+                      <div className="space-y-2.5">
+                        <div className="text-[11px] font-black uppercase tracking-wider text-[#D4AF37]">
+                          1. Pâtisserie(s) commandée(s)
+                        </div>
+                        <div className="space-y-2.5">
+                          {order.items && order.items.map((item, idx) => {
+                            const desc = item.description || item.name || '';
+                            const isCake = Boolean(
+                              item.isCake ||
+                              item.category === 'Gâteaux' ||
+                              /gâteau|gateau|fraisier|layer|forêt noire|red velvet|number cake|pièce montée|entremet/i.test(item.name || '') ||
+                              /Format:|parts/i.test(desc)
+                            );
+                            const flavorMatch = desc.match(/Saveur:\s*([^|\]]+)/i);
+                            const modelMatch = desc.match(/Modèle(?:\s*catalogue)?:\s*([^|\]]+)/i);
+                            const portionMatch = desc.match(/Format:\s*([^|\]]+)/i) || (item.name || '').match(/\(([^)]*parts[^)]*)\)/i);
+                            const inscrMatch = desc.match(/Inscription:\s*([^|\]]+)/i);
+                            const eventMatch = desc.match(/Événement:\s*([^|\]]+)/i);
+
+                            const cleanDesignation = (item.name || '').replace(/\s*\[.*\]$/, '');
+                            const flavor = item.flavor || (flavorMatch ? flavorMatch[1].trim() : (isCake ? 'Recette Signature Lê Ci' : 'Classique artisanale'));
+                            const catalogModel = item.catalogModel || (modelMatch ? modelMatch[1].replace(/^Modèle catalogue\s*:\s*/i, '').trim() : cleanDesignation);
+                            const portion = isCake ? (item.portion || (portionMatch ? portionMatch[1].trim() : '6 à 8 parts')) : null;
+                            const itemPhoto = item.image || '/products/gateau_1.jpeg';
+
+                            return (
+                              <div key={idx} className="p-3 rounded-2xl bg-[#0F172A]/80 border border-white/10 flex gap-3.5 items-start">
+                                {/* Photo de la pâtisserie */}
+                                <img
+                                  src={itemPhoto}
+                                  alt={cleanDesignation}
+                                  className="w-20 h-20 rounded-xl object-cover shrink-0 border border-white/15 bg-black/40 shadow-md"
+                                />
+                                <div className="flex-1 min-w-0 text-xs space-y-1">
+                                  <div className="flex justify-between items-start gap-2">
+                                    <span className="font-extrabold text-white text-sm leading-snug">{cleanDesignation}</span>
+                                    {isGerant && (
+                                      <span className="font-mono font-bold text-[#D4AF37] shrink-0">
+                                        {(item.price * item.quantity).toLocaleString('fr-FR')} F
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-gray-300">
+                                    <span className="text-gray-400 font-semibold">Saveur :</span> {flavor}
+                                  </div>
+                                  <div className="text-gray-300">
+                                    <span className="text-gray-400 font-semibold">Modèle catalogue :</span> {catalogModel}
+                                  </div>
+                                  <div className="flex flex-wrap items-center gap-3 pt-1">
+                                    <span className="px-2 py-0.5 rounded bg-white/10 text-white font-extrabold">
+                                      Quantité : {item.quantity}
+                                    </span>
+                                    {isCake && portion && (
+                                      <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-200 border border-purple-500/30 font-extrabold">
+                                        Parts : {portion}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {(eventMatch || inscrMatch) && (
+                                    <div className="text-[11px] text-amber-300/90 pt-1">
+                                      {eventMatch ? `🎉 ${eventMatch[1].trim()} ` : ''}
+                                      {inscrMatch ? `• ✍️ ${inscrMatch[1].trim()}` : ''}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* SECTION 2 : Détails financiers (Prix des pâtisseries, Frais de livraison avec +, Carte de vœux, Montant total) */}
+                      <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1.5 text-xs">
+                        <div className="text-[11px] font-black uppercase tracking-wider text-[#D4AF37] mb-1">
+                          2. Détails de facturation
+                        </div>
+                        <div className="flex justify-between text-gray-300">
+                          <span>Prix des pâtisseries :</span>
+                          <span className="font-bold text-white">{itemsSubtotal.toLocaleString('fr-FR')} FCFA</span>
+                        </div>
+                        <div className="flex justify-between text-gray-300">
+                          <span>Frais de livraison :</span>
+                          <span className="font-bold text-amber-300">+{calcDelivFee.toLocaleString('fr-FR')} FCFA</span>
+                        </div>
+                        {hasCard && (
+                          <div className="flex justify-between text-gray-300">
+                            <span>Carte de vœux {cardTextMatch ? `(« ${cardTextMatch[1]} »)` : ''} :</span>
+                            <span className="font-bold text-purple-300">+200 FCFA</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between items-center pt-2 border-t border-white/10 font-black text-sm">
+                          <span className="text-white">Montant Total :</span>
+                          <span className="text-[#D4AF37] text-base">{Number(order.montantTotal).toLocaleString('fr-FR')} FCFA</span>
+                        </div>
+                      </div>
+
+                      {/* SECTION 3 : Coordonnées de la personne qui reçoit */}
+                      <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1 text-xs">
+                        <div className="text-[11px] font-black uppercase tracking-wider text-[#D4AF37] mb-1">
+                          3. Coordonnées de la personne qui reçoit
+                        </div>
+                        <div className="text-gray-200">
+                          <span className="text-gray-400 font-semibold">Téléphone de réception :</span>{' '}
+                          <strong className="font-mono text-white">{order.customerPhone || 'Non renseigné'}</strong>
+                        </div>
+                        {backupPhoneMatch && (
+                          <div className="text-gray-200">
+                            <span className="text-gray-400 font-semibold">Second numéro de secours :</span>{' '}
+                            <strong className="font-mono text-white">{backupPhoneMatch[1].trim()}</strong>
+                          </div>
+                        )}
+                        <div className="text-gray-200">
+                          <span className="text-gray-400 font-semibold">Lieu / Adresse :</span>{' '}
+                          <span>{addrMatch ? addrMatch[1].trim() : (isDelivery ? 'Livraison à domicile' : 'Retrait à l\'atelier')}</span>
+                        </div>
+                        {dateMatch && (
+                          <div className="text-gray-200">
+                            <span className="text-gray-400 font-semibold">Date & Heure :</span>{' '}
+                            <span className="text-amber-300 font-semibold">{dateMatch[1].trim()}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Actions Opérationnelles */}
+                    <div className="pt-4 mt-4 border-t border-white/10 flex gap-2">
+                      {order.statut === 'EN_ATTENTE_DE_PAIEMENT' && isGerant && (
+                        <button
+                          onClick={() => handleValidateOrder(order.id)}
+                          className="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-black font-extrabold text-xs transition cursor-pointer"
+                        >
+                          Valider Manuellement
+                        </button>
+                      )}
+
+                      {order.statut === 'EN_PREPARATION' && (
+                        <button
+                          onClick={() => handleFinishOrder(order.id)}
+                          className="flex-1 py-2.5 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-black font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-lg transition cursor-pointer"
+                        >
+                          <CheckCircle2 size={16} />
+                          <span>Marquer Prête</span>
+                        </button>
+                      )}
+
+                      {order.statut === 'PRETE' && (
+                        <button
+                          onClick={async () => {
+                            await finishOrder(order.id);
+                            loadOrders();
+                          }}
+                          className="flex-1 py-2.5 rounded-xl bg-blue-500/20 text-blue-300 border border-blue-500/30 text-xs font-bold hover:bg-blue-500/30 transition cursor-pointer"
+                        >
+                          Commande Récupérée
+                        </button>
+                      )}
+                    </div>
                   </div>
-
-                  {/* Actions Opérationnelles */}
-                  <div className="pt-3 border-t border-white/10 flex gap-2">
-                    {order.statut === 'EN_ATTENTE_DE_PAIEMENT' && isGerant && (
-                      <button
-                        onClick={() => handleValidateOrder(order.id)}
-                        className="flex-1 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-black font-bold text-xs transition cursor-pointer"
-                      >
-                        Valider Manuellement
-                      </button>
-                    )}
-
-                    {order.statut === 'EN_PREPARATION' && (
-                      <button
-                        onClick={() => handleFinishOrder(order.id)}
-                        className="flex-1 py-2.5 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-black font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-lg transition cursor-pointer"
-                      >
-                        <CheckCircle2 size={16} />
-                        <span>Marquer Prête</span>
-                      </button>
-                    )}
-
-                    {order.statut === 'PRETE' && (
-                      <button
-                        onClick={async () => {
-                          await finishOrder(order.id);
-                          loadOrders();
-                        }}
-                        className="flex-1 py-2 rounded-xl bg-blue-500/20 text-blue-300 border border-blue-500/30 text-xs font-bold hover:bg-blue-500/30 transition cursor-pointer"
-                      >
-                        Commande Récupérée
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {filteredOrders.length === 0 && !loading && (
@@ -1564,6 +1806,169 @@ export function AdminDashboard() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* ONGLET LIVRAISON & GESTION DES QUARTIERS (GÉRANT)                         */}
+        {/* ========================================================================= */}
+        {activeTab === 'delivery' && isGerant && (
+          <div className="space-y-8 max-w-4xl">
+            <div>
+              <h2 className="text-2xl font-black text-white flex items-center gap-2">
+                <Truck className="text-[#D4AF37]" size={26} />
+                <span>Gestion des Quartiers & Tarifs de Livraison</span>
+              </h2>
+              <p className="text-xs text-gray-400 mt-1">
+                Enrichissez la liste déroulante des quartiers proposée aux clients dans le panier avec le montant de livraison associé à chaque quartier.
+              </p>
+            </div>
+
+            {deliverySuccessMsg && (
+              <div className="p-4 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-bold flex items-center gap-2">
+                <CheckCircle2 size={18} />
+                <span>{deliverySuccessMsg}</span>
+              </div>
+            )}
+
+            {/* 1. Ajout d'un nouveau quartier dans la liste déroulante */}
+            <div className="p-6 rounded-3xl bg-[#1E293B] border border-white/10 space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-4">
+                <div>
+                  <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+                    <MapPin size={18} className="text-[#D4AF37]" />
+                    <span>Liste des Quartiers de Livraison ({(deliveryData.neighborhoods || []).length})</span>
+                  </h3>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Ces quartiers s'affichent sous forme de liste déroulante avec leur tarif lorsque le client choisit « Un autre endroit ».
+                  </p>
+                </div>
+              </div>
+
+              {/* Formulaire d'ajout rapide */}
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end bg-[#0F172A] p-4 rounded-2xl border border-white/10">
+                <div className="sm:col-span-6">
+                  <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                    Nom du nouveau quartier
+                  </label>
+                  <input
+                    type="text"
+                    value={newNeighborhoodName}
+                    onChange={(e) => setNewNeighborhoodName(e.target.value)}
+                    placeholder="Ex : Karpala, Wayalghin, Cissin, Tanghin..."
+                    className="w-full px-4 py-2.5 bg-[#1E293B] border border-gray-700 rounded-xl text-white text-xs focus:ring-2 focus:ring-[#D4AF37] focus:outline-none"
+                  />
+                </div>
+                <div className="sm:col-span-4">
+                  <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                    Montant de la livraison (FCFA)
+                  </label>
+                  <input
+                    type="number"
+                    step="100"
+                    min="0"
+                    value={newNeighborhoodFee}
+                    onChange={(e) => setNewNeighborhoodFee(Number(e.target.value))}
+                    className="w-full px-4 py-2.5 bg-[#1E293B] border border-gray-700 rounded-xl text-white text-xs font-mono focus:ring-2 focus:ring-[#D4AF37] focus:outline-none"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <button
+                    type="button"
+                    onClick={handleAddNeighborhood}
+                    className="w-full py-2.5 px-4 rounded-xl bg-[#D4AF37] hover:bg-[#c29d2b] text-black font-extrabold text-xs flex items-center justify-center gap-1.5 shadow transition cursor-pointer"
+                  >
+                    <Plus size={15} />
+                    <span>Ajouter</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Liste des quartiers existants modifiables */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-1">
+                {(deliveryData.neighborhoods || []).map((q, idx) => (
+                  <div
+                    key={idx}
+                    className="p-3 rounded-2xl bg-[#0F172A] border border-white/10 flex items-center justify-between gap-2"
+                  >
+                    <input
+                      type="text"
+                      value={q.name}
+                      onChange={(e) => handleUpdateNeighborhoodName(idx, e.target.value)}
+                      className="flex-1 px-3 py-1.5 bg-[#1E293B] border border-gray-700 rounded-lg text-white text-xs font-bold focus:outline-none focus:border-[#D4AF37]"
+                    />
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        step="100"
+                        min="0"
+                        value={q.fee}
+                        onChange={(e) => handleUpdateNeighborhoodFee(idx, Number(e.target.value))}
+                        className="w-24 px-2.5 py-1.5 bg-[#1E293B] border border-gray-700 rounded-lg text-[#D4AF37] text-xs font-mono font-bold text-right focus:outline-none focus:border-[#D4AF37]"
+                      />
+                      <span className="text-[10px] text-gray-400 font-bold">FCFA</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveNeighborhood(idx)}
+                        className="p-1.5 text-rose-400 hover:bg-rose-500/20 rounded-lg transition cursor-pointer"
+                        title="Supprimer ce quartier"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Paramètres généraux de livraison */}
+              <div className="pt-4 border-t border-white/10 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                    Frais minimum GPS (0 à 3,5 km) en FCFA
+                  </label>
+                  <input
+                    type="number"
+                    step="100"
+                    value={deliveryData.min_fee}
+                    onChange={(e) => setDeliveryData(prev => ({ ...prev, min_fee: Number(e.target.value) }))}
+                    className="w-full px-4 py-2.5 bg-[#0F172A] border border-gray-700 rounded-xl text-white text-xs font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                    Seuil de livraison offerte (FCFA, 0 = désactivé)
+                  </label>
+                  <input
+                    type="number"
+                    step="1000"
+                    value={deliveryData.free_threshold}
+                    onChange={(e) => setDeliveryData(prev => ({ ...prev, free_threshold: Number(e.target.value) }))}
+                    className="w-full px-4 py-2.5 bg-[#0F172A] border border-gray-700 rounded-xl text-white text-xs font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-white/10 flex justify-end">
+                <button
+                  type="button"
+                  disabled={savingDelivery}
+                  onClick={() => handleSaveDeliverySettings()}
+                  className="px-8 py-3.5 rounded-2xl bg-[#D4AF37] hover:bg-[#c29d2b] text-black font-extrabold text-xs shadow-lg transition flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {savingDelivery ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      <span>Enregistrement...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save size={16} />
+                      <span>Enregistrer les quartiers et tarifs de livraison</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         )}

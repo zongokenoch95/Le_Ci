@@ -163,9 +163,55 @@ export function Payment() {
   }, [order]);
 
   const hasCard = Boolean(order?.notes && order.notes.includes('Carte de vœux'));
-  const isDelivery = Boolean(order?.notes && (order.notes.includes('Livraison') || order.notes.includes('km')));
+  const isDelivery = Boolean(order?.deliveryFee || (order?.notes && (order.notes.includes('Livraison') || order.notes.includes('km'))));
   const cardFee = hasCard ? 200 : 0;
-  const calculatedDeliveryFee = isDelivery ? Math.max(0, amount - itemsSubtotal - cardFee) : 0;
+  const calculatedDeliveryFee = order?.deliveryFee !== undefined && order.deliveryFee > 0
+    ? order.deliveryFee
+    : (isDelivery ? Math.max(0, amount - itemsSubtotal - cardFee) : 0);
+
+  // Extraction structurée des coordonnées de réception depuis order.notes
+  const recipientDetails = useMemo(() => {
+    const notesStr = order?.notes || '';
+    const backupMatch = notesStr.match(/Tél secours:\s*([^|]+)/i);
+    const addrMatch = notesStr.match(/Adresse:\s*([^|]+(?:\|\s*Repère:[^|]+)?)/i);
+    const dateMatch = notesStr.match(/Date souhaitée:\s*([^|]+)/i);
+    return {
+      phone: order?.customerPhone || 'Non renseigné',
+      backupPhone: backupMatch ? backupMatch[1].trim() : '',
+      address: addrMatch ? addrMatch[1].trim() : (isDelivery ? 'Livraison à domicile' : 'Retrait à l\'atelier'),
+      dateSlot: dateMatch ? dateMatch[1].trim() : ''
+    };
+  }, [order, isDelivery]);
+
+  // Extraction structurée des informations produit (Section 1 : Désignation, Saveur, Modèle catalogue, Quantité, Parts si gâteau)
+  const parseItemInvoiceInfo = (item: any) => {
+    const desc = item.description || item.name || '';
+    const isCake = Boolean(
+      item.isCake ||
+      item.category === 'Gâteaux' ||
+      /gâteau|gateau|fraisier|layer|forêt noire|red velvet|number cake|pièce montée|entremet/i.test(item.name || '') ||
+      /Format:|parts/i.test(desc)
+    );
+
+    const flavorMatch = desc.match(/Saveur:\s*([^|\]]+)/i);
+    const modelMatch = desc.match(/Modèle(?:\s*catalogue)?:\s*([^|\]]+)/i);
+    const portionMatch = desc.match(/Format:\s*([^|\]]+)/i) || (item.name || '').match(/\(([^)]*parts[^)]*)\)/i);
+
+    const cleanDesignation = (item.name || '').replace(/\s*\[.*\]$/, '');
+    const flavor = item.flavor || (flavorMatch ? flavorMatch[1].trim() : (isCake ? 'Recette Signature Lê Ci' : 'Classique artisanale'));
+    const catalogModel = item.catalogModel || (modelMatch ? modelMatch[1].replace(/^Modèle catalogue\s*:\s*/i, '').trim() : cleanDesignation);
+    const portion = isCake ? (item.portion || (portionMatch ? portionMatch[1].trim() : '6 à 8 parts')) : null;
+
+    return {
+      designation: cleanDesignation,
+      flavor,
+      catalogModel,
+      quantity: item.quantity || 1,
+      isCake,
+      portion,
+      image: item.image
+    };
+  };
 
   // Syntaxes USSD
   const omUssdMarchand = `*144*10*77121289*${amount}#`;
@@ -510,43 +556,84 @@ export function Payment() {
                 )}
               </div>
 
-              {/* Récapitulatif ticket (Reçu officiel reprenant toutes les lignes, Notion 28/10/26) */}
-              <div className="bg-[#FAF8F5] rounded-2xl p-6 border border-gray-100 text-left max-w-lg mx-auto mb-8 space-y-3">
-                <div className="flex justify-between text-sm py-1 border-b border-gray-200/60">
-                  <span className="text-gray-500">Numéro Commande</span>
-                  <span className="font-mono font-bold text-gray-900">{order.id}</span>
+              {/* Récapitulatif ticket (Reçu officiel en 3 sections) */}
+              <div className="bg-[#FAF8F5] rounded-2xl p-6 border border-gray-200 text-left max-w-lg mx-auto mb-8 space-y-5">
+                <div className="flex justify-between items-center text-xs pb-3 border-b border-gray-200">
+                  <span className="font-mono font-bold text-gray-700">Commande {order.id}</span>
+                  <span className="font-mono font-bold text-[#581C87] bg-purple-100 px-2.5 py-0.5 rounded-full">Réf : {order.codeReference}</span>
                 </div>
-                <div className="flex justify-between text-sm py-1 border-b border-gray-200/60">
-                  <span className="text-gray-500">Code Référence</span>
-                  <span className="font-mono font-bold text-[#581C87]">{order.codeReference}</span>
+
+                {/* SECTION 1 : Désignation, Saveur, Modèle catalogue, Quantité, Parts (si gâteau) */}
+                <div className="space-y-2.5">
+                  <h4 className="text-[11px] font-black uppercase tracking-wider text-[#581C87]">
+                    1. Détails de la pâtisserie commandée
+                  </h4>
+                  {order.items && order.items.map((item, idx) => {
+                    const info = parseItemInvoiceInfo(item);
+                    return (
+                      <div key={idx} className="p-3 rounded-xl bg-white border border-purple-100 text-xs space-y-1">
+                        <div className="font-extrabold text-gray-900">{info.designation}</div>
+                        <div className="text-gray-600"><span className="font-semibold text-gray-700">Saveur :</span> {info.flavor}</div>
+                        <div className="text-gray-600"><span className="font-semibold text-gray-700">Modèle du catalogue :</span> {info.catalogModel}</div>
+                        <div className="flex flex-wrap gap-4 pt-1 text-gray-800 font-bold">
+                          <span>Quantité : {info.quantity}</span>
+                          {info.isCake && info.portion && (
+                            <span className="text-[#581C87]">Nombre de parts : {info.portion}</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="flex justify-between text-sm py-1 border-b border-gray-200/60">
-                  <span className="text-gray-500">Prix des pâtisseries</span>
-                  <span className="font-bold text-gray-900">{itemsSubtotal.toLocaleString('fr-FR')} FCFA</span>
-                </div>
-                {isDelivery && (
-                  <div className="flex justify-between text-sm py-1 border-b border-gray-200/60">
-                    <span className="text-gray-500">Frais de livraison</span>
+
+                {/* SECTION 2 : Prix des pâtisseries, Frais de livraison (+), Carte de vœux, Montant total */}
+                <div className="pt-3 border-t border-gray-200 space-y-1.5 text-xs sm:text-sm">
+                  <h4 className="text-[11px] font-black uppercase tracking-wider text-[#581C87] mb-2">
+                    2. Récapitulatif financier
+                  </h4>
+                  <div className="flex justify-between py-0.5">
+                    <span className="text-gray-600">Prix des pâtisseries :</span>
+                    <span className="font-bold text-gray-900">{itemsSubtotal.toLocaleString('fr-FR')} FCFA</span>
+                  </div>
+                  <div className="flex justify-between py-0.5">
+                    <span className="text-gray-600">Frais de livraison :</span>
                     <span className="font-bold text-gray-900">
-                      {calculatedDeliveryFee === 0 ? 'Gratuit' : `${calculatedDeliveryFee.toLocaleString('fr-FR')} FCFA`}
+                      +{calculatedDeliveryFee.toLocaleString('fr-FR')} FCFA
                     </span>
                   </div>
-                )}
-                {hasCard && (
-                  <div className="flex justify-between text-sm py-1 border-b border-gray-200/60">
-                    <span className="text-gray-500">Carte de vœux</span>
-                    <span className="font-bold text-gray-900">+200 FCFA</span>
+                  {hasCard && (
+                    <div className="flex justify-between py-0.5">
+                      <span className="text-gray-600">Carte de vœux :</span>
+                      <span className="font-bold text-[#581C87]">+200 FCFA</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between pt-2 border-t border-gray-200 font-black text-sm sm:text-base">
+                    <span className="text-gray-900">Montant total :</span>
+                    <span className="text-emerald-700">{amount.toLocaleString('fr-FR')} FCFA</span>
                   </div>
-                )}
-                <div className="flex justify-between text-sm py-1.5 border-b border-gray-200/60">
-                  <span className="text-gray-800 font-bold">Total Réglé</span>
-                  <span className="font-extrabold text-emerald-700 text-base">{amount.toLocaleString('fr-FR')} FCFA</span>
                 </div>
-                <div className="flex justify-between text-sm py-1">
-                  <span className="text-gray-500">Statut de Préparation</span>
-                  <span className="inline-flex items-center gap-1 font-semibold text-purple-700">
-                    <span className="w-2 h-2 rounded-full bg-purple-600 animate-pulse" /> En préparation à l'atelier
-                  </span>
+
+                {/* SECTION 3 : Coordonnées de la personne qui reçoit */}
+                <div className="pt-3 border-t border-gray-200 space-y-1 text-xs">
+                  <h4 className="text-[11px] font-black uppercase tracking-wider text-[#581C87] mb-1.5">
+                    3. Coordonnées de la personne qui reçoit
+                  </h4>
+                  <div className="text-gray-700">
+                    <span className="font-semibold">Téléphone de réception :</span> {recipientDetails.phone}
+                  </div>
+                  {recipientDetails.backupPhone && (
+                    <div className="text-gray-700">
+                      <span className="font-semibold">Second numéro de secours :</span> {recipientDetails.backupPhone}
+                    </div>
+                  )}
+                  <div className="text-gray-700">
+                    <span className="font-semibold">Lieu / Réception :</span> {recipientDetails.address}
+                  </div>
+                  {recipientDetails.dateSlot && (
+                    <div className="text-gray-700">
+                      <span className="font-semibold">Date & Heure :</span> {recipientDetails.dateSlot}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -626,54 +713,95 @@ export function Payment() {
               {/* Corps du formulaire de paiement */}
               <div className="p-6 sm:p-8 space-y-8">
                 
-                {/* Récapitulatif commande (Notion 28/10/26 : Pâtisseries, Livraison, Total) */}
-                <div className="bg-purple-50/50 p-5 rounded-2xl border border-purple-100 text-xs sm:text-sm text-gray-700 space-y-2.5">
-                  <div className="font-extrabold text-gray-900 flex items-center gap-2 mb-2">
+                {/* Détails de la facture en 3 sections distinctes */}
+                <div className="bg-purple-50/50 p-5 sm:p-6 rounded-2xl border border-purple-100 text-xs sm:text-sm text-gray-700 space-y-5">
+                  <div className="font-extrabold text-gray-900 flex items-center gap-2 border-b border-purple-200/70 pb-2.5">
                     <Sparkles size={16} className="text-[#581C87]" />
-                    <span>Détails & Facturation de la commande</span>
+                    <span>Détails de la facture</span>
                   </div>
 
-                  {order.items && order.items.map((item, idx) => (
-                    <div key={idx} className="flex justify-between items-center py-1 border-b border-purple-100/60 last:border-none">
-                      <span className="font-semibold text-gray-800">{item.name} (x{item.quantity})</span>
-                      <span className="font-black text-[#581C87]">{(item.price * item.quantity).toLocaleString('fr-FR')} FCFA</span>
+                  {/* SECTION 1 : Désignation du produit, Saveur, Modèle du catalogue, Quantité, Nombre de parts (si gâteau) */}
+                  <div className="space-y-3">
+                    <div className="text-[11px] font-black uppercase tracking-wider text-[#581C87]">
+                      1. Produit(s) commandé(s)
                     </div>
-                  ))}
+                    {order.items && order.items.map((item, idx) => {
+                      const info = parseItemInvoiceInfo(item);
+                      return (
+                        <div key={idx} className="p-3.5 rounded-xl bg-white border border-purple-100 space-y-1.5 shadow-2xs">
+                          <div className="flex justify-between items-start gap-2">
+                            <span className="font-extrabold text-gray-900 text-sm">{info.designation}</span>
+                            <span className="font-black text-[#581C87] shrink-0">
+                              {(item.price * item.quantity).toLocaleString('fr-FR')} FCFA
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs text-gray-600 pt-1">
+                            <div><span className="font-bold text-gray-800">Saveur :</span> {info.flavor}</div>
+                            <div><span className="font-bold text-gray-800">Modèle du catalogue :</span> {info.catalogModel}</div>
+                            <div><span className="font-bold text-gray-800">Quantité :</span> {info.quantity}</div>
+                            {info.isCake && info.portion && (
+                              <div><span className="font-bold text-[#581C87]">Nombre de parts :</span> <span className="font-bold text-[#581C87]">{info.portion}</span></div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
 
-                  {/* Lignes de facturation claires (Notion 28/10/26) */}
-                  <div className="pt-2 mt-2 border-t border-purple-200/70 space-y-1.5">
-                    <div className="flex justify-between items-center text-xs text-gray-600">
+                  {/* SECTION 2 : Prix des pâtisseries, Frais de livraison (+ devant), Carte de vœux, Montant total */}
+                  <div className="pt-3 border-t border-purple-200/70 space-y-2">
+                    <div className="text-[11px] font-black uppercase tracking-wider text-[#581C87]">
+                      2. Montants & Livraison
+                    </div>
+                    <div className="flex justify-between items-center text-xs sm:text-sm text-gray-700">
                       <span>Prix des pâtisseries :</span>
                       <span className="font-bold text-gray-900">{itemsSubtotal.toLocaleString('fr-FR')} FCFA</span>
                     </div>
 
-                    {isDelivery && (
-                      <div className="flex justify-between items-center text-xs text-gray-600">
-                        <span>Frais de livraison :</span>
-                        <span className="font-bold text-gray-900">
-                          {calculatedDeliveryFee === 0 ? 'Gratuit' : `${calculatedDeliveryFee.toLocaleString('fr-FR')} FCFA`}
-                        </span>
-                      </div>
-                    )}
+                    <div className="flex justify-between items-center text-xs sm:text-sm text-gray-700">
+                      <span>Frais de livraison :</span>
+                      <span className="font-bold text-[#581C87]">
+                        +{calculatedDeliveryFee.toLocaleString('fr-FR')} FCFA
+                      </span>
+                    </div>
 
                     {hasCard && (
-                      <div className="flex justify-between items-center text-xs text-gray-600">
-                        <span>Carte de vœux personnalisée :</span>
+                      <div className="flex justify-between items-center text-xs sm:text-sm text-gray-700">
+                        <span>Carte de vœux :</span>
                         <span className="font-bold text-[#581C87]">+200 FCFA</span>
                       </div>
                     )}
 
-                    <div className="flex justify-between items-center pt-2 border-t border-purple-200/70 font-extrabold text-sm">
-                      <span className="text-gray-900">Total net à régler :</span>
-                      <span className="text-[#581C87] text-base font-black">{amount.toLocaleString('fr-FR')} FCFA</span>
+                    <div className="flex justify-between items-center pt-2 border-t border-purple-200/70 font-extrabold text-sm sm:text-base">
+                      <span className="text-gray-900">Montant total :</span>
+                      <span className="text-[#581C87] text-base sm:text-lg font-black">{amount.toLocaleString('fr-FR')} FCFA</span>
                     </div>
                   </div>
 
-                  {order.customerPhone && (
-                    <div className="pt-2 text-xs text-gray-500">
-                      <strong>Personne qui reçoit le colis :</strong> {order.customerName ? `${order.customerName} • ` : ''}Tél : {order.customerPhone}
+                  {/* SECTION 3 : Coordonnées de la personne qui reçoit */}
+                  <div className="pt-3 border-t border-purple-200/70 space-y-1.5 text-xs">
+                    <div className="text-[11px] font-black uppercase tracking-wider text-[#581C87]">
+                      3. Coordonnées de la personne qui reçoit
                     </div>
-                  )}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-gray-700">
+                      <div>
+                        <span className="font-bold text-gray-900">Téléphone de réception :</span> {recipientDetails.phone}
+                      </div>
+                      {recipientDetails.backupPhone && (
+                        <div>
+                          <span className="font-bold text-gray-900">Numéro de secours :</span> {recipientDetails.backupPhone}
+                        </div>
+                      )}
+                      <div className="sm:col-span-2">
+                        <span className="font-bold text-gray-900">Lieu de réception :</span> {recipientDetails.address}
+                      </div>
+                      {recipientDetails.dateSlot && (
+                        <div className="sm:col-span-2">
+                          <span className="font-bold text-gray-900">Date & Créneau :</span> {recipientDetails.dateSlot}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 <form onSubmit={handleConfirmPaymentDetails} className="space-y-8">

@@ -2,7 +2,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Header } from './components/Header';
 import { ScrollToTop } from './components/ScrollToTop';
 import { Footer } from './components/Footer';
-import { CartDrawer } from './components/CartDrawer';
 import { CartProvider } from './context/CartContext';
 import { Home } from './pages/Home';
 import { Catalogue } from './pages/Catalogue';
@@ -23,7 +22,6 @@ export default function App() {
         <ScrollToTop />
         <div className="flex flex-col min-h-screen">
           <Header />
-          <CartDrawer />
           <main className="flex-1">
             <Routes>
               <Route path="/" element={<Home />} />

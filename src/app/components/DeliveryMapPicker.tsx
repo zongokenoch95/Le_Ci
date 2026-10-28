@@ -2,7 +2,22 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Navigation, MapPin, Loader2, AlertCircle, CheckCircle2, Info, Compass } from 'lucide-react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { calculateDeliveryFee } from '../services/api';
+import { calculateDeliveryFee, getDeliverySettings, DeliveryNeighborhood } from '../services/api';
+
+const FALLBACK_NEIGHBORHOODS: DeliveryNeighborhood[] = [
+  { name: 'Koulouba', fee: 1000 },
+  { name: 'Zone du Bois', fee: 1000 },
+  { name: 'Dassasgho', fee: 1000 },
+  { name: 'Gounghin', fee: 1000 },
+  { name: 'Patte d\'Oie', fee: 1200 },
+  { name: 'Ouaga 2000', fee: 1500 },
+  { name: 'Somgandé', fee: 1500 },
+  { name: 'Pissy', fee: 1800 },
+  { name: 'Karpala', fee: 2000 },
+  { name: 'Tampouy', fee: 2000 },
+  { name: 'Kossodo', fee: 2000 },
+  { name: 'Saaba', fee: 2500 }
+];
 
 export interface DeliveryLocationData {
   address: string;
@@ -48,6 +63,17 @@ export const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
   const [deliveryFee, setDeliveryFee] = useState<number>(initialFee);
   const [isFree, setIsFree] = useState<boolean>(false);
   const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
+  const [neighborhoods, setNeighborhoods] = useState<DeliveryNeighborhood[]>(FALLBACK_NEIGHBORHOODS);
+
+  useEffect(() => {
+    getDeliverySettings()
+      .then((s) => {
+        if (s && Array.isArray(s.neighborhoods) && s.neighborhoods.length > 0) {
+          setNeighborhoods(s.neighborhoods);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
@@ -410,7 +436,7 @@ export const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
       )}
 
       {/* CONTENU OPTION 1 : VOTRE POSITION ACTUELLE */}
-      {/* Notion 28/10/26 : La géolocalisation s'active directement sans autre bouton, masquer quartiers, garder point de repère */}
+      {/* La géolocalisation s'active directement sans champ point de repère */}
       {activeTab === 'gps' && (
         <div className="p-5 rounded-2xl bg-white border border-purple-100 shadow-sm space-y-4">
           {geoLocating && (
@@ -439,31 +465,16 @@ export const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
               </button>
             </div>
           )}
-
-          {/* Point de repère conservé (Obligatoire) */}
-          <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center gap-1.5">
-              <Info size={13} className="text-[#581C87]" />
-              Point de repère précis (Ex : en face de la pharmacie, portail blanc...) *
-            </label>
-            <input
-              type="text"
-              value={landmark}
-              onChange={(e) => handleLandmarkChange(e.target.value)}
-              placeholder="Ex : En face de la pharmacie, villa blanche portail marron..."
-              className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-xs sm:text-sm bg-white"
-            />
-          </div>
         </div>
       )}
 
-      {/* CONTENU OPTION 2 : UN AUTRE ENDROIT (CARTE INTERACTIVE) */}
+      {/* CONTENU OPTION 2 : UN AUTRE ENDROIT (CARTE INTERACTIVE + LISTE DÉROULANTE QUARTIERS + POINT DE REPÈRE) */}
       {activeTab === 'map' && (
         <div className="p-5 rounded-2xl bg-white border border-purple-100 shadow-sm space-y-4">
           <div className="flex items-center justify-between text-xs text-gray-600">
             <span className="font-bold text-gray-900 flex items-center gap-1.5">
               <Compass size={15} className="text-[#581C87]" />
-              Cliquez sur la carte ou déplacez le repère :
+              Cliquez sur la carte ou sélectionnez votre quartier :
             </span>
             <span className="text-[11px] text-[#581C87] font-semibold">
               ✦ Atelier Lê Ci marqué en doré
@@ -476,29 +487,59 @@ export const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
           />
 
           <p className="text-[11px] text-gray-500 font-light italic">
-            Astuce : cliquez sur le lieu où vous souhaitez être livré pour positionner le repère de livraison.
+            Astuce : sélectionnez votre quartier dans la liste déroulante ci-dessous ou cliquez sur la carte.
           </p>
 
-          {/* Champs d'adresse et de repère */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+          {/* Liste déroulante des quartiers avec montant de livraison + Point de repère précis */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
             <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center gap-1.5">
+              <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center gap-1.5">
                 <MapPin size={13} className="text-[#581C87]" />
-                Quartier / Adresse du lieu *
+                Choisir votre quartier (avec tarif livraison) *
               </label>
-              <input
-                type="text"
-                value={address}
-                onChange={(e) => handleAddressChange(e.target.value)}
-                placeholder="Ex : Ouaga 2000, Koulouba, Zone du Bois..."
-                className={`w-full px-3.5 py-3 rounded-2xl outline-none text-xs sm:text-sm bg-white transition ${
+              <select
+                value={neighborhoods.some(q => q.name === address) ? address : ''}
+                onChange={(e) => {
+                  const selectedName = e.target.value;
+                  const found = neighborhoods.find(q => q.name === selectedName);
+                  if (found) {
+                    setAddress(found.name);
+                    setDeliveryFee(found.fee);
+                    setIsFree(false);
+                    const estKm = Math.max(1, Math.round((found.fee / 1000) * 3.5 * 10) / 10);
+                    setDistanceKm(estKm);
+                    onChange({
+                      address: found.name,
+                      landmark,
+                      lat: null,
+                      lng: null,
+                      distanceKm: estKm,
+                      deliveryFee: found.fee,
+                      isFree: false,
+                      mode: 'manual'
+                    });
+                  }
+                }}
+                className={`w-full px-3.5 py-3 rounded-2xl outline-none text-xs sm:text-sm font-semibold bg-white transition cursor-pointer ${
                   error ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200' : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
                 }`}
-              />
+              >
+                <option value="">-- Sélectionnez un quartier dans la liste --</option>
+                {neighborhoods.map((q, idx) => (
+                  <option key={`${q.name}-${idx}`} value={q.name}>
+                    {q.name} — {Number(q.fee).toLocaleString('fr-FR')} FCFA
+                  </option>
+                ))}
+              </select>
+              {address && !neighborhoods.some(q => q.name === address) && (
+                <span className="block text-[11px] text-[#581C87] font-semibold mt-1">
+                  📍 Lieu sélectionné sur carte : {address}
+                </span>
+              )}
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center gap-1.5">
+              <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center gap-1.5">
                 <Info size={13} className="text-[#581C87]" />
                 Point de repère précis *
               </label>
@@ -509,51 +550,6 @@ export const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
                 placeholder="Ex : En face de la pharmacie, portail noir..."
                 className="w-full px-3.5 py-3 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-xs sm:text-sm bg-white"
               />
-            </div>
-          </div>
-
-          {/* Chips des quartiers (uniquement affichés en mode Un autre endroit) */}
-          <div className="pt-2">
-            <span className="text-[11px] font-bold text-gray-500 block mb-1.5">
-              ✦ Ou sélectionnez directement votre quartier :
-            </span>
-            <div className="flex flex-wrap gap-1.5">
-              {[
-                { name: 'Ouaga 2000', km: 4.8 },
-                { name: 'Zone du Bois', km: 2.5 },
-                { name: 'Koulouba', km: 1.8 },
-                { name: 'Dassasgho', km: 3.2 },
-                { name: 'Somgandé', km: 5.0 },
-                { name: 'Patte d\'Oie', km: 4.0 },
-                { name: 'Gounghin', km: 3.5 },
-                { name: 'Pissy', km: 6.2 },
-                { name: 'Karpala', km: 7.0 },
-                { name: 'Tampouy', km: 7.5 }
-              ].map((q) => (
-                <button
-                  type="button"
-                  key={q.name}
-                  onClick={() => {
-                    setAddress(q.name);
-                    setDistanceKm(q.km);
-                    const calculated = q.km <= 3.5 ? 1000 : Math.round(((q.km / 3.5) * 1000) / 100) * 100;
-                    setDeliveryFee(calculated);
-                    onChange({
-                      address: q.name,
-                      landmark,
-                      lat: null,
-                      lng: null,
-                      distanceKm: q.km,
-                      deliveryFee: calculated,
-                      isFree: false,
-                      mode: 'manual'
-                    });
-                  }}
-                  className="px-2.5 py-1 rounded-full bg-purple-50 hover:bg-purple-100 text-[#581C87] text-[11px] font-semibold border border-purple-200/80 transition cursor-pointer"
-                >
-                  + {q.name} ({q.km} km)
-                </button>
-              ))}
             </div>
           </div>
         </div>

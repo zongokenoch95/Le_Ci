@@ -353,7 +353,7 @@ export function Loyalty() {
 
               <div className="flex items-center gap-3 w-full sm:w-auto">
                 <button
-                  onClick={() => openCart()}
+                  onClick={() => navigate('/panier')}
                   className="flex-1 sm:flex-none px-4 py-2.5 bg-[#D4AF37] hover:bg-[#c29d2b] text-white font-bold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-1.5"
                 >
                   <ShoppingBag size={15} />

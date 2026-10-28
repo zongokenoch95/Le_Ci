@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { 
   ArrowRight, 
   ShieldCheck, 
@@ -169,7 +169,8 @@ const promoEvents = [
 export function Home() {
   const [copiedCode, setCopiedCode] = useState(false);
   const [addedProductId, setAddedProductId] = useState<number | null>(null);
-  const { addToCart, openCart } = useCart();
+  const { addToCart } = useCart();
+  const navigate = useNavigate();
 
   const handleAddSignatureToCart = (item: typeof signatureCreations[0], immediate = false) => {
     addToCart({
@@ -179,12 +180,14 @@ export function Home() {
       numericPrice: item.numericPrice,
       image: item.image,
       category: item.category,
-      description: item.description
+      description: item.description,
+      catalogModel: item.name,
+      isCake: item.isCake
     }, 1);
     setAddedProductId(item.id);
     setTimeout(() => setAddedProductId(null), 1500);
     if (immediate) {
-      openCart();
+      navigate('/panier');
     }
   };
 

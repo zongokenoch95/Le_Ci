@@ -150,109 +150,18 @@ export const Cart: React.FC = () => {
       .then(settings => {
         if (settings) {
           setDeliverySettings(settings);
-          updateCalculatedFee(distanceKm, totalAmount, settings);
         }
       })
       .catch(err => console.warn('Erreur barème livraison:', err));
   }, []);
 
-  // Recalcul des frais de livraison
-  const updateCalculatedFee = (km: number, cartTotal: number, settings: DeliverySettings | null) => {
-    const currentSettings = settings || deliverySettings;
-    if (!currentSettings || deliveryType === 'sur_place') {
-      setDeliveryFee(0);
-      setIsFreeDelivery(false);
-      return;
-    }
-
-    if (currentSettings.free_threshold > 0 && cartTotal >= currentSettings.free_threshold) {
-      setDeliveryFee(0);
-      setIsFreeDelivery(true);
-      return;
-    }
-
-    setIsFreeDelivery(false);
-    const fee = Math.max(currentSettings.min_fee, Math.round(km * currentSettings.price_per_km));
-    setDeliveryFee(fee);
-  };
-
   useEffect(() => {
-    if (deliveryType === 'sur_place') {
-      setDeliveryFee(0);
-      setIsFreeDelivery(false);
+    if (deliverySettings && deliverySettings.free_threshold > 0 && totalAmount >= deliverySettings.free_threshold) {
+      setIsFreeDelivery(true);
     } else {
-      updateCalculatedFee(distanceKm, totalAmount, deliverySettings);
+      setIsFreeDelivery(false);
     }
-  }, [distanceKm, totalAmount, deliveryType, deliverySettings]);
-
-  // Géolocalisation GPS multi-niveaux
-  const handleGetLocation = () => {
-    setGeoStatusMsg(null);
-    if (!navigator.geolocation) {
-      setGeoStatusMsg({ type: 'error', text: "La géolocalisation n'est pas supportée par votre navigateur." });
-      return;
-    }
-    setGeoLocating(true);
-
-    const onLocationFound = async (pos: GeolocationPosition) => {
-      const { latitude, longitude } = pos.coords;
-      let label = `Position GPS : ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
-
-      try {
-        const res = await calculateDeliveryFee({
-          customerLat: latitude,
-          customerLng: longitude,
-          totalCartAmount: totalAmount
-        });
-        if (res && res.success) {
-          setDistanceKm(res.distanceKm);
-          setDeliveryFee(res.deliveryFee);
-          setIsFreeDelivery(res.isFree);
-        }
-      } catch (e) {
-        console.warn('Erreur calcul serveur GPS:', e);
-      }
-
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3500);
-        const geoRes = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=16`,
-          { signal: controller.signal }
-        );
-        clearTimeout(timeoutId);
-        if (geoRes.ok) {
-          const data = await geoRes.json();
-          if (data && data.display_name) {
-            const shortQ = data.address?.suburb || data.address?.neighbourhood || data.address?.city_district || data.display_name.split(',')[0];
-            label = `📍 ${shortQ} (GPS: ${latitude.toFixed(5)}, ${longitude.toFixed(5)})`;
-          }
-        }
-      } catch (e) {}
-
-      setDeliveryAddress(prev => prev ? `${prev} | ${label}` : label);
-      clearFieldError('deliveryAddress');
-      setGeoStatusMsg({ type: 'success', text: "Coordonnées GPS capturées et distance calculée !" });
-      setGeoLocating(false);
-    };
-
-    const tryLowAccuracy = () => {
-      navigator.geolocation.getCurrentPosition(
-        onLocationFound,
-        () => {
-          setGeoStatusMsg({ type: 'error', text: "Veuillez activer la géolocalisation sur votre appareil" });
-          setGeoLocating(false);
-        },
-        { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 }
-      );
-    };
-
-    navigator.geolocation.getCurrentPosition(
-      onLocationFound,
-      () => tryLowAccuracy(),
-      { enableHighAccuracy: true, timeout: 7000 }
-    );
-  };
+  }, [totalAmount, deliverySettings]);
 
   // Recherche automatique membre fidélité dès 8 chiffres
   useEffect(() => {
@@ -280,7 +189,7 @@ export const Cart: React.FC = () => {
     }
   }, [recipientPhone, totalAmount]);
 
-  // Calcul réductions
+  // Calcul réductions & frais de livraison effectifs
   const pointValue = memberInfo?.settings?.point_value_fcfa || 1;
   const loyaltyDiscount = useLoyaltyPoints ? pointsToUse * pointValue : 0;
   const tierDiscountPercent = memberInfo?.tier === 'GOLD' 
@@ -288,9 +197,10 @@ export const Cart: React.FC = () => {
     : (memberInfo?.tier === 'SILVER' ? (memberInfo.settings?.silver_discount_percent || 5) : 0);
   const tierDiscountAmount = Math.round((totalAmount * tierDiscountPercent) / 100);
   const cardSupplement = hasGreetingCard ? 200 : 0;
+  const effectiveDeliveryFee = deliveryType === 'sur_place' ? 0 : (isFreeDelivery ? 0 : deliveryFee);
 
-  // Montant Net Total
-  const finalAmountToPay = Math.max(0, totalAmount + deliveryFee + cardSupplement - loyaltyDiscount - tierDiscountAmount);
+  // Montant Net Total (incluant systématiquement les frais de livraison)
+  const finalAmountToPay = Math.max(0, totalAmount + effectiveDeliveryFee + cardSupplement - loyaltyDiscount - tierDiscountAmount);
 
   // Validation du formulaire de panier (Conformité téléphonique BF & Livraison, Notion 28/10/26)
   const validateCartCheckout = () => {
@@ -353,9 +263,9 @@ export const Cart: React.FC = () => {
       ].filter(Boolean).join(' | ');
 
       const finalNotes = [
-        `Mode: ${deliveryType === 'livraison' ? `Livraison (${distanceKm} km - ${deliveryFee} FCFA)` : 'Retrait atelier'}`,
+        `Mode: ${deliveryType === 'livraison' ? `Livraison (${distanceKm} km - ${effectiveDeliveryFee} FCFA)` : 'Retrait atelier'}`,
         `Date souhaitée: ${deliveryDate} (${deliveryTimeSlot})`,
-        `Réceptionnaire: ${recipientPhone.trim()}${recipientName.trim() ? ` (${recipientName.trim()})` : ''}`,
+        `Réceptionnaire: ${recipientPhone.trim()}`,
         backupPhone.trim() ? `Tél secours: ${backupPhone.trim()}` : '',
         deliveryType === 'livraison' ? `Adresse: ${fullDeliveryAddress}` : 'Retrait atelier',
         hasGreetingCard ? `Carte de vœux (+200F): « ${cardMessage.trim()} »` : 'Sans carte',
@@ -366,18 +276,24 @@ export const Cart: React.FC = () => {
 
       // Sécurité Notion 28/10/26 : Envoi des paramètres de livraison au serveur pour calcul et validation sécurisée
       const order = await createOrder({
-        customerName: recipientName.trim() || 'Client Les Douceurs de Lê Ci',
+        customerName: memberInfo?.name || `Client (${recipientPhone.trim()})`,
         customerPhone: recipientPhone.trim(),
         items: items.map((item) => {
-          const opts = cakeOptions[item.id];
+          const isCakeItem = Boolean(item.isCake || item.category === 'Gâteaux' || item.name.toLowerCase().includes('gâteau') || item.name.toLowerCase().includes('layer') || item.name.toLowerCase().includes('fraisier'));
+          const isCustomCakeItem = String(item.id).startsWith('custom-cake') || !!item.description;
+          const opts = cakeOptions[item.id] || (isCakeItem && !isCustomCakeItem ? { portion: item.portion || '10 à 12 parts', flavor: item.flavor || 'Vanille Bourbon pure' } : undefined);
           return {
             id: typeof item.id === 'number' ? item.id : 9999,
-            name: opts 
-              ? `${item.name} (${opts.portion}, ${opts.flavor})` 
-              : (item.description ? `${item.name} [${item.description}]` : item.name),
+            name: item.name,
             price: item.numericPrice,
             quantity: item.quantity,
-            image: item.image
+            image: item.image || '/products/gateau_1.jpeg',
+            category: item.category || (isCakeItem ? 'Gâteaux' : 'Pâtisserie'),
+            portion: item.portion || opts?.portion,
+            flavor: item.flavor || opts?.flavor,
+            catalogModel: item.catalogModel || (!isCustomCakeItem ? item.name : undefined),
+            isCake: isCakeItem,
+            description: item.description
           };
         }),
         montantTotal: finalAmountToPay,
@@ -388,6 +304,7 @@ export const Cart: React.FC = () => {
         customerLng: deliveryLocation?.lng || undefined,
         distanceKm,
         manualDistanceKm: distanceKm,
+        deliveryFee: effectiveDeliveryFee,
         hasGreetingCard,
         discountAmount: loyaltyDiscount + tierDiscountAmount
       });
@@ -585,7 +502,7 @@ export const Cart: React.FC = () => {
                               <div className="flex items-center border border-gray-200 rounded-full bg-white px-2 py-1 shadow-sm">
                                 <button
                                   type="button"
-                                  onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                  onClick={() => updateQuantity(item.id, -1)}
                                   className="p-1 text-gray-400 hover:text-gray-700 cursor-pointer"
                                   title="Diminuer la quantité"
                                 >
@@ -594,7 +511,7 @@ export const Cart: React.FC = () => {
                                 <span className="w-8 text-center text-xs font-extrabold text-gray-900">{item.quantity}</span>
                                 <button
                                   type="button"
-                                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                  onClick={() => updateQuantity(item.id, 1)}
                                   className="p-1 text-gray-400 hover:text-gray-700 cursor-pointer"
                                   title="Augmenter la quantité"
                                 >
@@ -779,7 +696,7 @@ export const Cart: React.FC = () => {
                   Le livreur contactera ce numéro pour la remise en main propre. Vous pouvez ajouter un second numéro de secours.
                 </p>
 
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
                       <Phone size={14} className="text-[#581C87]" />
@@ -806,45 +723,29 @@ export const Cart: React.FC = () => {
                     <span className="block text-[11px] text-gray-400 mt-1">Numéro du Burkina Faso à 8 chiffres (Orange, Moov, Telecel).</span>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
-                        <User size={14} className="text-[#581C87]" />
-                        Nom de la personne qui reçoit <span className="text-[11px] font-normal text-gray-400">(optionnel)</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={recipientName}
-                        onChange={(e) => setRecipientName(e.target.value)}
-                        placeholder="Ex: Salimata Traoré"
-                        className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm bg-white"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
-                        <Phone size={14} className="text-[#581C87]" />
-                        Second numéro de secours <span className="text-[11px] font-normal text-gray-400">(optionnel)</span>
-                      </label>
-                      <input
-                        id="field-cart-backupPhone"
-                        type="tel"
-                        value={backupPhone}
-                        onChange={(e) => { setBackupPhone(e.target.value); clearFieldError('backupPhone'); }}
-                        placeholder="Ex: 76 00 00 00 (famille, conjoint...)"
-                        className={`w-full px-4 py-3 rounded-2xl border outline-none text-sm bg-white transition ${
-                          fieldErrors.backupPhone
-                            ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200'
-                            : 'border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
-                        }`}
-                      />
-                      {fieldErrors.backupPhone && (
-                        <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
-                          <AlertCircle size={13} className="text-red-500 shrink-0" />
-                          <span>{fieldErrors.backupPhone}</span>
-                        </p>
-                      )}
-                    </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
+                      <Phone size={14} className="text-[#581C87]" />
+                      Second numéro de secours <span className="text-[11px] font-normal text-gray-400">(optionnel)</span>
+                    </label>
+                    <input
+                      id="field-cart-backupPhone"
+                      type="tel"
+                      value={backupPhone}
+                      onChange={(e) => { setBackupPhone(e.target.value); clearFieldError('backupPhone'); }}
+                      placeholder="Ex: 76 00 00 00 (famille, conjoint...)"
+                      className={`w-full px-4 py-3.5 rounded-2xl border outline-none text-sm bg-white transition ${
+                        fieldErrors.backupPhone
+                          ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200'
+                          : 'border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
+                      }`}
+                    />
+                    {fieldErrors.backupPhone && (
+                      <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
+                        <AlertCircle size={13} className="text-red-500 shrink-0" />
+                        <span>{fieldErrors.backupPhone}</span>
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -965,7 +866,7 @@ export const Cart: React.FC = () => {
                   </div>
 
                   <div className="flex justify-between items-center">
-                    <span>Livraison ({deliveryType === 'sur_place' ? 'Retrait atelier' : `${distanceKm} km`}) :</span>
+                    <span>Frais de livraison ({deliveryType === 'sur_place' ? 'Retrait atelier' : (deliveryAddress || `${distanceKm} km`)}) :</span>
                     <span className="font-bold text-gray-900">
                       {deliveryType === 'sur_place' ? (
                         <span className="text-emerald-700 font-extrabold">Gratuit</span>
@@ -973,7 +874,7 @@ export const Cart: React.FC = () => {
                         isFreeDelivery ? (
                           <span className="text-emerald-700 font-extrabold">Offerte (Seuil atteint)</span>
                         ) : (
-                          `${deliveryFee.toLocaleString('fr-FR')} FCFA`
+                          <span className="text-[#581C87] font-extrabold">+{effectiveDeliveryFee.toLocaleString('fr-FR')} FCFA</span>
                         )
                       )}
                     </span>

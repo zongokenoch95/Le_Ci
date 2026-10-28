@@ -514,6 +514,7 @@ app.post('/api/orders/:id/payment-info', async (req, res) => {
   try {
     const { payerName, payerPhone, paymentMethod } = req.body;
     const order = await db.updateOrderPaymentInfo(req.params.id, { payerName, payerPhone, paymentMethod });
+    io.to('staff:admin').emit('order:status_changed', { orderId: order.id, statut: order.statut, order });
     res.json({ success: true, order });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -1054,7 +1055,7 @@ app.get('/api/delivery/settings', async (req, res) => {
 
 app.put('/api/delivery/settings', authenticateJwt, requireRole(['gerant']), async (req, res) => {
   try {
-    const { price_per_km, min_fee, free_threshold, origin_lat, origin_lng, origin_address, is_active } = req.body;
+    const { price_per_km, min_fee, free_threshold, origin_lat, origin_lng, origin_address, is_active, neighborhoods } = req.body;
     const updated = await db.updateDeliverySettings({
       price_per_km,
       min_fee,
@@ -1062,7 +1063,8 @@ app.put('/api/delivery/settings', authenticateJwt, requireRole(['gerant']), asyn
       origin_lat,
       origin_lng,
       origin_address,
-      is_active
+      is_active,
+      neighborhoods
     });
     res.json({
       success: true,

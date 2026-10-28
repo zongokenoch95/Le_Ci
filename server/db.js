@@ -287,6 +287,20 @@ export async function initDb() {
     VALUES (1, 250, 1000, 50000, 12.3714, -1.5197, 'Atelier Les Douceurs de Lê Ci, Ouagadougou', 1)
   `);
 
+  try {
+    await run(`ALTER TABLE delivery_settings ADD COLUMN neighborhoods TEXT`);
+  } catch (e) {}
+
+  try {
+    await run(`ALTER TABLE orders ADD COLUMN payer_name TEXT DEFAULT ''`);
+  } catch (e) {}
+  try {
+    await run(`ALTER TABLE orders ADD COLUMN payer_phone TEXT DEFAULT ''`);
+  } catch (e) {}
+  try {
+    await run(`ALTER TABLE orders ADD COLUMN delivery_fee INTEGER DEFAULT 0`);
+  } catch (e) {}
+
   await run(`
     CREATE TABLE IF NOT EXISTS announcement_banner (
       id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -631,11 +645,39 @@ export function formatOrder(row) {
   } catch (e) {
     items = [];
   }
+
+  const notesStr = row.notes || '';
+  let payerName = row.payer_name || '';
+  let payerPhone = row.payer_phone || '';
+  if (!payerName) {
+    const mName = notesStr.match(/Payeur:\s*([^|(]+?)\s*\(/i);
+    if (mName && mName[1] && mName[1].trim() !== 'Non précisé') {
+      payerName = mName[1].trim();
+    }
+  }
+  if (!payerPhone) {
+    const mPhone = notesStr.match(/Payeur:[^)]*\(([^)]+)\)/i);
+    if (mPhone && mPhone[1]) {
+      payerPhone = mPhone[1].trim();
+    }
+  }
+
+  let deliveryFee = row.delivery_fee !== undefined && row.delivery_fee !== null ? Number(row.delivery_fee) : 0;
+  if (!deliveryFee && notesStr.includes('Livraison')) {
+    const mFee = notesStr.match(/Livraison\s*\([^)]*?(\d+)\s*FCFA\)/i);
+    if (mFee && mFee[1]) {
+      deliveryFee = Number(mFee[1]);
+    }
+  }
+
   return {
     id: row.id,
     customerName: row.customer_name,
     customerPhone: row.customer_phone,
     customerEmail: row.customer_email,
+    payerName,
+    payerPhone,
+    deliveryFee,
     items,
     montantTotal: row.montant_total,
     statut: row.statut,
@@ -686,14 +728,19 @@ export async function createOrder(data) {
 
   const isDelivery = data.deliveryType === 'livraison' || (data.notes && data.notes.includes('Livraison')) || data.customerLat || data.manualDistanceKm;
   if (isDelivery && data.deliveryType !== 'sur_place') {
-    const deliveryCalc = await calculateDeliveryFee({
-      customerLat: data.customerLat,
-      customerLng: data.customerLng,
-      totalCartAmount: itemsTotal,
-      manualDistanceKm: data.manualDistanceKm || data.distanceKm
-    });
-    serverDeliveryFee = deliveryCalc.deliveryFee;
-    distanceKm = deliveryCalc.distanceKm;
+    if (data.deliveryFee !== undefined && !isNaN(Number(data.deliveryFee)) && Number(data.deliveryFee) >= 0) {
+      serverDeliveryFee = Math.round(Number(data.deliveryFee));
+      distanceKm = Number(data.distanceKm || data.manualDistanceKm || 3.5);
+    } else {
+      const deliveryCalc = await calculateDeliveryFee({
+        customerLat: data.customerLat,
+        customerLng: data.customerLng,
+        totalCartAmount: itemsTotal,
+        manualDistanceKm: data.manualDistanceKm || data.distanceKm
+      });
+      serverDeliveryFee = deliveryCalc.deliveryFee;
+      distanceKm = deliveryCalc.distanceKm;
+    }
   }
 
   const cardSupplement = data.hasGreetingCard ? 200 : 0;
@@ -707,8 +754,8 @@ export async function createOrder(data) {
   }
 
   await run(`
-    INSERT INTO orders (id, customer_name, customer_phone, customer_email, items, montant_total, statut, code_reference, mode_paiement, notes, created_at, expires_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO orders (id, customer_name, customer_phone, customer_email, items, montant_total, delivery_fee, statut, code_reference, mode_paiement, notes, created_at, expires_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `, [
     id,
     data.customerName || 'Client Les Douceurs de Lê Ci',
@@ -716,6 +763,7 @@ export async function createOrder(data) {
     data.customerEmail || '',
     itemsJson,
     finalAmount,
+    serverDeliveryFee,
     'EN_ATTENTE_DE_PAIEMENT',
     codeReference,
     data.modePaiement || 'orange_money',
@@ -1852,14 +1900,38 @@ export async function updateAnnouncementBanner({ message, is_permanent, start_da
 }
 
 // ==========================================
-// CONFIGURATION DE LA LIVRAISON AU KILOMÈTRE
+// CONFIGURATION DE LA LIVRAISON AU KILOMÈTRE & QUARTIERS
 // ==========================================
+const DEFAULT_NEIGHBORHOODS = [
+  { name: 'Koulouba', fee: 1000 },
+  { name: 'Zone du Bois', fee: 1000 },
+  { name: 'Dassasgho', fee: 1000 },
+  { name: 'Gounghin', fee: 1000 },
+  { name: 'Patte d\'Oie', fee: 1200 },
+  { name: 'Ouaga 2000', fee: 1500 },
+  { name: 'Somgandé', fee: 1500 },
+  { name: 'Pissy', fee: 1800 },
+  { name: 'Karpala', fee: 2000 },
+  { name: 'Tampouy', fee: 2000 },
+  { name: 'Kossodo', fee: 2000 },
+  { name: 'Saaba', fee: 2500 }
+];
+
 export async function getDeliverySettings() {
   let settings = await get('SELECT * FROM delivery_settings WHERE id = 1');
   if (!settings) {
-    await run(`INSERT OR IGNORE INTO delivery_settings (id, price_per_km, min_fee, free_threshold, origin_lat, origin_lng, origin_address, is_active)
-      VALUES (1, 250, 1000, 50000, 12.3714, -1.5197, 'Atelier Les Douceurs de Lê Ci, Ouagadougou', 1)`);
+    await run(`INSERT OR IGNORE INTO delivery_settings (id, price_per_km, min_fee, free_threshold, origin_lat, origin_lng, origin_address, is_active, neighborhoods)
+      VALUES (1, 250, 1000, 50000, 12.3714, -1.5197, 'Atelier Les Douceurs de Lê Ci, Ouagadougou', 1, ?)`, [JSON.stringify(DEFAULT_NEIGHBORHOODS)]);
     settings = await get('SELECT * FROM delivery_settings WHERE id = 1');
+  }
+  let neighborhoods = DEFAULT_NEIGHBORHOODS;
+  if (settings?.neighborhoods) {
+    try {
+      const parsed = JSON.parse(settings.neighborhoods);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        neighborhoods = parsed;
+      }
+    } catch (e) {}
   }
   return {
     id: 1,
@@ -1869,12 +1941,14 @@ export async function getDeliverySettings() {
     origin_lat: Number(settings?.origin_lat) || 12.3714,
     origin_lng: Number(settings?.origin_lng) || -1.5197,
     origin_address: settings?.origin_address || 'Atelier Les Douceurs de Lê Ci, Ouagadougou',
-    is_active: settings?.is_active === 1 || settings?.is_active === true
+    is_active: settings?.is_active === 1 || settings?.is_active === true,
+    neighborhoods
   };
 }
 
-export async function updateDeliverySettings({ price_per_km, min_fee, free_threshold, origin_lat, origin_lng, origin_address, is_active }) {
-  await getDeliverySettings(); // assure l'existence
+export async function updateDeliverySettings({ price_per_km, min_fee, free_threshold, origin_lat, origin_lng, origin_address, is_active, neighborhoods }) {
+  const current = await getDeliverySettings(); // assure l'existence
+  const finalNeighborhoods = Array.isArray(neighborhoods) ? neighborhoods : current.neighborhoods;
   await run(`
     UPDATE delivery_settings SET
       price_per_km = ?,
@@ -1884,16 +1958,18 @@ export async function updateDeliverySettings({ price_per_km, min_fee, free_thres
       origin_lng = ?,
       origin_address = ?,
       is_active = ?,
+      neighborhoods = ?,
       updated_at = CURRENT_TIMESTAMP
     WHERE id = 1
   `, [
-    price_per_km !== undefined ? Number(price_per_km) : 250,
-    min_fee !== undefined ? Number(min_fee) : 1000,
-    free_threshold !== undefined ? Number(free_threshold) : 50000,
-    origin_lat !== undefined ? Number(origin_lat) : 12.3714,
-    origin_lng !== undefined ? Number(origin_lng) : -1.5197,
-    origin_address || 'Atelier Les Douceurs de Lê Ci, Ouagadougou',
-    is_active !== undefined ? (is_active ? 1 : 0) : 1
+    price_per_km !== undefined ? Number(price_per_km) : current.price_per_km,
+    min_fee !== undefined ? Number(min_fee) : current.min_fee,
+    free_threshold !== undefined ? Number(free_threshold) : current.free_threshold,
+    origin_lat !== undefined ? Number(origin_lat) : current.origin_lat,
+    origin_lng !== undefined ? Number(origin_lng) : current.origin_lng,
+    origin_address || current.origin_address,
+    is_active !== undefined ? (is_active ? 1 : 0) : (current.is_active ? 1 : 0),
+    JSON.stringify(finalNeighborhoods)
   ]);
   return getDeliverySettings();
 }
@@ -1953,12 +2029,13 @@ export async function updateOrderPaymentInfo(id, { payerName, payerPhone, paymen
   const row = await get('SELECT * FROM orders WHERE id = ?', [id]);
   if (!row) throw new Error('Commande non trouvée');
 
+  const cleanNotes = (row.notes || '').replace(/\s*\[Paiement Mobile:[^\]]+\]/g, '');
   const notesSuffix = ` [Paiement Mobile: ${paymentMethod || 'Non spécifié'} | Payeur: ${payerName || 'Non précisé'} (${payerPhone || ''})]`;
-  const updatedNotes = (row.notes || '') + notesSuffix;
+  const updatedNotes = cleanNotes + notesSuffix;
 
   await run(
-    `UPDATE orders SET mode_paiement = ?, notes = ? WHERE id = ?`,
-    [paymentMethod || row.mode_paiement, updatedNotes, id]
+    `UPDATE orders SET mode_paiement = ?, payer_name = ?, payer_phone = ?, notes = ? WHERE id = ?`,
+    [paymentMethod || row.mode_paiement, payerName || '', payerPhone || '', updatedNotes, id]
   );
   return getOrderById(id);
 }

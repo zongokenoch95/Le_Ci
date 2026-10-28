@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, ShoppingBag, Sparkles } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { getAnnouncementBanner, AnnouncementBanner } from '../services/api';
@@ -9,7 +9,8 @@ export function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [banner, setBanner] = useState<AnnouncementBanner | null>(null);
   const location = useLocation();
-  const { openCart, totalItems } = useCart();
+  const navigate = useNavigate();
+  const { totalItems } = useCart();
 
   const isHome = location.pathname === '/';
 
@@ -133,7 +134,7 @@ export function Header() {
 
             <div className="flex md:hidden items-center">
               <button
-                onClick={openCart}
+                onClick={() => navigate('/panier')}
                 className="relative p-2 rounded-xl transition cursor-pointer text-white hover:bg-white/10"
                 aria-label="Voir mon panier"
               >
@@ -204,7 +205,7 @@ export function Header() {
 
               {/* Bouton Panier */}
               <button
-                onClick={openCart}
+                onClick={() => navigate('/panier')}
                 className="relative flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-bold transition-all shadow-md cursor-pointer bg-white/15 hover:bg-white/25 text-white border border-white/25 active:scale-95"
                 aria-label="Voir mon panier"
               >
@@ -241,7 +242,7 @@ export function Header() {
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);
-                    openCart();
+                    navigate('/panier');
                   }}
                   className="w-full text-center py-3 rounded-2xl bg-white/15 text-white font-bold text-sm flex items-center justify-center gap-2 border border-white/20 cursor-pointer"
                 >

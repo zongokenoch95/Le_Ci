@@ -4,6 +4,12 @@ export interface OrderItem {
   price: number;
   quantity: number;
   image?: string;
+  category?: string;
+  portion?: string;
+  flavor?: string;
+  catalogModel?: string;
+  isCake?: boolean;
+  description?: string;
 }
 
 export interface Order {
@@ -11,6 +17,9 @@ export interface Order {
   customerName: string;
   customerPhone?: string;
   customerEmail?: string;
+  payerName?: string;
+  payerPhone?: string;
+  deliveryFee?: number;
   items: OrderItem[];
   montantTotal: number;
   statut: 'EN_ATTENTE_DE_PAIEMENT' | 'PAYEE' | 'EN_PREPARATION' | 'PRETE' | 'LIVREE' | 'ANNULEE';
@@ -77,6 +86,7 @@ export async function createOrder(data: {
   customerLng?: number;
   manualDistanceKm?: number;
   distanceKm?: number;
+  deliveryFee?: number;
   hasGreetingCard?: boolean;
   discountAmount?: number;
 }): Promise<Order> {
@@ -705,7 +715,7 @@ export interface AnnouncementBanner {
 }
 
 export async function getAnnouncementBanner(): Promise<AnnouncementBanner> {
-  const res = await fetch(`${API_BASE_URL}/announcement`);
+  const res = await fetch(`${API_BASE}/announcement`);
   if (!res.ok) {
     throw new Error('Erreur lors de la récupération du bandeau');
   }
@@ -714,7 +724,7 @@ export async function getAnnouncementBanner(): Promise<AnnouncementBanner> {
 
 export async function updateAnnouncementBanner(data: Partial<AnnouncementBanner>): Promise<{ success: boolean; banner: AnnouncementBanner; message: string }> {
   const token = getAuthToken();
-  const res = await fetch(`${API_BASE_URL}/announcement`, {
+  const res = await fetch(`${API_BASE}/announcement`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -730,8 +740,13 @@ export async function updateAnnouncementBanner(data: Partial<AnnouncementBanner>
 }
 
 // ==========================================
-// TYPES & FONCTIONS LIVRAISON AU KILOMÈTRE
+// TYPES & FONCTIONS LIVRAISON AU KILOMÈTRE & QUARTIERS
 // ==========================================
+export interface DeliveryNeighborhood {
+  name: string;
+  fee: number;
+}
+
 export interface DeliverySettings {
   id: number;
   price_per_km: number;
@@ -741,6 +756,7 @@ export interface DeliverySettings {
   origin_lng: number;
   origin_address: string;
   is_active: boolean;
+  neighborhoods?: DeliveryNeighborhood[];
   success?: boolean;
 }
 
@@ -758,14 +774,14 @@ export interface DeliveryCalculationResult {
 }
 
 export async function getDeliverySettings(): Promise<DeliverySettings> {
-  const res = await fetch(`${API_BASE_URL}/delivery/settings`);
+  const res = await fetch(`${API_BASE}/delivery/settings`);
   if (!res.ok) throw new Error('Impossible de charger les paramètres de livraison');
   return res.json();
 }
 
 export async function updateDeliverySettings(data: Partial<DeliverySettings>): Promise<{ success: boolean; settings: DeliverySettings; message: string }> {
-  const token = localStorage.getItem('admin_token');
-  const res = await fetch(`${API_BASE_URL}/delivery/settings`, {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE}/delivery/settings`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -786,7 +802,7 @@ export async function calculateDeliveryFee(data: {
   totalCartAmount?: number;
   manualDistanceKm?: number;
 }): Promise<DeliveryCalculationResult> {
-  const res = await fetch(`${API_BASE_URL}/delivery/calculate`, {
+  const res = await fetch(`${API_BASE}/delivery/calculate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)

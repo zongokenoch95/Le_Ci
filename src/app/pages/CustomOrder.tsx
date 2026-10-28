@@ -140,6 +140,15 @@ export function CustomOrder() {
 
     const finalCakePrice = estimatedPrice > 0 ? estimatedPrice : 15000;
 
+    const selectedCakeObj = catalogCakes.find(c => c.name === selectedCatalogCake);
+    const chosenCakeImage = modelType === 'catalog'
+      ? (selectedCakeObj?.image || '/products/gateau_1.jpeg')
+      : (uploadedImagePreview || '/products/gateau_1.jpeg');
+
+    const catalogModelLabel = modelType === 'catalog'
+      ? selectedCatalogCake
+      : (uploadedImagePreview ? 'Photo personnalisée importée' : 'Modèle sur-mesure');
+
     const customDetailsList = [
       `Événement: ${eventDetails.trim()}`,
       `Format: ${currentPortion.label}`,
@@ -149,15 +158,19 @@ export function CustomOrder() {
       additionalNotes.trim() ? `Allergies/Notes: ${additionalNotes.trim()}` : ''
     ].filter(Boolean).join(' | ');
 
-    // 1. Ajout de la création personnalisée au panier
+    // 1. Ajout de la création personnalisée au panier avec la vraie image sélectionnée
     addToCart({
       id: `custom-cake-${Date.now()}`,
-      name: `Gâteau Sur-Mesure (${eventDetails.trim()} - ${currentPortion.label})`,
+      name: `Gâteau Sur-Mesure (${eventDetails.trim()})`,
       price: `${finalCakePrice.toLocaleString('fr-FR')} FCFA`,
       numericPrice: finalCakePrice,
-      image: uploadedImagePreview || '/products/gateau_1.jpeg',
+      image: chosenCakeImage,
       category: 'Gâteaux',
-      description: customDetailsList
+      description: customDetailsList,
+      portion: currentPortion.label,
+      flavor: flavorDisplay,
+      catalogModel: catalogModelLabel,
+      isCake: true
     }, 1);
 
     // 2. Redirection directe vers la page panier pour configurer la livraison et payer
@@ -374,29 +387,29 @@ export function CustomOrder() {
               Sélectionnez un gâteau phare de notre catalogue ou importez la photo d'un modèle que vous adorez.
             </p>
 
-            <div className="flex gap-3 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
               <button
                 type="button"
                 onClick={() => setModelType('catalog')}
-                className={`flex-1 py-3 px-4 rounded-full text-xs font-bold transition cursor-pointer flex items-center justify-center gap-2 ${
+                className={`py-3.5 px-4 rounded-xl border-2 text-xs sm:text-sm font-bold transition cursor-pointer flex items-center justify-center gap-2 ${
                   modelType === 'catalog' 
-                    ? 'bg-[#581C87] text-white shadow-md' 
-                    : 'bg-purple-50 text-gray-700 hover:bg-purple-100/60'
+                    ? 'bg-[#581C87] border-[#581C87] text-white shadow-md' 
+                    : 'bg-purple-50/70 border-purple-200 text-gray-700 hover:bg-purple-100/60'
                 }`}
               >
-                <Sparkles size={14} />
+                <Sparkles size={15} />
                 <span>Gâteaux phares Lê Ci (Catalogue)</span>
               </button>
               <button
                 type="button"
                 onClick={() => setModelType('upload')}
-                className={`flex-1 py-3 px-4 rounded-full text-xs font-bold transition cursor-pointer flex items-center justify-center gap-2 ${
+                className={`py-3.5 px-4 rounded-xl border-2 text-xs sm:text-sm font-bold transition cursor-pointer flex items-center justify-center gap-2 ${
                   modelType === 'upload' 
-                    ? 'bg-[#581C87] text-white shadow-md' 
-                    : 'bg-purple-50 text-gray-700 hover:bg-purple-100/60'
+                    ? 'bg-[#581C87] border-[#581C87] text-white shadow-md' 
+                    : 'bg-purple-50/70 border-purple-200 text-gray-700 hover:bg-purple-100/60'
                 }`}
               >
-                <Upload size={14} />
+                <Upload size={15} />
                 <span>Importer ma propre photo</span>
               </button>
             </div>

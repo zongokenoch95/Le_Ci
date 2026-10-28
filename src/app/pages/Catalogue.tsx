@@ -338,8 +338,11 @@ export function Catalogue() {
     return product.category === selectedCategory;
   });
 
-  const handleAddToCart = (product: any, openDrawer = false) => {
+  const handleAddToCart = (product: any, goImmediate = false) => {
+    const isCakeProduct = product.category === 'Gâteaux' || product.category?.includes('Gât');
     const chosenPortion = selectedCakePortions[product.id];
+    const defaultPortionLabel = product.portions?.[0]?.label || '6-8 parts';
+    const portionLabel = isCakeProduct ? (chosenPortion?.label || defaultPortionLabel) : undefined;
     const finalName = chosenPortion ? `${product.name} (${chosenPortion.label})` : product.name;
     const finalPrice = chosenPortion ? `${chosenPortion.price.toLocaleString('fr-FR')} FCFA` : product.price;
     const finalNumericPrice = chosenPortion ? chosenPortion.price : product.numericPrice;
@@ -350,12 +353,15 @@ export function Catalogue() {
       price: finalPrice,
       numericPrice: finalNumericPrice,
       image: product.image,
-      category: product.category
+      category: product.category,
+      portion: portionLabel,
+      catalogModel: product.name,
+      isCake: isCakeProduct
     }, 1);
     setAddedProductId(product.id);
     setTimeout(() => setAddedProductId(null), 1500);
-    if (openDrawer) {
-      openCart();
+    if (goImmediate) {
+      navigate('/panier');
     }
   };
 
