@@ -294,6 +294,16 @@ export const Cart: React.FC = () => {
 
   // Validation du formulaire de panier (Conformité téléphonique BF & Livraison, Notion 28/10/26)
   const validateCartCheckout = () => {
+    // Vérification de la date et heure de réception
+    if (!deliveryDate) {
+      setSingleError('deliveryDate', 'Veuillez sélectionner la date souhaitée pour votre commande.', 'field-cart-date');
+      return false;
+    }
+    if (!deliveryTimeSlot.trim()) {
+      setSingleError('deliveryTimeSlot', 'Veuillez indiquer l\'heure souhaitée pour la réception.', 'field-cart-time');
+      return false;
+    }
+
     // Vérification du numéro de téléphone principal (Burkina Faso : 8 chiffres)
     const phoneVal = validateBurkinaPhone(recipientPhone);
     if (!phoneVal.isValid) {
@@ -655,7 +665,7 @@ export const Cart: React.FC = () => {
                 </div>
               </div>
 
-              {/* 3. DATE & HEURE DE RÉCEPTION */}
+              {/* 3. DATE & HEURE DE RÉCEPTION (Notion point 83) */}
               <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
                 <h2 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">3</span>
@@ -666,32 +676,95 @@ export const Cart: React.FC = () => {
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Bouton de sélection calendrier (Notion point 83) */}
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
                       <Calendar size={14} className="text-[#581C87]" />
                       Date de réception *
                     </label>
-                    <input
-                      type="date"
-                      min={minDate}
-                      value={deliveryDate}
-                      onChange={(e) => setDeliveryDate(e.target.value)}
-                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm bg-white"
-                    />
+                    <div className="relative">
+                      <button
+                        type="button"
+                        id="field-cart-date"
+                        onClick={() => {
+                          const picker = document.getElementById('cart-reception-date-input') as HTMLInputElement | null;
+                          if (picker) {
+                            if ('showPicker' in HTMLInputElement.prototype) {
+                              picker.showPicker();
+                            } else {
+                              picker.click();
+                            }
+                          }
+                        }}
+                        className={`w-full py-3.5 px-4 rounded-2xl flex items-center justify-between text-xs sm:text-sm font-bold transition cursor-pointer shadow-sm ${
+                          fieldErrors.deliveryDate 
+                            ? 'border-2 border-red-500 bg-red-50/20 text-red-700 ring-2 ring-red-200' 
+                            : deliveryDate
+                              ? 'border-2 border-[#581C87] bg-purple-50/80 text-[#581C87]'
+                              : 'border border-gray-200 bg-white text-gray-700 hover:border-purple-300 hover:bg-purple-50/40'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 truncate">
+                          <Calendar size={18} className={deliveryDate ? 'text-[#581C87]' : 'text-gray-400'} />
+                          <span className="truncate">
+                            {deliveryDate 
+                              ? `Date : ${new Date(deliveryDate + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })}`
+                              : 'Sélectionner votre date de réception'}
+                          </span>
+                        </div>
+                        <span className="px-3 py-1 rounded-full bg-[#581C87] text-white text-[11px] font-extrabold shrink-0">
+                          {deliveryDate ? 'Modifier' : 'Choisir'}
+                        </span>
+                      </button>
+
+                      {/* Input date caché activé par le bouton */}
+                      <input
+                        id="cart-reception-date-input"
+                        type="date"
+                        min={minDate}
+                        value={deliveryDate}
+                        onChange={(e) => { 
+                          setDeliveryDate(e.target.value); 
+                          clearFieldError('deliveryDate'); 
+                        }}
+                        className="absolute bottom-0 left-0 w-0 h-0 opacity-0 pointer-events-none"
+                      />
+                    </div>
+
+                    {fieldErrors.deliveryDate && (
+                      <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
+                        <AlertCircle size={13} className="text-red-500 shrink-0" />
+                        <span>{fieldErrors.deliveryDate}</span>
+                      </p>
+                    )}
+                    <span className="block text-[11px] text-gray-400 mt-1">Délai minimum de préparation : dès le {minDate}</span>
                   </div>
 
+                  {/* Heure en texte libre uniquement (Notion point 83) */}
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
                       <Clock size={14} className="text-[#581C87]" />
                       Créneau ou heure souhaitée *
                     </label>
                     <input
+                      id="field-cart-time"
                       type="text"
                       value={deliveryTimeSlot}
-                      onChange={(e) => setDeliveryTimeSlot(e.target.value)}
+                      onChange={(e) => { setDeliveryTimeSlot(e.target.value); clearFieldError('deliveryTimeSlot'); }}
                       placeholder="Ex: 15h30, début d'après-midi, 18h..."
-                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm bg-white"
+                      className={`w-full px-4 py-3.5 rounded-2xl outline-none text-sm bg-white transition ${
+                        fieldErrors.deliveryTimeSlot
+                          ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200'
+                          : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
+                      }`}
                     />
+                    {fieldErrors.deliveryTimeSlot && (
+                      <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
+                        <AlertCircle size={13} className="text-red-500 shrink-0" />
+                        <span>{fieldErrors.deliveryTimeSlot}</span>
+                      </p>
+                    )}
+                    <span className="block text-[11px] text-gray-400 mt-1">Texte libre : précisez l'heure ou un créneau (ex : vers 16h).</span>
                   </div>
                 </div>
               </div>
