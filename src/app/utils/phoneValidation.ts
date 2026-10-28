@@ -83,3 +83,4 @@ export function validateBurkinaPhone(phone: string, isOptional = false): PhoneVa
     formatted
   };
 }
+
