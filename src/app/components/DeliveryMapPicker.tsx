@@ -37,7 +37,8 @@ export const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
   onChange,
   error
 }) => {
-  const [activeTab, setActiveTab] = useState<'gps' | 'map'>('gps');
+  // Notion 28/10/26 : Par défaut, aucun des deux boutons n'est cliqué (null)
+  const [activeTab, setActiveTab] = useState<'gps' | 'map' | null>(null);
   const [geoLocating, setGeoLocating] = useState(false);
   const [calcLoading, setCalcLoading] = useState(false);
   const [address, setAddress] = useState(initialAddress);
@@ -54,7 +55,7 @@ export const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
   const polylineRef = useRef<L.Polyline | null>(null);
 
   // Recalcul des frais de livraison via l'API sécurisée du serveur
-  const triggerServerCalculation = async (lat: number, lng: number, placeName?: string) => {
+  const triggerServerCalculation = async (lat: number, lng: number, placeName?: string, modeOverride?: 'gps' | 'map') => {
     setCalcLoading(true);
     try {
       const res = await calculateDeliveryFee({
@@ -78,7 +79,7 @@ export const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
           distanceKm: res.distanceKm,
           deliveryFee: res.deliveryFee,
           isFree: res.isFree,
-          mode: activeTab
+          mode: modeOverride || activeTab
         });
       }
     } catch (err) {
@@ -129,7 +130,7 @@ export const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
         text: `Position actuelle détectée avec succès (${Math.round(accuracy)}m de précision) !`
       });
 
-      await triggerServerCalculation(latitude, longitude, locationLabel);
+      await triggerServerCalculation(latitude, longitude, locationLabel, 'gps');
       setGeoLocating(false);
 
       if (mapInstanceRef.current) {
@@ -235,7 +236,7 @@ export const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
     } catch (e) {}
 
     setAddress(locationLabel);
-    await triggerServerCalculation(lat, lng, locationLabel);
+    await triggerServerCalculation(lat, lng, locationLabel, 'map');
   };
 
   // Initialisation de Leaflet
@@ -325,109 +326,117 @@ export const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
   return (
     <div className="space-y-4">
       
-      {/* 5. LES DEUX BOUTONS DOIVENT ÊTRE BIEN DISTINCTS (Notion 28/10/26) */}
-      {/* "Votre position actuelle" ET "Un autre endroit" */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {/* Bouton 1 : Votre position actuelle */}
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab('gps');
-            if (!address) {
-              setAddress('Position GPS actuelle');
-            }
-          }}
-          className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center gap-3.5 ${
-            activeTab === 'gps'
-              ? 'border-[#581C87] bg-purple-50 text-[#581C87] shadow-md ring-2 ring-purple-200'
-              : 'border-gray-200 bg-white text-gray-700 hover:border-purple-200 hover:bg-gray-50/50'
-          }`}
-        >
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
-            activeTab === 'gps' ? 'bg-[#581C87] text-white shadow-sm' : 'bg-purple-100 text-[#581C87]'
-          }`}>
-            <Navigation size={20} />
-          </div>
-          <div className="flex-1">
-            <span className="block font-black text-sm">Votre position actuelle</span>
-            <span className="block text-[11px] text-gray-500 font-light mt-0.5">
-              Détection automatique par GPS
-            </span>
-          </div>
-          {activeTab === 'gps' && (
-            <div className="w-5 h-5 rounded-full bg-[#581C87] text-white flex items-center justify-center shrink-0">
-              <CheckCircle2 size={14} />
-            </div>
-          )}
-        </button>
+      {/* 5. CHOIX DU MODE DE LIVRAISON (Notion 28/10/26) */}
+      {/* Par défaut : deux boutons non cliqués + indication de choisir son mode de livraison */}
+      <div className="space-y-2">
+        <label className="block text-xs font-bold text-gray-700 flex items-center gap-1.5">
+          <MapPin size={14} className="text-[#581C87]" />
+          <span>Veuillez choisir votre mode d'indication de livraison :</span>
+        </label>
 
-        {/* Bouton 2 : Un autre endroit */}
-        <button
-          type="button"
-          onClick={() => setActiveTab('map')}
-          className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center gap-3.5 ${
-            activeTab === 'map'
-              ? 'border-[#581C87] bg-purple-50 text-[#581C87] shadow-md ring-2 ring-purple-200'
-              : 'border-gray-200 bg-white text-gray-700 hover:border-purple-200 hover:bg-gray-50/50'
-          }`}
-        >
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
-            activeTab === 'map' ? 'bg-[#581C87] text-white shadow-sm' : 'bg-purple-100 text-[#581C87]'
-          }`}>
-            <MapPin size={20} />
-          </div>
-          <div className="flex-1">
-            <span className="block font-black text-sm">Un autre endroit</span>
-            <span className="block text-[11px] text-gray-500 font-light mt-0.5">
-              Choisir un lieu sur la carte
-            </span>
-          </div>
-          {activeTab === 'map' && (
-            <div className="w-5 h-5 rounded-full bg-[#581C87] text-white flex items-center justify-center shrink-0">
-              <CheckCircle2 size={14} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Bouton 1 : Votre position actuelle (Déclenche directement la géolocalisation au clic) */}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('gps');
+              handleGetCurrentLocation();
+            }}
+            disabled={geoLocating}
+            className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center gap-3.5 relative overflow-hidden ${
+              activeTab === 'gps'
+                ? 'border-[#581C87] bg-purple-50 text-[#581C87] shadow-md ring-2 ring-purple-200'
+                : 'border-gray-200 bg-white text-gray-700 hover:border-purple-200 hover:bg-gray-50/50'
+            }`}
+          >
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+              activeTab === 'gps' ? 'bg-[#581C87] text-white shadow-sm' : 'bg-purple-100 text-[#581C87]'
+            }`}>
+              {geoLocating ? (
+                <Loader2 size={20} className="animate-spin text-[#581C87]" />
+              ) : (
+                <Navigation size={20} />
+              )}
             </div>
-          )}
-        </button>
+            <div className="flex-1 min-w-0">
+              <span className="block font-black text-sm">Votre position actuelle</span>
+              <span className="block text-[11px] text-gray-500 font-light mt-0.5 truncate">
+                {geoLocating ? 'Géolocalisation en cours...' : 'Détection automatique en 1 clic'}
+              </span>
+            </div>
+            {activeTab === 'gps' && !geoLocating && (
+              <div className="w-5 h-5 rounded-full bg-[#581C87] text-white flex items-center justify-center shrink-0">
+                <CheckCircle2 size={14} />
+              </div>
+            )}
+          </button>
+
+          {/* Bouton 2 : Un autre endroit */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('map')}
+            className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center gap-3.5 relative overflow-hidden ${
+              activeTab === 'map'
+                ? 'border-[#581C87] bg-purple-50 text-[#581C87] shadow-md ring-2 ring-purple-200'
+                : 'border-gray-200 bg-white text-gray-700 hover:border-purple-200 hover:bg-gray-50/50'
+            }`}
+          >
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+              activeTab === 'map' ? 'bg-[#581C87] text-white shadow-sm' : 'bg-purple-100 text-[#581C87]'
+            }`}>
+              <MapPin size={20} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="block font-black text-sm">Un autre endroit</span>
+              <span className="block text-[11px] text-gray-500 font-light mt-0.5 truncate">
+                Choisir un lieu sur la carte
+              </span>
+            </div>
+            {activeTab === 'map' && (
+              <div className="w-5 h-5 rounded-full bg-[#581C87] text-white flex items-center justify-center shrink-0">
+                <CheckCircle2 size={14} />
+              </div>
+            )}
+          </button>
+        </div>
       </div>
 
+      {/* Message d'indication par défaut quand aucun des deux boutons n'est encore sélectionné */}
+      {activeTab === null && (
+        <div className="p-4 rounded-2xl bg-purple-50/70 border border-purple-200 text-purple-900 text-xs sm:text-sm font-medium flex items-center gap-3 shadow-xs">
+          <Info size={18} className="text-[#581C87] shrink-0" />
+          <span>Veuillez choisir votre lieu de livraison ci-dessus en cliquant sur <strong>Votre position actuelle</strong> ou <strong>Un autre endroit</strong>.</span>
+        </div>
+      )}
+
       {/* CONTENU OPTION 1 : VOTRE POSITION ACTUELLE */}
-      {/* Notion : Masquer les champs quartier et la liste des quartiers. Garder champ point de repère. */}
+      {/* Notion 28/10/26 : La géolocalisation s'active directement sans autre bouton, masquer quartiers, garder point de repère */}
       {activeTab === 'gps' && (
         <div className="p-5 rounded-2xl bg-white border border-purple-100 shadow-sm space-y-4">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="text-xs text-gray-600">
-              <span className="font-bold text-gray-900 block mb-0.5">Localisation en 1 clic :</span>
-              <span>Cliquez sur le bouton pour récupérer instantanément vos coordonnées GPS.</span>
+          {geoLocating && (
+            <div className="p-4 rounded-2xl bg-purple-50 border border-purple-200 text-xs flex items-center gap-3 text-purple-900 font-semibold animate-pulse">
+              <Loader2 size={18} className="animate-spin text-[#581C87] shrink-0" />
+              <span>Récupération automatique de vos coordonnées GPS en cours...</span>
             </div>
+          )}
 
-            <button
-              type="button"
-              onClick={handleGetCurrentLocation}
-              disabled={geoLocating}
-              className="w-full sm:w-auto px-6 py-3 rounded-full bg-[#581C87] hover:bg-[#6B21A8] text-white text-xs font-black shadow-md shadow-purple-900/20 transition flex items-center justify-center gap-2 cursor-pointer shrink-0 disabled:opacity-50"
-            >
-              {geoLocating ? (
-                <>
-                  <Loader2 size={15} className="animate-spin text-white" />
-                  <span>Localisation en cours...</span>
-                </>
-              ) : (
-                <>
-                  <Navigation size={15} />
-                  <span>Activer ma position actuelle</span>
-                </>
-              )}
-            </button>
-          </div>
-
-          {statusMsg && (
-            <div className={`p-3 rounded-xl text-xs flex items-center gap-2 ${
+          {statusMsg && !geoLocating && (
+            <div className={`p-3.5 rounded-xl text-xs flex items-center justify-between gap-2 ${
               statusMsg.type === 'success' 
                 ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' 
                 : 'bg-rose-50 text-rose-800 border border-rose-200'
             }`}>
-              {statusMsg.type === 'success' ? <CheckCircle2 size={15} className="shrink-0" /> : <AlertCircle size={15} className="shrink-0" />}
-              <span className="font-medium">{statusMsg.text}</span>
+              <div className="flex items-center gap-2">
+                {statusMsg.type === 'success' ? <CheckCircle2 size={16} className="shrink-0" /> : <AlertCircle size={16} className="shrink-0" />}
+                <span className="font-semibold">{statusMsg.text}</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleGetCurrentLocation}
+                className="text-[11px] font-extrabold underline hover:opacity-80 cursor-pointer shrink-0 ml-2"
+              >
+                Réessayer
+              </button>
             </div>
           )}
 

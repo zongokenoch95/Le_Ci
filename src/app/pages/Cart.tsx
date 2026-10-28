@@ -311,7 +311,7 @@ export const Cart: React.FC = () => {
     }
 
     if (deliveryType === 'livraison' && !deliveryAddress.trim()) {
-      setSingleError('deliveryAddress', 'Veuillez indiquer le lieu de livraison (sur la carte ou par position GPS).', 'field-cart-address');
+      setSingleError('deliveryAddress', 'Veuillez choisir votre mode de livraison (Votre position actuelle ou Un autre endroit).', 'field-cart-address');
       return false;
     }
     if (hasGreetingCard && !cardMessage.trim()) {

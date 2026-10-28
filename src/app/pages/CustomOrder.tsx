@@ -299,7 +299,7 @@ export function CustomOrder() {
     }
 
     if (deliveryType === 'livraison' && !deliveryAddress.trim()) {
-      setSingleError('deliveryAddress', 'Veuillez indiquer le lieu de livraison (position GPS ou carte).', 'field-deliveryAddress');
+      setSingleError('deliveryAddress', 'Veuillez choisir votre mode de livraison (Votre position actuelle ou Un autre endroit).', 'field-deliveryAddress');
       return false;
     }
 

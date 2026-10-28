@@ -1,4 +1,4 @@
-# Correctifs & Améliorations Notion (Synchronisé le 28/10/2026 16:47:53)
+# Correctifs & Améliorations Notion (Synchronisé le 28/10/2026 17:27:28)
 
 24 oct. 2026, 23:03:07
 Correction Le CI
@@ -109,4 +109,7 @@ Le calcul est fait par le serveur du site, pas par le téléphone du client. Per
 Pour les frais de livraison Écrire simplement : Frais de livraison : montant 
 Pour le message d'erreur ne pas le signaler au niveau du récapitulatif juste près u champ qui erroné.
 Les deux bouton doivent être bien distincts :
-Votre position actuelle   et  Un autre endroit a4
+Votre position actuelle   et  Un autre endroit 
+1. Je veux quau niveau lieu de livraison qu’il aupar defaut ces deux bouton non cliqués.
+ Quon indique au client de chosir son lieu de livraison
+Qiand on clique sur bonton votre geolocalisation la geolocalisation s’active dirrectement sans quil aia appuyer sur un autre bouton. Ensuite En appuyant sur lautre bouton  Autre endroit la carte apparait et aussi le champ point de repere precis
