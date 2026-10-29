@@ -24,7 +24,7 @@ import {
 import { getSocket, joinOrder, leaveOrder } from '../services/socket';
 import { validateBurkinaPhone } from '../utils/phoneValidation';
 
-const MERCHANT_OM_PHONE = '56261495';
+const MERCHANT_OM_PHONE = '77121289';
 
 export function OtherPayment() {
   const { token } = useParams<{ token: string }>();
@@ -253,7 +253,7 @@ export function OtherPayment() {
   const isExpiredOrCancelled = info.status === 'EXPIREE' || info.status === 'ANNULEE';
   const isManualReview = info.status === 'EN_VERIFICATION_MANUELLE';
 
-  const ussdSyntax = `*144*2*1*${MERCHANT_OM_PHONE}*${info.amount}#`;
+  const ussdSyntax = `*144*10*${MERCHANT_OM_PHONE}*${info.amount}#`;
   const ussdTelHref = `tel:${encodeURIComponent(ussdSyntax)}`;
   const whatsappShareHref = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
 
@@ -485,78 +485,82 @@ export function OtherPayment() {
                   )}
                 </form>
 
-                {/* Étape 2 : Moyen de paiement opérationnel (§10.8 : Orange Money) & Syntaxe USSD */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-extrabold uppercase tracking-wider text-gray-700 flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-full bg-[#581C87] text-white text-[11px] font-black flex items-center justify-center">
-                        2
-                      </span>
-                      Lancer le paiement Orange Money
-                    </label>
-                    {addedPhone && (
+                {/* Étape 2 : Moyen de paiement opérationnel (§10.8 : Orange Money) & Syntaxe USSD (visible uniquement après saisie du numéro) */}
+                {addedPhone ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-extrabold uppercase tracking-wider text-gray-700 flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-[#581C87] text-white text-[11px] font-black flex items-center justify-center">
+                          2
+                        </span>
+                        Lancer le paiement Orange Money
+                      </label>
                       <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
                         Numéro actif : {addedPhone}
                       </span>
-                    )}
-                  </div>
+                    </div>
 
-                  {/* Opérateur opérationnel (§10.8) */}
-                  <div className="p-4 rounded-2xl border-2 border-[#FF6600] bg-orange-50/40 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-2xl bg-[#FF6600] text-white flex items-center justify-center font-black text-xs shadow-sm">
-                        OM
+                    {/* Opérateur opérationnel (§10.8) */}
+                    <div className="p-4 rounded-2xl border-2 border-[#FF6600] bg-orange-50/40 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-[#FF6600] text-white flex items-center justify-center font-black text-xs shadow-sm">
+                          OM
+                        </div>
+                        <div>
+                          <span className="font-extrabold text-sm block text-gray-900">Orange Money Burkina Faso</span>
+                          <span className="text-[11px] text-gray-500">Validation automatique instantanée par SMS</span>
+                        </div>
                       </div>
-                      <div>
-                        <span className="font-extrabold text-sm block text-gray-900">Orange Money Burkina Faso</span>
-                        <span className="text-[11px] text-gray-500">Validation automatique instantanée par SMS</span>
+                      <CheckCircle2 size={20} className="text-[#FF6600]" />
+                    </div>
+
+                    {/* Syntaxe USSD générée avec bouton Copier et bouton Composer */}
+                    <div className="bg-[#FAF8F5] border border-gray-200 rounded-3xl p-6 text-center space-y-4">
+                      <div className="text-xs text-gray-500 font-medium">
+                        Syntaxe USSD à composer depuis le numéro autorisé ({addedPhone}) :
+                      </div>
+
+                      <div className="flex items-center justify-center gap-2">
+                        <span className="font-mono text-base sm:text-lg font-black text-gray-900 bg-white px-4 py-2.5 rounded-xl border border-gray-200 shadow-sm">
+                          {ussdSyntax}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyUssd(ussdSyntax)}
+                          className="p-2.5 rounded-xl bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 transition cursor-pointer"
+                          title="Copier la syntaxe USSD"
+                        >
+                          <Copy size={18} />
+                        </button>
+                      </div>
+                      {copiedUssd && (
+                        <div className="text-xs font-bold text-emerald-600">
+                          Syntaxe USSD copiée dans le presse-papier !
+                        </div>
+                      )}
+
+                      <div className="max-w-md mx-auto pt-1">
+                        <a
+                          href={ussdTelHref}
+                          className="w-full py-4 px-6 bg-[#FF6600] hover:bg-[#e65c00] text-white font-bold rounded-full shadow-xl shadow-orange-500/25 flex items-center justify-center gap-3 transition transform active:scale-[0.98]"
+                        >
+                          <PhoneCall size={20} />
+                          Composer la syntaxe USSD (*144#)
+                        </a>
                       </div>
                     </div>
-                    <CheckCircle2 size={20} className="text-[#FF6600]" />
-                  </div>
 
-                  {/* Syntaxe USSD générée avec bouton Copier et bouton Composer */}
-                  <div className="bg-[#FAF8F5] border border-gray-200 rounded-3xl p-6 text-center space-y-4">
-                    <div className="text-xs text-gray-500 font-medium">
-                      Syntaxe USSD à composer depuis le numéro autorisé :
-                    </div>
-
-                    <div className="flex items-center justify-center gap-2">
-                      <span className="font-mono text-base sm:text-lg font-black text-gray-900 bg-white px-4 py-2.5 rounded-xl border border-gray-200 shadow-sm">
-                        {ussdSyntax}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleCopyUssd(ussdSyntax)}
-                        className="p-2.5 rounded-xl bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 transition cursor-pointer"
-                        title="Copier la syntaxe USSD"
-                      >
-                        <Copy size={18} />
-                      </button>
-                    </div>
-                    {copiedUssd && (
-                      <div className="text-xs font-bold text-emerald-600">
-                        Syntaxe USSD copiée dans le presse-papier !
-                      </div>
-                    )}
-
-                    <div className="max-w-md mx-auto pt-1">
-                      <a
-                        href={ussdTelHref}
-                        className="w-full py-4 px-6 bg-[#FF6600] hover:bg-[#e65c00] text-white font-bold rounded-full shadow-xl shadow-orange-500/25 flex items-center justify-center gap-3 transition transform active:scale-[0.98]"
-                      >
-                        <PhoneCall size={20} />
-                        Composer la syntaxe USSD (*144#)
-                      </a>
+                    {/* État de synchronisation temps réel */}
+                    <div className="flex items-center justify-center gap-2 text-xs font-medium text-gray-500 bg-gray-50 py-3 rounded-2xl border border-gray-200/50">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
+                      <span>En attente de détection automatique du transfert Orange Money...</span>
                     </div>
                   </div>
-                </div>
-
-                {/* État de synchronisation temps réel */}
-                <div className="flex items-center justify-center gap-2 text-xs font-medium text-gray-500 bg-gray-50 py-3 rounded-2xl border border-gray-200/50">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
-                  <span>En attente de détection automatique du transfert Orange Money...</span>
-                </div>
+                ) : (
+                  <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200/80 text-xs text-amber-900 text-center font-medium">
+                    ☝️ Veuillez d'abord saisir et autoriser le numéro qui effectuera le transfert à l'étape 1 pour débloquer la syntaxe USSD et activer la validation automatique.
+                  </div>
+                )}
               </div>
             </motion.div>
           )}
