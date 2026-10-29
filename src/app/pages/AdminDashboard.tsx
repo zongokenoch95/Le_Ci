@@ -690,8 +690,16 @@ export function AdminDashboard() {
     }
   };
 
-  // Filtrage commandes
-  const filteredOrders = orders.filter(o => {
+  // Filtrage commandes : une commande EN_ATTENTE_DE_PAIEMENT n'apparaît dans le Dashboard
+  // qu'à partir du moment où le client a saisi le nom et le numéro de transfert
+  const visibleOrders = orders.filter(o => {
+    if (o.statut === 'EN_ATTENTE_DE_PAIEMENT') {
+      return Boolean(o.payerPhone && o.payerPhone.trim());
+    }
+    return true;
+  });
+
+  const filteredOrders = visibleOrders.filter(o => {
     if (filterStatus === 'ALL') return true;
     return o.statut === filterStatus;
   });
@@ -749,11 +757,11 @@ export function AdminDashboard() {
                 <Package size={17} />
                 <span>Commandes & KDS</span>
               </div>
-              {orders.filter(o => o.statut === 'EN_ATTENTE_DE_PAIEMENT' || o.statut === 'EN_PREPARATION').length > 0 && (
+              {visibleOrders.filter(o => o.statut === 'EN_ATTENTE_DE_PAIEMENT' || o.statut === 'EN_PREPARATION').length > 0 && (
                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${
                   activeTab === 'orders' ? 'bg-black text-white' : 'bg-[#D4AF37] text-black'
                 }`}>
-                  {orders.filter(o => o.statut === 'EN_ATTENTE_DE_PAIEMENT' || o.statut === 'EN_PREPARATION').length}
+                  {visibleOrders.filter(o => o.statut === 'EN_ATTENTE_DE_PAIEMENT' || o.statut === 'EN_PREPARATION').length}
                 </span>
               )}
             </button>
@@ -989,8 +997,8 @@ export function AdminDashboard() {
             <div className="flex flex-wrap gap-2">
               {[
                 { id: 'ALL', label: 'Toutes' },
-                { id: 'EN_ATTENTE_DE_PAIEMENT', label: 'En attente OM' },
-                { id: 'EN_PREPARATION', label: 'À préparer' },
+                { id: 'EN_ATTENTE_DE_PAIEMENT', label: 'En attente de validation' },
+                { id: 'EN_PREPARATION', label: 'En préparation' },
                 { id: 'PRETE', label: 'Prêtes' },
                 { id: 'LIVREE', label: 'Livrées' },
                 { id: 'ANNULEE', label: 'Annulées' }
@@ -1065,9 +1073,11 @@ export function AdminDashboard() {
                             ? 'bg-blue-400 text-black'
                             : order.statut === 'ANNULEE'
                             ? 'bg-rose-500/20 text-rose-300'
-                            : 'bg-white/10 text-gray-300'
+                            : 'bg-purple-500/20 text-purple-200 border border-purple-500/30'
                         }`}>
-                          {order.statut.replace(/_/g, ' ')}
+                          {order.statut === 'EN_ATTENTE_DE_PAIEMENT'
+                            ? 'EN ATTENTE DE VALIDATION'
+                            : order.statut.replace(/_/g, ' ')}
                         </span>
                       </div>
 

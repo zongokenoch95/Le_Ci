@@ -1070,27 +1070,17 @@ export async function reconcilePaymentWebhook({
   }
 
   let chosenOrder = null;
-  let matchedBy = 'fifo';
+  let matchedBy = 'phone_and_amount';
 
-  // NIVEAU 1 : Code référence marchand (ex: "K9X2")
+  // NIVEAU 1 : Code référence marchand explicite (ex: "K9X2")
   if (codeReference) {
     const cleanRef = String(codeReference).trim().toUpperCase();
     chosenOrder = pendingOrders.find(o => o.code_reference && o.code_reference.toUpperCase() === cleanRef);
     if (chosenOrder) matchedBy = 'code_reference';
   }
 
-  if (!chosenOrder && rawMessage) {
-    for (const order of pendingOrders) {
-      if (order.code_reference && rawMessage.toUpperCase().includes(order.code_reference.toUpperCase())) {
-        chosenOrder = order;
-        matchedBy = 'code_reference_in_message';
-        break;
-      }
-    }
-  }
-
-  // NIVEAU 2 (§10.5) : Numéro expéditeur ∈ numéros autorisés (order_payer_numbers / payer_phone / customer_phone) ET montant égal
-  if (!chosenOrder && cleanSenderPhone) {
+  // NIVEAU 2 (§10.5) : Numéro expéditeur ∈ numéros autorisés (order_payer_numbers / payer_phone) ET montant égal
+  if (!chosenOrder && cleanSenderPhone && amount && Number(amount) > 0) {
     const orderIds = pendingOrders.map(o => o.id);
     const placeholders = orderIds.map(() => '?').join(',');
     const payerRows = await all(
@@ -1106,7 +1096,9 @@ export async function reconcilePaymentWebhook({
       }
     }
 
-    const level2Matches = pendingOrders.filter(o => matchedOrderIds.has(o.id));
+    const level2Matches = pendingOrders.filter(
+      o => matchedOrderIds.has(o.id) && Number(o.montant_total) === Number(amount)
+    );
 
     if (level2Matches.length === 1) {
       chosenOrder = level2Matches[0];
@@ -1140,38 +1132,33 @@ export async function reconcilePaymentWebhook({
     }
   }
 
-  // NIVEAU 3 (§10.5) : Montant unique dans la fenêtre active (TTL 10 min)
+  // Niveau 3 (amount_unique) supprimé :
+  // Si ni le Niveau 1 (code_reference) ni le Niveau 2 (numéro payeur autorisé + montant exact) ne correspond,
+  // le paiement n'est PAS validé automatiquement et est enregistré dans unmatched_payments.
   if (!chosenOrder) {
-    if (pendingOrders.length === 1) {
-      chosenOrder = pendingOrders[0];
-      matchedBy = 'amount_unique';
-    } else {
-      // Plusieurs commandes du même montant et aucun numéro reconnu -> unmatched_payments (pas de FIFO aveugle)
-      await recordUnmatchedPayment({
-        amount: amount || pendingOrders[0].montant_total,
-        senderPhone: cleanSenderPhone,
-        senderName,
-        transactionRef,
-        rawMessage
-      });
+    await recordUnmatchedPayment({
+      amount: amount || (pendingOrders[0] ? pendingOrders[0].montant_total : 0),
+      senderPhone: cleanSenderPhone,
+      senderName,
+      transactionRef,
+      rawMessage
+    });
 
-      await logAuditEvent({
-        ...auditBase,
-        eventType: 'MATCH_AMBIGUOUS_AMOUNT',
-        result: 'FLAGGED',
-        details: `Plusieurs commandes (${pendingOrders.length}) pour le montant ${amount} FCFA sans numéro reconnu — mis en file unmatched_payments`
-      });
+    await logAuditEvent({
+      ...auditBase,
+      eventType: 'MATCH_FAILED_PHONE_MISMATCH',
+      result: 'REJECTED',
+      details: `Le numéro expéditeur (${cleanSenderPhone || 'inconnu'}) ne correspond à aucun numéro de transfert déclaré pour une commande de ${amount} FCFA — paiement mis en attente dans unmatched_payments`
+    });
 
-      return {
-        success: true,
-        duplicate: false,
-        matched: false,
-        ambiguous: true,
-        unmatchedPaymentCreated: true,
-        order: null,
-        message: `Plusieurs commandes en attente pour ce montant sans numéro correspondant. Paiement mis en file unmatched_payments.`
-      };
-    }
+    return {
+      success: true,
+      duplicate: false,
+      matched: false,
+      unmatchedPaymentCreated: true,
+      order: null,
+      message: `Le numéro expéditeur (${cleanSenderPhone || 'inconnu'}) ne correspond pas au numéro de transfert déclaré pour la commande de ${amount} FCFA. Paiement mis en attente d'attribution.`
+    };
   }
 
   // ==========================================
@@ -2484,6 +2471,16 @@ export async function addOrderPayerNumberByToken(rawToken, { phone, ipAddress = 
        VALUES (?, ?, 'other', ?, ?)`,
       [row.id, cleanPhone, now.toISOString(), ipHash]
     );
+
+    if (!row.payer_phone || !String(row.payer_phone).trim()) {
+      await run(
+        `UPDATE orders SET payer_phone = ?, payer_name = COALESCE(NULLIF(payer_name, ''), 'Autre numéro payeur') WHERE id = ?`,
+        [cleanPhone, row.id]
+      );
+    } else if (normalizeBurkinaPhone(row.payer_phone) !== cleanPhone) {
+      const updatedNotes = `${row.notes || ''} [Autre n° payeur: ${cleanPhone}]`;
+      await run(`UPDATE orders SET notes = ? WHERE id = ?`, [updatedNotes, row.id]);
+    }
 
     // Prolongation courte unique si moins de 5 minutes restantes (§10.4.1)
     const remainingMs = new Date(expiresIso).getTime() - now.getTime();

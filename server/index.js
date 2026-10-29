@@ -446,10 +446,13 @@ app.get('/api/health', (req, res) => {
 });
 
 // Créer une commande (avec codeReference et TTL 10 min)
+// La commande n'apparaît dans le Dashboard qu'à partir du moment où le client saisit le nom et le numéro de transfert
 app.post('/api/orders', async (req, res) => {
   try {
     const order = await db.createOrder(req.body);
-    emitOrderCreated(order);
+    if (order.payerPhone && String(order.payerPhone).trim()) {
+      emitOrderCreated(order);
+    }
     res.status(201).json(order);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -457,9 +460,16 @@ app.post('/api/orders', async (req, res) => {
 });
 
 // Liste des commandes (avec filtre de statut)
+// Une commande EN_ATTENTE_DE_PAIEMENT n'apparaît dans le Dashboard qu'à partir du moment où le client a saisi le nom et le numéro de transfert
 app.get('/api/orders', async (req, res) => {
   try {
-    const orders = await db.getAllOrders();
+    const allOrders = await db.getAllOrders();
+    const orders = allOrders.filter(o => {
+      if (o.statut === 'EN_ATTENTE_DE_PAIEMENT') {
+        return Boolean(o.payerPhone && String(o.payerPhone).trim());
+      }
+      return true;
+    });
     const { status } = req.query;
     if (status) {
       return res.json(orders.filter(o => o.statut === status));
@@ -517,6 +527,7 @@ app.get('/api/orders/:id/status', async (req, res) => {
 });
 
 // Mise à jour informations paiement mobile (nom payeur, numéro transfert, opérateur)
+// C'est à ce moment précis que la commande apparaît dans le Dashboard en attente de validation
 app.post('/api/orders/:id/payment-info', async (req, res) => {
   try {
     const { payerName, payerPhone, paymentMethod } = req.body;
@@ -532,7 +543,8 @@ app.post('/api/orders/:id/payment-info', async (req, res) => {
           await db.creditOrderPoints(order);
         } catch (e) {}
       }
-    } else {
+    } else if (order) {
+      emitOrderCreated(order);
       io.to('staff:admin').emit('order:status_changed', { orderId: order.id, statut: order.statut, order });
     }
 

@@ -146,13 +146,10 @@ graph TD
     
     E --> F{4. Matching Niveau 1 :<br/>Code Référence Marchand trouvé ?}
     F -- Oui --> J[Commande Trouvée via code_reference]
-    F -- Non --> G{5. Matching Niveau 2 :<br/>Numéro Client + Montant trouvés ?}
+    F -- Non --> G{5. Matching Niveau 2 :<br/>Numéro Payeur Autorisé + Montant trouvés ?}
     
     G -- Oui --> J[Commande Trouvée via phone_and_amount]
-    G -- Non --> H{6. Matching Niveau 3 :<br/>Montant unique dans la fenêtre active ?}
-    
-    H -- Oui --> J[Commande Trouvée via amount_unique]
-    H -- Non --> K[Aucun match : Stock préservé, alerte émise]
+    G -- Non --> K[Aucun match : Paiement mis en file unmatched_payments]
     
     J --> L[Validation Atomique : Statut = EN_PREPARATION]
     L --> M[Enregistrement paid_at et transaction_ref]
@@ -161,7 +158,7 @@ graph TD
 
 ### Règles de Réconciliation en Détail :
 1. **Contrôle d'Idempotence :** Si un SMS est réémis (réseau mobile instable), le serveur vérifie la colonne `transaction_ref`. Si elle existe déjà, la commande n'est pas retraitée et une réponse neutre est renvoyée.
-2. **Isolation Étanche Multi-Tenant :** Un webhook envoyé à `/api/webhooks/orange-money/le-braise-02` ne peut en aucun cas valider une commande passée sur `resto-premium-01`.
+2. **Matching Strict (Niveau 3 supprimé) :** Sans code référence marchand explicite, une commande n'est validée automatiquement **que** si le numéro expéditeur du SMS appartient à la liste des numéros de transfert déclarés pour cette commande (`order_payer_numbers` / `payer_phone`) **ET** que le montant correspond exactement au `montant_total`. Tout paiement issu d'un numéro non déclaré est placé dans `unmatched_payments` (avec rattrapage automatique sur 30 minutes si le client ajoute ce numéro via `OtherPaymentView`).
 3. **Fenêtre de Verrouillage Stricte (TTL 10 min) :** Seules les commandes créées il y a moins de 10 minutes sont éligibles. Cela évite d'attribuer un paiement reçu par hasard à une vieille commande abandonnée la veille.
 
 ---
@@ -169,11 +166,8 @@ graph TD
 ## 7. Règle Métier Caisse & Cuisine (KDS)
 
 Pour garantir une exploitation fluide et zéro confusion en salle :
-* **Invisibilité Caisse/Cuisine :** Une commande au statut `EN_ATTENTE_DE_PAIEMENT` **n'apparaît jamais** sur les écrans du personnel. Le personnel de caisse et de cuisine n'est pas perturbé par les abandons de panier ou les hésitations des clients.
-* **Apparition Instantanée après Validation :** Dès que la réconciliation aboutit (statut `EN_PREPARATION`) :
-  * L'écran caisse liste la commande comme encaissée.
-  * L'écran cuisine KDS sonne et affiche le ticket avec les détails des plats et les notes de table.
-  * Le client est basculé sur sa confirmation de commande.
+* **Apparition après saisie du nom et numéro de transfert :** Lorsqu'un client valide simplement son panier (`/panier`), la commande créée ne s'affiche pas encore dans le Dashboard. Elle **apparaît dans le Dashboard uniquement à partir du moment où le client saisit le nom et le numéro de transfert** sur la page de paiement, avec le statut `EN ATTENTE DE VALIDATION` (`EN_ATTENTE_DE_PAIEMENT`).
+* **Passage en préparation dès validation :** Dès que le client effectue le transfert et que le serveur valide le paiement, le statut de la commande passe instantanément en **`EN_PREPARATION`** dans le Dashboard et le KDS.
 
 ---
 
@@ -448,10 +442,7 @@ graph TD
 
     G -- Un seul match --> J
     G -- Plusieurs matchs --> M[Ambiguïté : paiement mis en file unmatched_payments]
-    G -- Aucun --> H{Niveau 3 : montant unique dans la fenêtre active ?}
-
-    H -- Oui --> J
-    H -- Non --> K[Aucun match : paiement mis en file unmatched_payments, alerte caissier]
+    G -- Aucun --> K[Aucun match (Niveau 3 supprimé) : paiement mis en file unmatched_payments, alerte caissier]
 
     J --> L[Statut = EN_PREPARATION, enregistrement paid_at et transaction_ref]
     L --> N[Émission Socket.io client, tiers et caisse]
