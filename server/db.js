@@ -6,11 +6,12 @@ import { fileURLToPath } from 'url';
 
 export function normalizeBurkinaPhone(raw) {
   if (!raw) return null;
-  let digits = String(raw).replace(/\D/g, '');
-  if (digits.startsWith('00226')) digits = digits.slice(5);
-  else if (digits.startsWith('226') && digits.length >= 11) digits = digits.slice(3);
-  if (digits.length === 8 && /^[0567]\d{7}$/.test(digits)) {
-    return digits;
+  let cleaned = String(raw).trim().replace(/[\s.\-()]/g, '');
+  if (cleaned.startsWith('+226')) cleaned = cleaned.slice(4);
+  else if (cleaned.startsWith('00226')) cleaned = cleaned.slice(5);
+  else if (cleaned.length === 11 && cleaned.startsWith('226')) cleaned = cleaned.slice(3);
+  if (/^\d{8}$/.test(cleaned)) {
+    return cleaned;
   }
   return null;
 }
@@ -1302,8 +1303,8 @@ export async function getLoyaltyMember(rawPhone) {
 
 export async function registerLoyaltyMember({ phone, name }) {
   if (!phone || !name) throw new Error('Nom et numéro de téléphone obligatoires');
-  const cleanPhone = String(phone).replace(/\D/g, '').slice(-8);
-  if (cleanPhone.length < 8) throw new Error('Numéro de téléphone invalide (8 chiffres requis)');
+  const cleanPhone = normalizeBurkinaPhone(phone);
+  if (!cleanPhone) throw new Error('Numéro de téléphone invalide : doit comporter 8 chiffres (avec ou sans +226 ou 00226)');
 
   const settings = await getLoyaltySettings();
   let existing = await get('SELECT * FROM loyalty_members WHERE phone = ?', [cleanPhone]);
@@ -1334,8 +1335,8 @@ export async function registerLoyaltyMember({ phone, name }) {
 
 export async function loginLoyaltyMember({ phone, name }) {
   if (!phone) throw new Error('Numéro de téléphone requis');
-  const cleanPhone = String(phone).replace(/\D/g, '').slice(-8);
-  if (cleanPhone.length < 8) throw new Error('Numéro de téléphone invalide (8 chiffres requis)');
+  const cleanPhone = normalizeBurkinaPhone(phone);
+  if (!cleanPhone) throw new Error('Numéro de téléphone invalide : doit comporter 8 chiffres (avec ou sans +226 ou 00226)');
 
   let member = await getLoyaltyMember(cleanPhone);
   if (!member) {
@@ -2421,7 +2422,7 @@ export async function addOrderPayerNumberByToken(rawToken, { phone, ipAddress = 
 
   const cleanPhone = normalizeBurkinaPhone(phone);
   if (!cleanPhone) {
-    throw new Error('Numéro invalide : veuillez saisir un numéro à 8 chiffres commençant par 0, 5, 6 ou 7.');
+    throw new Error('Numéro invalide : le numéro doit comporter 8 chiffres (avec ou sans +226 ou 00226).');
   }
 
   const existingPhone = await get(

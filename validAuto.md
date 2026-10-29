@@ -416,7 +416,7 @@ Strictement le minimum nécessaire pour payer :
 | :--- | :--- |
 | **Rate limiting** | Par IP (ex. 10 requêtes/min) **et** par token (ex. 10 tentatives/h) |
 | **Plafond de numéros** | Maximum 4 numéros autorisés par commande |
-| **Validation du format** | 8 chiffres commençant par 0, 5, 6 ou 7, après suppression de `+226`, espaces et tirets |
+| **Validation du format** | 8 chiffres précédés avec ou sans l'indicatif `+226` ou `00226` |
 | **Contrôle du statut** | Refus si la commande n'est plus `EN_ATTENTE_DE_PAIEMENT` ou si le token a expiré |
 | **Messages d'erreur génériques** | « Lien invalide ou expiré » dans tous les cas d'échec d'accès, pour ne pas révéler l'existence d'une commande |
 | **Audit** | Chaque ajout est journalisé (`added_at`, `ip_hash`, `added_by`) |

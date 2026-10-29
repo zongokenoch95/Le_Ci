@@ -31,6 +31,7 @@ import {
   LoyaltyReward, 
   LoyaltyCoupon 
 } from '../services/api';
+import { validateBurkinaPhone } from '../utils/phoneValidation';
 import { useCart } from '../context/CartContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -84,8 +85,9 @@ export function Loyalty() {
   // Connexion ou Inscription (Portail 2)
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formPhone.trim()) {
-      setAuthError('Veuillez renseigner votre numéro de téléphone.');
+    const phoneVal = validateBurkinaPhone(formPhone);
+    if (!phoneVal.isValid) {
+      setAuthError(phoneVal.error || 'Le numéro doit comporter 8 chiffres (avec ou sans +226 ou 00226).');
       return;
     }
     if (authMode === 'register' && !formName.trim()) {

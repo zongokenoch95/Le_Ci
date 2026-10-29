@@ -147,7 +147,7 @@ export function OtherPayment() {
     const phoneVal = validateBurkinaPhone(newPhone);
     if (!phoneVal.isValid) {
       setPhoneError(
-        phoneVal.error || 'Veuillez saisir un numéro à 8 chiffres commençant par 0, 5, 6 ou 7.'
+        phoneVal.error || 'Veuillez saisir un numéro à 8 chiffres (avec ou sans +226 ou 00226).'
       );
       return;
     }
