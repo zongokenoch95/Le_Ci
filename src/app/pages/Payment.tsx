@@ -22,7 +22,8 @@ import {
   ArrowRight,
   CreditCard,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  Share2
 } from 'lucide-react';
 import { 
   getOrder, 
@@ -32,6 +33,7 @@ import {
   getLoyaltyMember, 
   getLoyaltySettings,
   updateOrderPaymentInfo,
+  generateOrderPayToken,
   Order, 
   LoyaltyMember, 
   LoyaltySettings 
@@ -276,11 +278,14 @@ export function Payment() {
         localStorage.setItem(`le_ci_payment_confirmed_${orderId}`, 'true');
 
         try {
-          await updateOrderPaymentInfo(orderId, {
+          const res = await updateOrderPaymentInfo(orderId, {
             payerName: payerName.trim(),
             payerPhone: payerPhone.trim(),
             paymentMethod: selectedOperator
           });
+          if (res?.order) {
+            setOrder(res.order);
+          }
         } catch (apiErr) {
           console.warn('API updateOrderPaymentInfo warning (fallback local actif):', apiErr);
         }
@@ -291,6 +296,28 @@ export function Payment() {
       setPaymentError(err.message || 'Erreur lors de la confirmation des coordonnées.');
     } finally {
       setConfirmingPayment(false);
+    }
+  };
+
+  // Navigation vers OtherPaymentView (/pay/:token) - Point 10 validAuto.md
+  const [openingOtherPay, setOpeningOtherPay] = useState(false);
+  const handleOpenOtherPayment = async () => {
+    if (!orderId) return;
+    setOpeningOtherPay(true);
+    try {
+      const cachedToken = localStorage.getItem(`le_ci_pay_token_${orderId}`);
+      if (cachedToken) {
+        navigate(`/pay/${cachedToken}`);
+        return;
+      }
+      const res = await generateOrderPayToken(orderId);
+      if (res.payToken) {
+        navigate(`/pay/${res.payToken}`);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Impossible d\'ouvrir la page de paiement avec un autre numéro');
+    } finally {
+      setOpeningOtherPay(false);
     }
   };
 
@@ -930,7 +957,7 @@ export function Payment() {
                   )}
 
                   {/* Bouton de confirmation vers la page d'attente */}
-                  <div className="pt-2">
+                  <div className="pt-2 space-y-3">
                     <button
                       type="submit"
                       disabled={confirmingPayment}
@@ -948,7 +975,23 @@ export function Payment() {
                         </>
                       )}
                     </button>
-                    <p className="text-[11px] text-center text-gray-400 mt-3 font-light">
+
+                    {/* Bouton Payer avec un autre numéro visible dès l'affichage (§10.6.1) */}
+                    <button
+                      type="button"
+                      onClick={handleOpenOtherPayment}
+                      disabled={openingOtherPay}
+                      className="w-full py-3.5 px-6 rounded-full border-2 border-purple-200 bg-purple-50/70 hover:bg-purple-100 text-[#581C87] font-extrabold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    >
+                      <Share2 size={16} />
+                      <span>
+                        {openingOtherPay
+                          ? 'Ouverture du lien sécurisé...'
+                          : 'Payer avec un autre numéro / Faire payer par un proche'}
+                      </span>
+                    </button>
+
+                    <p className="text-[11px] text-center text-gray-400 mt-2 font-light">
                       À l'étape suivante, vous accéderez à la page d'attente avec le code USSD direct ou le lien de paiement.
                     </p>
                   </div>
@@ -1001,22 +1044,39 @@ export function Payment() {
               {/* Corps de la page d'attente */}
               <div className="p-6 sm:p-8 space-y-8">
                 
-                {/* Rappel des coordonnées de transfert saisies */}
-                <div className="bg-purple-50/70 p-4 rounded-2xl border border-purple-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs sm:text-sm">
-                  <div>
-                    <span className="text-gray-500 block text-xs">Paiement attendu depuis :</span>
-                    <span className="font-extrabold text-gray-900">
-                      {payerName || 'Client'} ({payerPhone}) • via {selectedOperator === 'orange' ? 'Orange Money' : (selectedOperator === 'moov' ? 'Moov Money' : 'Wave')}
-                    </span>
+                {/* Rappel des coordonnées de transfert saisies + Bouton Payer avec un autre numéro (§10.6.1) */}
+                <div className="bg-purple-50/70 p-4 rounded-2xl border border-purple-100 flex flex-col gap-3 text-xs sm:text-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <span className="text-gray-500 block text-xs">Paiement attendu depuis :</span>
+                      <span className="font-extrabold text-gray-900">
+                        {payerName || 'Client'} ({payerPhone}) • via {selectedOperator === 'orange' ? 'Orange Money' : (selectedOperator === 'moov' ? 'Moov Money' : 'Wave')}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsPaymentConfirmed(false)}
+                      className="inline-flex items-center gap-1 text-xs font-bold text-[#581C87] hover:underline cursor-pointer"
+                    >
+                      <RefreshCw size={13} />
+                      <span>Modifier</span>
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsPaymentConfirmed(false)}
-                    className="inline-flex items-center gap-1 text-xs font-bold text-[#581C87] hover:underline cursor-pointer"
-                  >
-                    <RefreshCw size={13} />
-                    <span>Modifier</span>
-                  </button>
+
+                  <div className="pt-3 border-t border-purple-200/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <span className="text-xs text-gray-600">
+                      Solde insuffisant ou paiement par un proche ?
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleOpenOtherPayment}
+                      disabled={openingOtherPay}
+                      className="px-4 py-2 rounded-xl bg-[#581C87] hover:bg-[#6B21A8] text-white font-bold text-xs inline-flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer disabled:opacity-50"
+                    >
+                      <Share2 size={13} />
+                      <span>{openingOtherPay ? 'Ouverture...' : 'Payer avec un autre numéro'}</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Alerte WebView Réseaux Sociaux si applicable */}

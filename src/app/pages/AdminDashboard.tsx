@@ -94,7 +94,10 @@ import {
   getDeliverySettings,
   updateDeliverySettings,
   DeliverySettings,
-  DeliveryNeighborhood
+  DeliveryNeighborhood,
+  getUnmatchedPayments,
+  resolveUnmatchedPayment,
+  UnmatchedPayment
 } from '../services/api';
 import { getSocket, joinAdmin } from '../services/socket';
 
@@ -150,6 +153,9 @@ export function AdminDashboard() {
 
   const [activeTab, setActiveTab] = useState<'orders' | 'menu' | 'stats' | 'loyalty' | 'team' | 'simulator' | 'delivery' | 'banner'>('orders');
   const [orders, setOrders] = useState<Order[]>([]);
+  const [unmatchedPayments, setUnmatchedPayments] = useState<UnmatchedPayment[]>([]);
+  const [selectedOrderForPayment, setSelectedOrderForPayment] = useState<Record<number, string>>({});
+  const [resolvingPaymentId, setResolvingPaymentId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
 
@@ -228,18 +234,40 @@ export function AdminDashboard() {
     navigate('/admin/login', { replace: true });
   };
 
-  // Chargement des commandes
+  // Chargement des commandes et des paiements orphelins
   const loadOrders = async () => {
     try {
       setLoading(true);
-      const data = await getAdminOrders();
+      const [data, unmatched] = await Promise.all([
+        getAdminOrders(),
+        getUnmatchedPayments().catch(() => [])
+      ]);
       setOrders(data);
+      setUnmatchedPayments(unmatched);
     } catch (err: any) {
       if (err.message && err.message.includes('expiré')) {
         handleLogout();
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResolveUnmatchedPayment = async (paymentId: number) => {
+    const orderId = selectedOrderForPayment[paymentId];
+    if (!orderId) {
+      alert('Veuillez sélectionner une commande à associer à ce paiement.');
+      return;
+    }
+    setResolvingPaymentId(paymentId);
+    try {
+      await resolveUnmatchedPayment(paymentId, orderId);
+      await loadOrders();
+      if (isGerant) loadDetailedStats();
+    } catch (err: any) {
+      alert(err.message || 'Erreur lors de l\'association du paiement');
+    } finally {
+      setResolvingPaymentId(null);
     }
   };
 
@@ -414,11 +442,13 @@ export function AdminDashboard() {
     socket.on('order:created', handleOrderEvent);
     socket.on('order:status_changed', handleOrderEvent);
     socket.on('order:validated', handleOrderEvent);
+    socket.on('payment:unmatched', handleOrderEvent);
 
     return () => {
       socket.off('order:created', handleOrderEvent);
       socket.off('order:status_changed', handleOrderEvent);
       socket.off('order:validated', handleOrderEvent);
+      socket.off('payment:unmatched', handleOrderEvent);
     };
   }, [currentUser, isGerant]);
 
@@ -816,6 +846,92 @@ export function AdminDashboard() {
                 </button>
               </div>
             </div>
+
+            {/* Section Paiements Orphelins (unmatched_payments - §10.9 point 6) */}
+            {unmatchedPayments.filter(p => !p.resolved_order_id).length > 0 && (
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-3xl p-5 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                      <AlertTriangle size={18} />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black text-amber-300 uppercase tracking-wider">
+                        Paiements reçus en attente d'association ({unmatchedPayments.filter(p => !p.resolved_order_id).length})
+                      </h3>
+                      <p className="text-xs text-gray-300">
+                        Ces transferts SMS n'ont pas pu être associés automatiquement (ou attendent que le client renseigne son nouveau numéro dans les 30 min). Vous pouvez les associer manuellement :
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {unmatchedPayments
+                    .filter(p => !p.resolved_order_id)
+                    .map(payment => {
+                      const candidateOrders = orders.filter(
+                        o => o.statut === 'EN_ATTENTE_DE_PAIEMENT' || o.statut === 'ANNULEE'
+                      );
+                      return (
+                        <div
+                          key={payment.id}
+                          className="bg-black/40 border border-amber-500/25 rounded-2xl p-4 space-y-3 text-xs"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-black text-base text-amber-400">
+                              {Number(payment.amount).toLocaleString('fr-FR')} FCFA
+                            </span>
+                            <span className="text-[11px] text-gray-400 font-mono">
+                              {new Date(payment.received_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <div className="space-y-1 text-gray-300">
+                            <div>
+                              <span className="text-gray-400">Expéditeur SMS :</span>{' '}
+                              <span className="font-bold text-white">{payment.sender_phone || 'Inconnu'}</span>
+                              {payment.sender_name && <span className="text-amber-300 ml-1">({payment.sender_name})</span>}
+                            </div>
+                            {payment.transaction_ref && (
+                              <div>
+                                <span className="text-gray-400">Réf Trans :</span>{' '}
+                                <span className="font-mono text-gray-200">{payment.transaction_ref}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                            <select
+                              value={selectedOrderForPayment[payment.id] || ''}
+                              onChange={e =>
+                                setSelectedOrderForPayment(prev => ({ ...prev, [payment.id]: e.target.value }))
+                              }
+                              className="flex-1 bg-white/10 border border-white/15 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-amber-400"
+                            >
+                              <option value="" className="bg-gray-900 text-gray-300">
+                                — Choisir la commande à associer —
+                              </option>
+                              {candidateOrders.map(ord => (
+                                <option key={ord.id} value={ord.id} className="bg-gray-900 text-white">
+                                  {ord.id} • {ord.montantTotal.toLocaleString('fr-FR')} FCFA ({ord.payerName || ord.customerName})
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              type="button"
+                              onClick={() => handleResolveUnmatchedPayment(payment.id)}
+                              disabled={resolvingPaymentId === payment.id || !selectedOrderForPayment[payment.id]}
+                              className="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-extrabold text-xs transition cursor-pointer disabled:opacity-50"
+                            >
+                              {resolvingPaymentId === payment.id ? 'Association...' : 'Associer'}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
 
             {/* Filtres de statut */}
             <div className="flex flex-wrap gap-2">

@@ -227,3 +227,317 @@ Rejouer la même commande renvoie :
 | **Vol de commande par montant identique** | Désambiguïsation prioritaire par `code_reference` unique ou par numéro de téléphone payeur. |
 | **Abandon de panier bloquant les stocks** | Cron d'expiration automatique toutes les 5s libérant les stocks après 10 minutes (TTL). |
 | **Confusion entre établissements** | Isolation stricte par `restaurant_id` sur toutes les requêtes SQL. |
+| **Changement de numéro du payeur (solde insuffisant)** | Liste de numéros autorisés par commande (`order_payer_numbers`) et page `OtherPaymentView` (voir §10). |
+| **Détournement du lien de paiement partagé** | Token aléatoire hashé, expirant, données exposées minimales, rate limiting (voir §10.4). |
+
+---
+
+## 10. Améliorations : Paiement avec un Autre Numéro (`OtherPaymentView`)
+
+> **Type :** Amélioration de robustesse + sécurité du matching de niveau 2 (comptes classiques P2P)  
+> **Statut :** Implémenté & validé en production (avec rattrapage rétroactif de 30 minutes)
+
+### 10.1 Le problème
+
+#### 10.1.1 Rappel du fonctionnement actuel
+
+Pour les comptes de type **classique (P2P)**, la validation automatique repose sur le couple **`numéro du client + montant`** (matching de niveau 2) :
+
+1. Le client saisit son **nom** et son **numéro de paiement** avant de payer.
+2. Il lance la syntaxe USSD `*144*2*1*numeroOM*montant#`.
+3. Le SMS de réception arrive sur le smartphone de caisse, MacroDroid l'envoie au webhook.
+4. Le backend compare le numéro de l'expéditeur (extrait du SMS) avec le numéro enregistré dans la commande.
+
+#### 10.1.2 Le cas qui casse le système
+
+Le client a déjà saisi son numéro, lance la syntaxe USSD et s'aperçoit que **son solde est insuffisant**. Il décide alors de payer avec **un autre numéro** (un second compte, un proche, un collègue).
+
+```
+Numéro enregistré dans la commande :  70 12 34 56
+Numéro réel de l'expéditeur du SMS :  76 99 88 77   ❌ différent
+→ Aucun match au niveau 2
+```
+
+#### 10.1.3 Conséquences
+
+| Conséquence | Impact |
+| :--- | :--- |
+| Paiement reçu mais **commande non validée** | Le client a payé, rien ne se passe côté pâtisserie |
+| Matching de niveau 3 (montant unique) **peu fiable** | Risque d'attribuer le paiement à la mauvaise commande si deux montants sont identiques |
+| Intervention manuelle nécessaire | Perte de temps, frustration, risque de double paiement |
+
+#### 10.1.4 Cause racine
+
+Le système utilise comme clé de matching une donnée **déclarée par le client** (son numéro), qui peut **changer à tout moment**. Il faut permettre au client de **mettre à jour cette donnée de façon contrôlée**, avant que le paiement n'arrive.
+
+---
+
+### 10.2 La solution
+
+#### 10.2.1 Principe
+
+Depuis `PaymentView`, le client dispose d'un bouton **« Payer avec un autre numéro »**. Il ouvre une page dédiée, **`OtherPaymentView`**, où il peut :
+
+- saisir le **nouveau numéro** avec lequel il va payer ;
+- choisir le **moyen de paiement mobile** ;
+- voir la **syntaxe USSD** correspondante (copie en 1 clic) ;
+- **partager le lien** de cette page avec une autre personne qui paiera à sa place.
+
+Le nouveau numéro est **ajouté** à la liste des numéros autorisés pour la commande. Il ne remplace pas l'ancien.
+
+#### 10.2.2 Flux
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as 📱 Client
+    participant PV as 💻 PaymentView
+    participant OPV as 💻 OtherPaymentView
+    actor Tiers as 👤 Tiers (optionnel)
+    participant API as ⚙️ Backend
+    participant Phone as 📱 Smartphone Caisse (MacroDroid)
+
+    Client->>PV: Lance l'USSD, solde insuffisant
+    Client->>PV: Clique « Payer avec un autre numéro »
+    PV->>OPV: Navigation vers /pay/:token
+
+    opt Paiement par un tiers
+        Client->>Tiers: Partage le lien /pay/:token (WhatsApp, SMS)
+        Tiers->>OPV: Ouvre le lien
+    end
+
+    OPV->>API: GET /api/pay/:token (infos minimales)
+    API-->>OPV: référence, montant, statut, expiration
+    OPV->>API: POST /api/pay/:token/payer-numbers { phone }
+    API-->>OPV: Numéro ajouté + syntaxe USSD
+
+    Note over OPV: Le payeur lance l'USSD avec son numéro
+    Phone->>API: POST /api/webhooks/orange-money/:restaurantId
+    API->>API: Réconciliation : expéditeur ∈ numéros autorisés ET montant égal
+    API-->>PV: Socket « order:status_changed » (PAYEE)
+    API-->>OPV: Socket « order:status_changed » (PAYEE)
+```
+
+---
+
+### 10.3 Modèle de données
+
+#### 10.3.1 Modifications de la table `orders`
+
+| Colonne | Type | Description |
+| :--- | :--- | :--- |
+| `pay_token_hash` | `TEXT UNIQUE` | Hash SHA-256 du token de paiement (jamais le token en clair) |
+| `pay_token_expires_at` | `DATETIME` | Expiration du token, alignée sur le TTL de la commande |
+
+#### 10.3.2 Nouvelle table `order_payer_numbers`
+
+Un numéro **ajouté** n'écrase jamais le précédent : si le premier paiement est déjà en route, il doit pouvoir encore matcher.
+
+```sql
+CREATE TABLE order_payer_numbers (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  order_id      INTEGER NOT NULL REFERENCES orders(id),
+  phone         TEXT    NOT NULL,          -- normalisé : 8 chiffres, sans +226
+  added_by      TEXT    NOT NULL,          -- 'client' (saisie initiale) ou 'other' (via OtherPaymentView)
+  added_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  ip_hash       TEXT,                      -- hash de l'IP, pour l'audit
+  UNIQUE (order_id, phone)
+);
+
+CREATE INDEX idx_opn_phone ON order_payer_numbers(phone);
+```
+
+> Le numéro saisi à la création de la commande est inséré dans cette table avec `added_by = 'client'`.
+
+#### 10.3.3 Table de secours `unmatched_payments` (filet de sécurité)
+
+Quand aucun match n'est trouvé, le paiement n'est pas perdu : il est conservé pour association manuelle par le caissier.
+
+```sql
+CREATE TABLE unmatched_payments (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  restaurant_id   TEXT    NOT NULL,
+  amount          INTEGER NOT NULL,
+  sender_phone    TEXT,
+  transaction_ref TEXT UNIQUE,
+  raw_message     TEXT,
+  received_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  resolved_order_id INTEGER REFERENCES orders(id),
+  resolved_at     DATETIME
+);
+```
+
+---
+
+### 10.4 Sécurité du lien partagé
+
+Le lien est destiné à être transmis à un tiers : il doit donc être **impossible à deviner** et n'exposer **aucune donnée personnelle**.
+
+#### 10.4.1 Token de paiement
+
+| Règle | Détail |
+| :--- | :--- |
+| **Génération** | 32 octets aléatoires cryptographiques (`crypto.randomBytes(32).toString('base64url')`) |
+| **Stockage** | Seul le **hash SHA-256** est stocké en base ; le token en clair n'est renvoyé qu'une fois, à la création de la commande |
+| **Format de l'URL** | `/pay/:token`, **jamais** d'identifiant séquentiel (`/pay?orderId=12` est interdit) |
+| **Portée** | Un token = une commande = une action : consulter l'état et ajouter un numéro payeur |
+| **Expiration** | Alignée sur le TTL de la commande (10 min) ; prolongation unique possible et courte lors de l'ajout d'un numéro, uniquement si le stock est encore réservé |
+| **Invalidation** | Le token devient inutilisable dès que la commande est `PAYEE`, `ANNULEE` ou `EXPIREE` |
+
+```js
+// Création du token (à la création de la commande)
+import crypto from 'node:crypto';
+
+const payToken = crypto.randomBytes(32).toString('base64url');
+const payTokenHash = crypto.createHash('sha256').update(payToken).digest('hex');
+// stocker payTokenHash, renvoyer payToken au frontend une seule fois
+```
+
+#### 10.4.2 Données exposées par `GET /api/pay/:token`
+
+Strictement le minimum nécessaire pour payer :
+
+```json
+{
+  "reference": "CMD-1042",
+  "amount": 5000,
+  "status": "EN_ATTENTE_DE_PAIEMENT",
+  "expiresAt": "2026-10-28T15:45:00Z",
+  "shopName": "Nom de la pâtisserie",
+  "paymentMethods": ["orange_money"]
+}
+```
+
+**Jamais** : nom du client, numéros déjà enregistrés, contenu détaillé du panier, adresse de livraison.
+
+#### 10.4.3 Protection de la route d'ajout de numéro
+
+| Mesure | Détail |
+| :--- | :--- |
+| **Rate limiting** | Par IP (ex. 10 requêtes/min) **et** par token (ex. 10 tentatives/h) |
+| **Plafond de numéros** | Maximum 4 numéros autorisés par commande |
+| **Validation du format** | 8 chiffres commençant par 0, 5, 6 ou 7, après suppression de `+226`, espaces et tirets |
+| **Contrôle du statut** | Refus si la commande n'est plus `EN_ATTENTE_DE_PAIEMENT` ou si le token a expiré |
+| **Messages d'erreur génériques** | « Lien invalide ou expiré » dans tous les cas d'échec d'accès, pour ne pas révéler l'existence d'une commande |
+| **Audit** | Chaque ajout est journalisé (`added_at`, `ip_hash`, `added_by`) |
+| **Transport** | HTTPS obligatoire |
+| **En-têtes de page** | `Referrer-Policy: no-referrer`, `X-Robots-Tag: noindex` pour éviter la fuite ou l'indexation du lien |
+
+#### 10.4.4 Sécurité du webhook (inchangée, à renforcer)
+
+- Le secret `x-webhook-secret` ne doit **jamais** être écrit en clair dans la documentation ni versionné : le placer dans une variable d'environnement et le **changer** s'il a déjà été publié.
+- Vérifier que le `sender` correspond bien à `OrangeMoney` ou `144`.
+- Conserver le contrôle d'idempotence sur `transaction_ref`.
+
+---
+
+### 10.5 Moteur de réconciliation mis à jour
+
+Seul le **niveau 2** change : le numéro de l'expéditeur est comparé à **la liste des numéros autorisés** de la commande, et non plus à un numéro unique.
+
+```mermaid
+graph TD
+    A[Webhook validé] --> B[Purge des commandes expirées]
+    B --> C{transaction_ref déjà connue ?}
+    C -- Oui --> D[Idempotence : rejet du doublon]
+    C -- Non --> E[Commandes EN_ATTENTE_DE_PAIEMENT du restaurant]
+
+    E --> F{Niveau 1 : code référence trouvé ?}
+    F -- Oui --> J[Commande trouvée]
+    F -- Non --> G{Niveau 2 : expéditeur ∈ numéros autorisés<br/>ET montant égal ?}
+
+    G -- Un seul match --> J
+    G -- Plusieurs matchs --> M[Ambiguïté : paiement mis en file unmatched_payments]
+    G -- Aucun --> H{Niveau 3 : montant unique dans la fenêtre active ?}
+
+    H -- Oui --> J
+    H -- Non --> K[Aucun match : paiement mis en file unmatched_payments, alerte caissier]
+
+    J --> L[Statut = EN_PREPARATION, enregistrement paid_at et transaction_ref]
+    L --> N[Émission Socket.io client, tiers et caisse]
+```
+
+```sql
+-- Niveau 2 : requête de matching
+SELECT o.*
+FROM orders o
+JOIN order_payer_numbers p ON p.order_id = o.id
+WHERE o.restaurant_id = :restaurantId
+  AND o.statut = 'EN_ATTENTE_DE_PAIEMENT'
+  AND o.total = :amount
+  AND p.phone = :senderPhone
+  AND o.created_at >= datetime('now', '-10 minutes');
+```
+
+**Règle importante :** si la requête renvoie **plusieurs** commandes, on ne devine pas : le paiement part en `unmatched_payments` pour validation manuelle.
+
+---
+
+### 10.6 Interface utilisateur
+
+#### 10.6.1 `PaymentView`
+
+- Bouton **« Payer avec un autre numéro »** visible **dès l'affichage de la page**, pas seulement après un échec.
+- Écoute du Socket pour basculer automatiquement sur « Commande confirmée ».
+
+#### 10.6.2 `OtherPaymentView` (route `/pay/:token`)
+
+1. Récapitulatif minimal : référence, montant, temps restant.
+2. Champ **nouveau numéro de paiement** (validation et normalisation immédiates).
+3. **Choix du moyen de paiement** : uniquement ceux réellement opérationnels (voir §10.8).
+4. **Syntaxe USSD** générée avec le bon montant, bouton « Copier » et bouton « Composer ».
+5. Bouton **« Partager le lien »** (Web Share API, avec repli WhatsApp / copie du lien).
+6. États clairs : « Commande déjà payée », « Lien expiré », « Lien invalide ».
+7. Bascule automatique sur la confirmation dès réception de l'événement Socket.
+
+---
+
+### 10.7 Cas limites
+
+| Situation | Comportement attendu |
+| :--- | :--- |
+| Le client paie finalement avec le **premier** numéro | Match OK, car l'ancien numéro reste dans la liste |
+| Le client paie avec le **nouveau** numéro | Match OK |
+| Le client ou le tiers a **déjà payé** avec un autre numéro puis renseigne ce numéro après coup | **Rattrapage rétroactif automatique (fenêtre de 30 minutes)** : dès l'ajout du numéro, le serveur vérifie `unmatched_payments` sur les 30 dernières minutes (`sender_phone` + `amount`) et valide la commande instantanément |
+| Le tiers paie avec **un numéro non déclaré** | Pas de match au niveau 2, passage au niveau 3 ou file `unmatched_payments` |
+| Deux commandes en attente, même montant, même numéro | Ambiguïté : file `unmatched_payments`, association manuelle |
+| SMS reçu **après** expiration | Paiement mis en file `unmatched_payments`, le caissier associe la commande si le stock le permet |
+| Lien ouvert après paiement | Page « Commande déjà payée », aucune action possible |
+| Tentative d'ajout de plus de 4 numéros | Refus avec message clair |
+| Rejeu du même SMS | Idempotence via `transaction_ref` |
+| Lien partagé par erreur à la mauvaise personne | Aucune donnée personnelle exposée, risque limité au paiement de la commande |
+
+---
+
+### 10.8 Moyens de paiement multiples
+
+Chaque opérateur envoie des SMS de **format différent**. Avant d'afficher un moyen de paiement dans `OtherPaymentView`, il faut :
+
+1. un **parser** dédié dans `parsePaymentNotification` ;
+2. un **filtre d'expéditeur** correspondant dans MacroDroid ;
+3. une **SIM ou application** de cet opérateur sur le smartphone de caisse.
+
+> **Règle :** n'afficher que les opérateurs réellement pris en charge, sinon le client paiera sans validation automatique.
+
+---
+
+### 10.9 Plan d'implémentation
+
+1. Migration : colonnes `pay_token_hash`, `pay_token_expires_at`, tables `order_payer_numbers` et `unmatched_payments`.
+2. Génération du token à la création de la commande + insertion du numéro initial dans `order_payer_numbers`.
+3. Routes `GET /api/pay/:token` et `POST /api/pay/:token/payer-numbers` avec rate limiting et validations.
+4. Mise à jour de `reconcilePaymentWebhook` (niveau 2 sur liste de numéros, gestion de l'ambiguïté).
+5. Composant `OtherPaymentView` + bouton sur `PaymentView` + partage du lien.
+6. Écran caissier : liste des paiements orphelins et bouton « Associer ».
+7. Tests (ci-dessous).
+
+### Tests à ajouter
+
+- Ajout d'un numéro valide / invalide / en doublon / au-delà du plafond.
+- Token inexistant, expiré, ou lié à une commande déjà payée.
+- Paiement reçu depuis l'ancien numéro puis depuis le nouveau numéro.
+- Deux commandes de même montant avec numéros différents (pas de confusion).
+- Cas ambigu → `unmatched_payments`.
+- Rate limiting sur la route d'ajout de numéro.
+- Absence de données personnelles dans la réponse de `GET /api/pay/:token`.
+- Idempotence du webhook avec plusieurs numéros autorisés.

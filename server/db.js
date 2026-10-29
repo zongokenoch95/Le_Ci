@@ -1,7 +1,30 @@
+import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import sqlite3 from 'sqlite3';
 import path from 'path';
 import { fileURLToPath } from 'url';
+
+export function normalizeBurkinaPhone(raw) {
+  if (!raw) return null;
+  let digits = String(raw).replace(/\D/g, '');
+  if (digits.startsWith('00226')) digits = digits.slice(5);
+  else if (digits.startsWith('226') && digits.length >= 11) digits = digits.slice(3);
+  if (digits.length === 8 && /^[0567]\d{7}$/.test(digits)) {
+    return digits;
+  }
+  return null;
+}
+
+export function hashValue(val) {
+  if (!val) return null;
+  return crypto.createHash('sha256').update(String(val)).digest('hex');
+}
+
+export function generatePayToken() {
+  const payToken = crypto.randomBytes(32).toString('base64url');
+  const payTokenHash = hashValue(payToken);
+  return { payToken, payTokenHash };
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -300,6 +323,45 @@ export async function initDb() {
   try {
     await run(`ALTER TABLE orders ADD COLUMN delivery_fee INTEGER DEFAULT 0`);
   } catch (e) {}
+  try {
+    await run(`ALTER TABLE orders ADD COLUMN pay_token_hash TEXT`);
+  } catch (e) {}
+  try {
+    await run(`ALTER TABLE orders ADD COLUMN pay_token_expires_at DATETIME`);
+  } catch (e) {}
+  try {
+    await run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_pay_token_hash ON orders(pay_token_hash)`);
+  } catch (e) {}
+
+  await run(`
+    CREATE TABLE IF NOT EXISTS order_payer_numbers (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_id      TEXT    NOT NULL REFERENCES orders(id),
+      phone         TEXT    NOT NULL,
+      added_by      TEXT    NOT NULL DEFAULT 'client',
+      added_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      ip_hash       TEXT,
+      UNIQUE (order_id, phone)
+    )
+  `);
+  await run(`CREATE INDEX IF NOT EXISTS idx_opn_phone ON order_payer_numbers(phone)`);
+  await run(`CREATE INDEX IF NOT EXISTS idx_opn_order ON order_payer_numbers(order_id)`);
+
+  await run(`
+    CREATE TABLE IF NOT EXISTS unmatched_payments (
+      id                INTEGER PRIMARY KEY AUTOINCREMENT,
+      restaurant_id     TEXT    NOT NULL DEFAULT 'le-ci',
+      amount            INTEGER NOT NULL,
+      sender_phone      TEXT,
+      sender_name       TEXT,
+      transaction_ref   TEXT UNIQUE,
+      raw_message       TEXT,
+      received_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      resolved_order_id TEXT REFERENCES orders(id),
+      resolved_at       DATETIME
+    )
+  `);
+  await run(`CREATE INDEX IF NOT EXISTS idx_unmatched_phone_amount ON unmatched_payments(sender_phone, amount)`);
 
   await run(`
     CREATE TABLE IF NOT EXISTS announcement_banner (
@@ -753,9 +815,11 @@ export async function createOrder(data) {
     finalAmount = verifiedTotal;
   }
 
+  const { payToken, payTokenHash } = generatePayToken();
+
   await run(`
-    INSERT INTO orders (id, customer_name, customer_phone, customer_email, items, montant_total, delivery_fee, statut, code_reference, mode_paiement, notes, created_at, expires_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO orders (id, customer_name, customer_phone, customer_email, items, montant_total, delivery_fee, statut, code_reference, mode_paiement, notes, created_at, expires_at, pay_token_hash, pay_token_expires_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `, [
     id,
     data.customerName || 'Client Les Douceurs de Lê Ci',
@@ -769,11 +833,27 @@ export async function createOrder(data) {
     data.modePaiement || 'orange_money',
     data.notes || '',
     now.toISOString(),
+    expiresAt.toISOString(),
+    payTokenHash,
     expiresAt.toISOString()
   ]);
 
+  const initialPhone = normalizeBurkinaPhone(data.customerPhone);
+  if (initialPhone) {
+    try {
+      await run(
+        `INSERT OR IGNORE INTO order_payer_numbers (order_id, phone, added_by, added_at) VALUES (?, ?, 'client', ?)`,
+        [id, initialPhone, now.toISOString()]
+      );
+    } catch (e) {}
+  }
+
   const row = await get('SELECT * FROM orders WHERE id = ?', [id]);
-  return formatOrder(row);
+  const formatted = formatOrder(row);
+  return {
+    ...formatted,
+    payToken
+  };
 }
 
 export async function getOrderById(id) {
@@ -859,9 +939,33 @@ export async function rejectHighValue(id) {
 // (avec seuil montant élevé et audit)
 // ==========================================
 
+export async function recordUnmatchedPayment({
+  restaurantId = 'le-ci',
+  amount,
+  senderPhone = null,
+  senderName = null,
+  transactionRef = null,
+  rawMessage = ''
+}) {
+  if (!amount || Number(amount) <= 0) return null;
+  const cleanPhone = normalizeBurkinaPhone(senderPhone) || (senderPhone ? String(senderPhone).replace(/\D/g, '').slice(-8) : null);
+  const now = new Date().toISOString();
+  try {
+    const res = await run(
+      `INSERT OR IGNORE INTO unmatched_payments (restaurant_id, amount, sender_phone, sender_name, transaction_ref, raw_message, received_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [restaurantId, Number(amount), cleanPhone, senderName || null, transactionRef || null, rawMessage || '', now]
+    );
+    return res.lastID;
+  } catch (e) {
+    return null;
+  }
+}
+
 export async function reconcilePaymentWebhook({
   rawMessage = '',
   senderPhone = null,
+  senderName = null,
   amount = null,
   transactionRef = null,
   codeReference = null,
@@ -869,17 +973,19 @@ export async function reconcilePaymentWebhook({
 }) {
   await checkAndExpireOrders();
 
+  const cleanSenderPhone = normalizeBurkinaPhone(senderPhone) || (senderPhone ? String(senderPhone).replace(/\D/g, '').slice(-8) : null);
+
   // Données de base pour l'audit
   const auditBase = {
     ipAddress,
     rawPayload: rawMessage,
     parsedAmount: amount,
-    parsedPhone: senderPhone,
+    parsedPhone: cleanSenderPhone || senderPhone,
     parsedCodeRef: codeReference,
     parsedTxRef: transactionRef
   };
 
-  // 1. Contrôle Idempotence
+  // 1. Contrôle Idempotence (dans orders ET unmatched_payments)
   if (transactionRef) {
     const existing = await get('SELECT * FROM orders WHERE transaction_ref = ?', [transactionRef]);
     if (existing) {
@@ -900,6 +1006,18 @@ export async function reconcilePaymentWebhook({
         message: `Transaction ${transactionRef} déjà enregistrée pour la commande ${existing.id}`
       };
     }
+
+    const existingUnmatched = await get('SELECT * FROM unmatched_payments WHERE transaction_ref = ?', [transactionRef]);
+    if (existingUnmatched && existingUnmatched.resolved_order_id) {
+      const resolvedOrd = await get('SELECT * FROM orders WHERE id = ?', [existingUnmatched.resolved_order_id]);
+      return {
+        success: true,
+        duplicate: true,
+        matched: true,
+        order: formatOrder(resolvedOrd),
+        message: `Transaction ${transactionRef} déjà associée à la commande ${existingUnmatched.resolved_order_id}`
+      };
+    }
   }
 
   // 2. Recherche des commandes en attente
@@ -914,19 +1032,28 @@ export async function reconcilePaymentWebhook({
   const pendingOrders = await all(query, params);
 
   if (!pendingOrders || pendingOrders.length === 0) {
+    await recordUnmatchedPayment({
+      amount,
+      senderPhone: cleanSenderPhone,
+      senderName,
+      transactionRef,
+      rawMessage
+    });
+
     await logAuditEvent({
       ...auditBase,
       eventType: 'MATCH_FAILED',
       result: 'REJECTED',
-      details: `Aucune commande en attente pour le montant ${amount || 'non spécifié'} FCFA`
+      details: `Aucune commande en attente pour le montant ${amount || 'non spécifié'} FCFA — paiement enregistré dans unmatched_payments`
     });
 
     return {
       success: true,
       duplicate: false,
       matched: false,
+      unmatchedPaymentCreated: true,
       order: null,
-      message: `Aucune commande en attente ne correspond au montant ${amount || 'non spécifié'} FCFA`
+      message: `Aucune commande en attente ne correspond au montant ${amount || 'non spécifié'} FCFA (enregistré dans les paiements en attente d'attribution)`
     };
   }
 
@@ -950,42 +1077,121 @@ export async function reconcilePaymentWebhook({
     }
   }
 
-  // NIVEAU 2 : Téléphone client + montant
-  if (!chosenOrder && senderPhone) {
-    const cleanPhone = String(senderPhone).replace(/\D/g, '').slice(-8);
-    chosenOrder = pendingOrders.find(o => {
-      const clientPhone = String(o.customer_phone || '').replace(/\D/g, '').slice(-8);
-      return clientPhone && clientPhone === cleanPhone;
-    });
-    if (chosenOrder) matchedBy = 'phone_and_amount';
+  // NIVEAU 2 (§10.5) : Numéro expéditeur ∈ numéros autorisés (order_payer_numbers / payer_phone / customer_phone) ET montant égal
+  if (!chosenOrder && cleanSenderPhone) {
+    const orderIds = pendingOrders.map(o => o.id);
+    const placeholders = orderIds.map(() => '?').join(',');
+    const payerRows = await all(
+      `SELECT DISTINCT order_id FROM order_payer_numbers WHERE phone = ? AND order_id IN (${placeholders})`,
+      [cleanSenderPhone, ...orderIds]
+    );
+    const matchedOrderIds = new Set(payerRows.map(r => r.order_id));
+
+    for (const o of pendingOrders) {
+      const pPhone = normalizeBurkinaPhone(o.payer_phone) || String(o.payer_phone || '').replace(/\D/g, '').slice(-8);
+      const cPhone = normalizeBurkinaPhone(o.customer_phone) || String(o.customer_phone || '').replace(/\D/g, '').slice(-8);
+      if ((pPhone && pPhone === cleanSenderPhone) || (cPhone && cPhone === cleanSenderPhone)) {
+        matchedOrderIds.add(o.id);
+      }
+    }
+
+    const level2Matches = pendingOrders.filter(o => matchedOrderIds.has(o.id));
+
+    if (level2Matches.length === 1) {
+      chosenOrder = level2Matches[0];
+      matchedBy = 'phone_and_amount';
+    } else if (level2Matches.length > 1) {
+      // Ambiguïté (§10.5) : plusieurs commandes en attente avec le même montant et le même numéro autorisé
+      await recordUnmatchedPayment({
+        amount: amount || level2Matches[0].montant_total,
+        senderPhone: cleanSenderPhone,
+        senderName,
+        transactionRef,
+        rawMessage
+      });
+
+      await logAuditEvent({
+        ...auditBase,
+        eventType: 'MATCH_AMBIGUOUS',
+        result: 'FLAGGED',
+        details: `Ambiguïté : ${level2Matches.length} commandes en attente pour ${cleanSenderPhone} et ${amount} FCFA — mis en file unmatched_payments`
+      });
+
+      return {
+        success: true,
+        duplicate: false,
+        matched: false,
+        ambiguous: true,
+        unmatchedPaymentCreated: true,
+        order: null,
+        message: `Ambiguïté détectée (${level2Matches.length} commandes identiques). Paiement placé dans unmatched_payments pour vérification.`
+      };
+    }
   }
 
-  // NIVEAU 3 : Montant unique dans la fenêtre active (TTL 10 min)
+  // NIVEAU 3 (§10.5) : Montant unique dans la fenêtre active (TTL 10 min)
   if (!chosenOrder) {
     if (pendingOrders.length === 1) {
       chosenOrder = pendingOrders[0];
       matchedBy = 'amount_unique';
     } else {
-      chosenOrder = pendingOrders[0];
-      matchedBy = 'amount_fifo';
+      // Plusieurs commandes du même montant et aucun numéro reconnu -> unmatched_payments (pas de FIFO aveugle)
+      await recordUnmatchedPayment({
+        amount: amount || pendingOrders[0].montant_total,
+        senderPhone: cleanSenderPhone,
+        senderName,
+        transactionRef,
+        rawMessage
+      });
+
+      await logAuditEvent({
+        ...auditBase,
+        eventType: 'MATCH_AMBIGUOUS_AMOUNT',
+        result: 'FLAGGED',
+        details: `Plusieurs commandes (${pendingOrders.length}) pour le montant ${amount} FCFA sans numéro reconnu — mis en file unmatched_payments`
+      });
+
+      return {
+        success: true,
+        duplicate: false,
+        matched: false,
+        ambiguous: true,
+        unmatchedPaymentCreated: true,
+        order: null,
+        message: `Plusieurs commandes en attente pour ce montant sans numéro correspondant. Paiement mis en file unmatched_payments.`
+      };
     }
   }
 
   // ==========================================
   // SEUIL MONTANT ÉLEVÉ
-  // Si le montant dépasse HIGH_VALUE_THRESHOLD,
-  // on ne valide pas automatiquement → statut
-  // EN_VERIFICATION_MANUELLE pour contrôle caissier
   // ==========================================
   const finalAmount = Number(chosenOrder.montant_total);
   const isHighValue = finalAmount > HIGH_VALUE_THRESHOLD;
   const newStatut = isHighValue ? 'EN_VERIFICATION_MANUELLE' : 'EN_PREPARATION';
 
   const now = new Date().toISOString();
+  let updatedNotes = chosenOrder.notes || '';
+  if (cleanSenderPhone && chosenOrder.payer_phone && normalizeBurkinaPhone(chosenOrder.payer_phone) !== cleanSenderPhone) {
+    updatedNotes += ` [Expéditeur SMS réel: ${cleanSenderPhone}${senderName ? ' - ' + senderName : ''}]`;
+  }
+  const finalPayerPhone = chosenOrder.payer_phone || cleanSenderPhone || '';
+  const finalPayerName = chosenOrder.payer_name || senderName || '';
+
   await run(
-    `UPDATE orders SET statut = ?, paid_at = ?, transaction_ref = ? WHERE id = ?`,
-    [newStatut, now, transactionRef || null, chosenOrder.id]
+    `UPDATE orders SET statut = ?, paid_at = ?, transaction_ref = ?, payer_phone = ?, payer_name = ?, notes = ? WHERE id = ?`,
+    [newStatut, now, transactionRef || null, finalPayerPhone, finalPayerName, updatedNotes, chosenOrder.id]
   );
+
+  // Si ce paiement figurait déjà dans unmatched_payments, le marquer comme résolu
+  if (transactionRef) {
+    try {
+      await run(
+        `UPDATE unmatched_payments SET resolved_order_id = ?, resolved_at = ? WHERE transaction_ref = ?`,
+        [chosenOrder.id, now, transactionRef]
+      );
+    } catch (e) {}
+  }
 
   // Log d'audit — succès ou flaggé
   await logAuditEvent({
@@ -1760,7 +1966,18 @@ export default {
   getDeliverySettings,
   updateDeliverySettings,
   calculateDeliveryFee,
-  updateOrderPaymentInfo
+  updateOrderPaymentInfo,
+  normalizeBurkinaPhone,
+  hashValue,
+  generatePayToken,
+  recordUnmatchedPayment,
+  checkAndResolveRetroactivePayment,
+  ensureOrderPayToken,
+  getOrderByPayToken,
+  addOrderPayerNumberByToken,
+  getOrderPayerNumbers,
+  getUnmatchedPayments,
+  resolveUnmatchedPayment
 };
 
 // ==========================================
@@ -2025,17 +2242,311 @@ export async function calculateDeliveryFee({ customerLat, customerLng, totalCart
   };
 }
 
-export async function updateOrderPaymentInfo(id, { payerName, payerPhone, paymentMethod }) {
+// ==========================================
+// RATTRAPAGE RÉTROACTIF (FENÊTRE 30 MINUTES)
+// Si un paiement non résolu existe déjà dans unmatched_payments
+// avec le même numéro expéditeur ET le même montant reçu dans les 30 dernières minutes
+// ==========================================
+export async function checkAndResolveRetroactivePayment(orderRow, cleanPhone) {
+  if (!orderRow || !cleanPhone || orderRow.statut !== 'EN_ATTENTE_DE_PAIEMENT') {
+    return { autoValidated: false };
+  }
+
+  const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+  const unmatched = await get(
+    `SELECT * FROM unmatched_payments
+     WHERE resolved_order_id IS NULL
+       AND amount = ?
+       AND sender_phone = ?
+       AND received_at >= ?
+     ORDER BY received_at DESC
+     LIMIT 1`,
+    [Number(orderRow.montant_total), cleanPhone, thirtyMinAgo]
+  );
+
+  if (!unmatched) {
+    return { autoValidated: false };
+  }
+
+  const now = new Date().toISOString();
+  const finalAmount = Number(orderRow.montant_total);
+  const isHighValue = finalAmount > HIGH_VALUE_THRESHOLD;
+  const newStatut = isHighValue ? 'EN_VERIFICATION_MANUELLE' : 'EN_PREPARATION';
+
+  await run(
+    `UPDATE unmatched_payments SET resolved_order_id = ?, resolved_at = ? WHERE id = ?`,
+    [orderRow.id, now, unmatched.id]
+  );
+
+  const finalPayerPhone = orderRow.payer_phone || cleanPhone;
+  const finalPayerName = orderRow.payer_name || unmatched.sender_name || '';
+
+  await run(
+    `UPDATE orders SET statut = ?, paid_at = ?, transaction_ref = ?, payer_phone = ?, payer_name = ? WHERE id = ?`,
+    [newStatut, now, unmatched.transaction_ref || null, finalPayerPhone, finalPayerName, orderRow.id]
+  );
+
+  await logAuditEvent({
+    eventType: isHighValue ? 'HIGH_VALUE_FLAGGED' : 'RETROACTIVE_MATCH_SUCCESS',
+    orderId: orderRow.id,
+    parsedAmount: finalAmount,
+    parsedPhone: cleanPhone,
+    parsedTxRef: unmatched.transaction_ref,
+    matchedBy: 'retroactive_30min_phone_and_amount',
+    result: isHighValue ? 'FLAGGED' : 'SUCCESS',
+    details: `Commande ${orderRow.id} validée rétroactivement (paiement de ${finalAmount} FCFA reçu depuis ${cleanPhone} dans les 30 dernières minutes)`
+  });
+
+  const updatedOrder = await getOrderById(orderRow.id);
+  return {
+    autoValidated: true,
+    highValue: isHighValue,
+    order: updatedOrder,
+    matchedPayment: unmatched
+  };
+}
+
+export async function updateOrderPaymentInfo(id, { payerName, payerPhone, paymentMethod, ipAddress = null }) {
   const row = await get('SELECT * FROM orders WHERE id = ?', [id]);
   if (!row) throw new Error('Commande non trouvée');
 
+  const cleanPhone = normalizeBurkinaPhone(payerPhone) || (payerPhone ? String(payerPhone).replace(/\D/g, '').slice(-8) : '');
   const cleanNotes = (row.notes || '').replace(/\s*\[Paiement Mobile:[^\]]+\]/g, '');
-  const notesSuffix = ` [Paiement Mobile: ${paymentMethod || 'Non spécifié'} | Payeur: ${payerName || 'Non précisé'} (${payerPhone || ''})]`;
+  const notesSuffix = ` [Paiement Mobile: ${paymentMethod || 'Non spécifié'} | Payeur: ${payerName || 'Non précisé'} (${cleanPhone || payerPhone || ''})]`;
   const updatedNotes = cleanNotes + notesSuffix;
 
   await run(
     `UPDATE orders SET mode_paiement = ?, payer_name = ?, payer_phone = ?, notes = ? WHERE id = ?`,
-    [paymentMethod || row.mode_paiement, payerName || '', payerPhone || '', updatedNotes, id]
+    [paymentMethod || row.mode_paiement, payerName || '', cleanPhone || payerPhone || '', updatedNotes, id]
   );
+
+  if (cleanPhone && cleanPhone.length === 8) {
+    try {
+      await run(
+        `INSERT OR IGNORE INTO order_payer_numbers (order_id, phone, added_by, added_at, ip_hash) VALUES (?, ?, 'client', ?, ?)`,
+        [id, cleanPhone, new Date().toISOString(), hashValue(ipAddress)]
+      );
+    } catch (e) {}
+
+    // Vérification rétroactive sur les 30 dernières minutes
+    const refreshedRow = await get('SELECT * FROM orders WHERE id = ?', [id]);
+    const retro = await checkAndResolveRetroactivePayment(refreshedRow, cleanPhone);
+    if (retro.autoValidated && retro.order) {
+      return { ...retro.order, autoValidated: true, highValue: retro.highValue };
+    }
+  }
+
   return getOrderById(id);
+}
+
+// ==========================================
+// POINT 10 (validAuto.md) : PAIEMENT AVEC UN AUTRE NUMÉRO (OtherPaymentView)
+// ==========================================
+
+export async function ensureOrderPayToken(orderId) {
+  await checkAndExpireOrders();
+  const row = await get('SELECT * FROM orders WHERE id = ?', [orderId]);
+  if (!row) throw new Error('Commande introuvable');
+  if (row.statut !== 'EN_ATTENTE_DE_PAIEMENT') {
+    throw new Error('Cette commande n\'est plus en attente de paiement');
+  }
+
+  const { payToken, payTokenHash } = generatePayToken();
+  const expiresAt = row.expires_at || new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+  await run(
+    `UPDATE orders SET pay_token_hash = ?, pay_token_expires_at = ? WHERE id = ?`,
+    [payTokenHash, expiresAt, orderId]
+  );
+
+  return {
+    payToken,
+    expiresAt,
+    orderId: row.id
+  };
+}
+
+export async function getOrderByPayToken(rawToken) {
+  if (!rawToken || typeof rawToken !== 'string') return null;
+  await checkAndExpireOrders();
+
+  const tokenHash = hashValue(rawToken.trim());
+  const row = await get('SELECT * FROM orders WHERE pay_token_hash = ?', [tokenHash]);
+  if (!row) return null;
+
+  const expiresIso = row.pay_token_expires_at || row.expires_at;
+  const remainingSeconds = expiresIso
+    ? Math.max(0, Math.floor((new Date(expiresIso).getTime() - Date.now()) / 1000))
+    : 0;
+  const isExpired = remainingSeconds <= 0 && row.statut === 'EN_ATTENTE_DE_PAIEMENT';
+
+  const countRow = await get(
+    'SELECT COUNT(*) as count FROM order_payer_numbers WHERE order_id = ?',
+    [row.id]
+  );
+
+  // §10.4.2 : Strictement le minimum nécessaire pour payer (Zéro PII : pas de nom, pas de téléphone, pas d'adresse, pas de panier détaillé)
+  return {
+    reference: row.id,
+    codeReference: row.code_reference,
+    amount: row.montant_total,
+    status: isExpired ? 'EXPIREE' : row.statut,
+    expiresAt: expiresIso,
+    remainingSeconds,
+    shopName: 'Les Douceurs de Lê Ci',
+    paymentMethods: ['orange_money'],
+    payerNumbersCount: countRow?.count || 0,
+    maxPayerNumbers: 4
+  };
+}
+
+export async function addOrderPayerNumberByToken(rawToken, { phone, ipAddress = null }) {
+  if (!rawToken || typeof rawToken !== 'string') {
+    throw new Error('Lien invalide ou expiré');
+  }
+
+  await checkAndExpireOrders();
+
+  const tokenHash = hashValue(rawToken.trim());
+  const row = await get('SELECT * FROM orders WHERE pay_token_hash = ?', [tokenHash]);
+  if (!row) {
+    throw new Error('Lien invalide ou expiré');
+  }
+
+  const expiresIso = row.pay_token_expires_at || row.expires_at;
+  const isExpired = expiresIso && new Date(expiresIso).getTime() <= Date.now();
+  if (row.statut !== 'EN_ATTENTE_DE_PAIEMENT' || isExpired) {
+    throw new Error('Lien invalide ou expiré');
+  }
+
+  const cleanPhone = normalizeBurkinaPhone(phone);
+  if (!cleanPhone) {
+    throw new Error('Numéro invalide : veuillez saisir un numéro à 8 chiffres commençant par 0, 5, 6 ou 7.');
+  }
+
+  const existingPhone = await get(
+    'SELECT * FROM order_payer_numbers WHERE order_id = ? AND phone = ?',
+    [row.id, cleanPhone]
+  );
+
+  let updatedExpiresAt = expiresIso;
+  const now = new Date();
+  const ipHash = hashValue(ipAddress);
+
+  if (!existingPhone) {
+    const countRow = await get(
+      'SELECT COUNT(*) as count FROM order_payer_numbers WHERE order_id = ?',
+      [row.id]
+    );
+    const currentCount = countRow?.count || 0;
+    if (currentCount >= 4) {
+      throw new Error('Plafond atteint : maximum 4 numéros autorisés par commande.');
+    }
+
+    await run(
+      `INSERT INTO order_payer_numbers (order_id, phone, added_by, added_at, ip_hash)
+       VALUES (?, ?, 'other', ?, ?)`,
+      [row.id, cleanPhone, now.toISOString(), ipHash]
+    );
+
+    // Prolongation courte unique si moins de 5 minutes restantes (§10.4.1)
+    const remainingMs = new Date(expiresIso).getTime() - now.getTime();
+    if (remainingMs < 5 * 60 * 1000) {
+      updatedExpiresAt = new Date(now.getTime() + 5 * 60 * 1000).toISOString();
+      await run(
+        `UPDATE orders SET expires_at = ?, pay_token_expires_at = ? WHERE id = ?`,
+        [updatedExpiresAt, updatedExpiresAt, row.id]
+      );
+    }
+
+    await logAuditEvent({
+      eventType: 'PAYER_NUMBER_ADDED',
+      orderId: row.id,
+      ipAddress: ipHash,
+      parsedPhone: cleanPhone,
+      parsedAmount: row.montant_total,
+      result: 'SUCCESS',
+      details: `Nouveau numéro payeur autorisé (${cleanPhone}) ajouté via OtherPaymentView (ip_hash: ${ipHash?.slice(0, 12)})`
+    });
+  }
+
+  // Vérification rétroactive dans unmatched_payments sur les 30 dernières minutes !
+  const retro = await checkAndResolveRetroactivePayment(row, cleanPhone);
+
+  const countAfter = await get(
+    'SELECT COUNT(*) as count FROM order_payer_numbers WHERE order_id = ?',
+    [row.id]
+  );
+
+  return {
+    success: true,
+    phone: cleanPhone,
+    reference: row.id,
+    codeReference: row.code_reference,
+    amount: row.montant_total,
+    status: retro.autoValidated && retro.order ? retro.order.statut : row.statut,
+    expiresAt: updatedExpiresAt,
+    payerNumbersCount: countAfter?.count || 1,
+    maxPayerNumbers: 4,
+    autoValidated: retro.autoValidated || false,
+    highValue: retro.highValue || false,
+    order: retro.order || await getOrderById(row.id)
+  };
+}
+
+export async function getOrderPayerNumbers(orderId) {
+  const rows = await all(
+    'SELECT id, order_id, phone, added_by, added_at FROM order_payer_numbers WHERE order_id = ? ORDER BY added_at ASC',
+    [orderId]
+  );
+  return rows || [];
+}
+
+export async function getUnmatchedPayments() {
+  const rows = await all(
+    'SELECT * FROM unmatched_payments ORDER BY received_at DESC LIMIT 100'
+  );
+  return rows || [];
+}
+
+export async function resolveUnmatchedPayment(paymentId, orderId) {
+  const payment = await get('SELECT * FROM unmatched_payments WHERE id = ?', [paymentId]);
+  if (!payment) throw new Error('Paiement orphelin introuvable');
+  if (payment.resolved_order_id) {
+    throw new Error(`Ce paiement est déjà associé à la commande ${payment.resolved_order_id}`);
+  }
+
+  const order = await get('SELECT * FROM orders WHERE id = ?', [orderId]);
+  if (!order) throw new Error('Commande introuvable');
+
+  const now = new Date().toISOString();
+  await run(
+    'UPDATE unmatched_payments SET resolved_order_id = ?, resolved_at = ? WHERE id = ?',
+    [orderId, now, paymentId]
+  );
+
+  const finalPayerPhone = order.payer_phone || payment.sender_phone || '';
+  const finalPayerName = order.payer_name || payment.sender_name || '';
+  let updatedNotes = order.notes || '';
+  if (payment.sender_phone) {
+    updatedNotes += ` [Associé manuellement au paiement SMS de ${payment.sender_phone}]`;
+  }
+
+  await run(
+    `UPDATE orders SET statut = 'EN_PREPARATION', paid_at = ?, transaction_ref = ?, payer_phone = ?, payer_name = ?, notes = ? WHERE id = ?`,
+    [now, payment.transaction_ref || order.transaction_ref || null, finalPayerPhone, finalPayerName, updatedNotes, orderId]
+  );
+
+  await logAuditEvent({
+    eventType: 'UNMATCHED_PAYMENT_RESOLVED',
+    orderId,
+    parsedAmount: payment.amount,
+    parsedPhone: payment.sender_phone,
+    parsedTxRef: payment.transaction_ref,
+    matchedBy: 'manual_cashier_resolution',
+    result: 'SUCCESS',
+    details: `Paiement orphelin #${paymentId} (${payment.amount} FCFA de ${payment.sender_phone}) associé manuellement à la commande ${orderId}`
+  });
+
+  return getOrderById(orderId);
 }

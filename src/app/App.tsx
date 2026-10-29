@@ -10,6 +10,7 @@ import { Promotions } from './pages/Promotions';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { AdminLogin } from './pages/AdminLogin';
 import { Payment } from './pages/Payment';
+import { OtherPayment } from './pages/OtherPayment';
 import { Loyalty } from './pages/Loyalty';
 import { About } from './pages/About';
 import { Cart } from './pages/Cart';
@@ -40,6 +41,7 @@ export default function App() {
               <Route path="/fidelite" element={<Loyalty />} />
               <Route path="/fidelisation" element={<Loyalty />} />
               <Route path="/paiement/:orderId" element={<Payment />} />
+              <Route path="/pay/:token" element={<OtherPayment />} />
 
               {/* Redirections des anciennes pages supprimées */}
               <Route path="/a-propos" element={<About />} />

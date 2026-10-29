@@ -385,6 +385,13 @@ async function handleWebhook(req, res) {
           console.error('[Fidélité] Erreur crédit points:', e);
         }
       }
+    } else if (reconciliation.unmatchedPaymentCreated) {
+      io.to('staff:admin').emit('payment:unmatched', {
+        amount: finalAmount,
+        senderPhone: finalSender,
+        transactionRef: finalRef,
+        receivedAt: new Date().toISOString()
+      });
     }
 
     return res.json({
@@ -513,9 +520,175 @@ app.get('/api/orders/:id/status', async (req, res) => {
 app.post('/api/orders/:id/payment-info', async (req, res) => {
   try {
     const { payerName, payerPhone, paymentMethod } = req.body;
-    const order = await db.updateOrderPaymentInfo(req.params.id, { payerName, payerPhone, paymentMethod });
-    io.to('staff:admin').emit('order:status_changed', { orderId: order.id, statut: order.statut, order });
-    res.json({ success: true, order });
+    const ipAddress = req.ip || req.socket?.remoteAddress || 'unknown';
+    const order = await db.updateOrderPaymentInfo(req.params.id, { payerName, payerPhone, paymentMethod, ipAddress });
+
+    if (order && order.autoValidated) {
+      if (order.highValue) {
+        emitHighValueFlagged(order);
+      } else {
+        emitOrderValidated(order);
+        try {
+          await db.creditOrderPoints(order);
+        } catch (e) {}
+      }
+    } else {
+      io.to('staff:admin').emit('order:status_changed', { orderId: order.id, statut: order.statut, order });
+    }
+
+    res.json({ success: true, order, autoValidated: order.autoValidated || false });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// ==========================================
+// POINT 10 (validAuto.md) : PAIEMENT AVEC UN AUTRE NUMÉRO (OtherPaymentView)
+// ==========================================
+
+// Rate limiting dédié pour /api/pay (§10.4.3 : max 10 req / min / IP)
+const payTokenIpLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: 'Trop de tentatives. Veuillez patienter une minute avant de réessayer.'
+  }
+});
+
+// Rate limiting par token en mémoire (§10.4.3 : max 10 tentatives / heure / token)
+const tokenAttemptsMap = new Map();
+function checkTokenRateLimit(token) {
+  const now = Date.now();
+  const key = String(token || '').slice(0, 64);
+  const record = tokenAttemptsMap.get(key) || { count: 0, resetAt: now + 60 * 60 * 1000 };
+  if (now > record.resetAt) {
+    record.count = 0;
+    record.resetAt = now + 60 * 60 * 1000;
+  }
+  record.count += 1;
+  tokenAttemptsMap.set(key, record);
+  return record.count <= 10;
+}
+
+// Middleware d'en-têtes de sécurité pour /api/pay (§10.4.3)
+function setPaySecurityHeaders(req, res, next) {
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+  next();
+}
+
+// Générer / récupérer le token de paiement sécurisé pour une commande active
+app.post('/api/orders/:id/pay-token', async (req, res) => {
+  try {
+    const result = await db.ensureOrderPayToken(req.params.id);
+    res.json({
+      success: true,
+      payToken: result.payToken,
+      expiresAt: result.expiresAt,
+      url: `/pay/${result.payToken}`
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Consulter les informations minimales d'une commande via son token (§10.4.2 - Zéro PII)
+app.get('/api/pay/:token', setPaySecurityHeaders, payTokenIpLimiter, async (req, res) => {
+  try {
+    const info = await db.getOrderByPayToken(req.params.token);
+    if (!info) {
+      return res.status(404).json({ error: 'Lien invalide ou expiré' });
+    }
+    res.json(info);
+  } catch (err) {
+    res.status(404).json({ error: 'Lien invalide ou expiré' });
+  }
+});
+
+// Ajouter un nouveau numéro payeur autorisé via OtherPaymentView (§10.2.2 & §10.4.3 + Rattrapage 30 min)
+app.post('/api/pay/:token/payer-numbers', setPaySecurityHeaders, payTokenIpLimiter, async (req, res) => {
+  try {
+    if (!checkTokenRateLimit(req.params.token)) {
+      return res.status(429).json({ error: 'Trop de tentatives pour ce lien de paiement. Réessayez plus tard.' });
+    }
+
+    const ipAddress = req.ip || req.socket?.remoteAddress || 'unknown';
+    const { phone } = req.body || {};
+    const result = await db.addOrderPayerNumberByToken(req.params.token, { phone, ipAddress });
+
+    if (result.autoValidated && result.order) {
+      if (result.highValue) {
+        emitHighValueFlagged(result.order);
+      } else {
+        emitOrderValidated(result.order);
+        try {
+          await db.creditOrderPoints(result.order);
+        } catch (e) {}
+      }
+    } else if (result.order) {
+      io.to('staff:admin').emit('order:status_changed', {
+        orderId: result.order.id,
+        statut: result.order.statut,
+        order: result.order
+      });
+    }
+
+    res.json({
+      success: true,
+      phone: result.phone,
+      reference: result.reference,
+      codeReference: result.codeReference,
+      amount: result.amount,
+      status: result.status,
+      expiresAt: result.expiresAt,
+      payerNumbersCount: result.payerNumbersCount,
+      maxPayerNumbers: result.maxPayerNumbers,
+      autoValidated: result.autoValidated || false
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'Lien invalide ou expiré' });
+  }
+});
+
+// Liste des numéros payeurs autorisés d'une commande (pour le Dashboard / KDS)
+app.get('/api/orders/:id/payer-numbers', async (req, res) => {
+  try {
+    const numbers = await db.getOrderPayerNumbers(req.params.id);
+    res.json({ success: true, numbers });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Liste des paiements orphelins (unmatched_payments) pour le caissier (§10.9 point 6)
+app.get('/api/unmatched-payments', async (req, res) => {
+  try {
+    const payments = await db.getUnmatchedPayments();
+    res.json({ success: true, payments });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Associer manuellement un paiement orphelin à une commande (§10.9 point 6)
+app.post('/api/unmatched-payments/:id/resolve', async (req, res) => {
+  try {
+    const { orderId } = req.body || {};
+    if (!orderId) return res.status(400).json({ error: 'Veuillez sélectionner une commande à associer' });
+
+    const updatedOrder = await db.resolveUnmatchedPayment(req.params.id, orderId);
+    emitOrderValidated(updatedOrder);
+    try {
+      await db.creditOrderPoints(updatedOrder);
+    } catch (e) {}
+
+    res.json({
+      success: true,
+      message: `Paiement associé avec succès à la commande ${orderId}`,
+      order: updatedOrder
+    });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

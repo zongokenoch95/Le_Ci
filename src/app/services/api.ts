@@ -31,6 +31,34 @@ export interface Order {
   expiresAt: string;
   paidAt?: string;
   remainingSeconds?: number;
+  payToken?: string;
+  autoValidated?: boolean;
+}
+
+export interface PayTokenPublicInfo {
+  reference: string;
+  codeReference?: string;
+  amount: number;
+  status: string;
+  expiresAt: string;
+  remainingSeconds: number;
+  shopName: string;
+  paymentMethods: string[];
+  payerNumbersCount: number;
+  maxPayerNumbers: number;
+}
+
+export interface UnmatchedPayment {
+  id: number;
+  restaurant_id: string;
+  amount: number;
+  sender_phone?: string;
+  sender_name?: string;
+  transaction_ref?: string;
+  raw_message?: string;
+  received_at: string;
+  resolved_order_id?: string;
+  resolved_at?: string;
 }
 
 const API_BASE = '/api';
@@ -99,7 +127,13 @@ export async function createOrder(data: {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || 'Erreur lors de la création de la commande');
   }
-  return res.json();
+  const created: Order = await res.json();
+  if (created.payToken && created.id) {
+    try {
+      localStorage.setItem(`le_ci_pay_token_${created.id}`, created.payToken);
+    } catch (e) {}
+  }
+  return created;
 }
 
 export async function getOrder(id: string): Promise<Order> {
@@ -126,7 +160,7 @@ export async function updateOrderPaymentInfo(id: string, data: {
   payerName: string;
   payerPhone: string;
   paymentMethod: string;
-}): Promise<{ success: boolean; order: Order }> {
+}): Promise<{ success: boolean; order: Order; autoValidated?: boolean }> {
   const res = await fetch(`${API_BASE}/orders/${id}/payment-info`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -135,6 +169,86 @@ export async function updateOrderPaymentInfo(id: string, data: {
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || 'Erreur enregistrement coordonnées de paiement');
+  }
+  return res.json();
+}
+
+export async function generateOrderPayToken(orderId: string): Promise<{
+  success: boolean;
+  payToken: string;
+  expiresAt: string;
+  url: string;
+}> {
+  const res = await fetch(`${API_BASE}/orders/${orderId}/pay-token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Impossible de générer le lien de paiement');
+  }
+  const data = await res.json();
+  if (data.payToken) {
+    try {
+      localStorage.setItem(`le_ci_pay_token_${orderId}`, data.payToken);
+    } catch (e) {}
+  }
+  return data;
+}
+
+export async function getPayTokenInfo(token: string): Promise<PayTokenPublicInfo> {
+  const res = await fetch(`${API_BASE}/pay/${encodeURIComponent(token)}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Lien invalide ou expiré');
+  }
+  return res.json();
+}
+
+export async function addPayTokenPayerNumber(token: string, phone: string): Promise<{
+  success: boolean;
+  phone: string;
+  reference: string;
+  codeReference?: string;
+  amount: number;
+  status: string;
+  expiresAt: string;
+  payerNumbersCount: number;
+  maxPayerNumbers: number;
+  autoValidated: boolean;
+}> {
+  const res = await fetch(`${API_BASE}/pay/${encodeURIComponent(token)}/payer-numbers`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Impossible d\'ajouter ce numéro');
+  }
+  return res.json();
+}
+
+export async function getUnmatchedPayments(): Promise<UnmatchedPayment[]> {
+  const res = await fetch(`${API_BASE}/unmatched-payments`);
+  if (!res.ok) throw new Error('Erreur chargement paiements orphelins');
+  const data = await res.json();
+  return data.payments || [];
+}
+
+export async function resolveUnmatchedPayment(paymentId: number, orderId: string): Promise<{
+  success: boolean;
+  message: string;
+  order: Order;
+}> {
+  const res = await fetch(`${API_BASE}/unmatched-payments/${paymentId}/resolve`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ orderId })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Erreur lors de l\'association du paiement');
   }
   return res.json();
 }
