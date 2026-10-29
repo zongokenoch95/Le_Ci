@@ -90,8 +90,8 @@ Le téléphone de caisse (qui détient la puce SIM Orange Money ou l'application
 ### B. Action (Requête HTTP POST)
 * **Méthode :** `POST`
 * **URL de destination :**
-  * *En production / Dev Tunnel :*  
-    `https://seek-screening-unified-regulatory.trycloudflare.com/api/webhooks/orange-money`
+  * *En production :*  
+    `https://leci-production.up.railway.app/api/webhooks/orange-money`
   * *En réseau local direct (Wi-Fi de l'établissement) :*  
     `http://192.168.1.50:3000/api/webhooks/orange-money/resto-premium-01`
 * **En-têtes HTTP (Headers) :**
@@ -102,11 +102,11 @@ Le téléphone de caisse (qui détient la puce SIM Orange Money ou l'application
 * **Corps de la requête (Body) :**
   ```json
   {
-    "message": "[sms_body]",
+    "message": "[sms_message]",
     "sender": "[sms_number]"
   }
   ```
-  *(Utilisez le sélecteur `[...]` dans MacroDroid pour insérer les balises de variables dynamiques).*
+  *(Important : dans MacroDroid, la variable du texte du SMS est `[sms_message]` — ou `{sms_message}` selon la version — et NON `[sms_body]`. Utilisez le bouton `...` dans MacroDroid ➔ **Texte du SMS entrant** pour insérer la balise exacte).*
 
 > [!IMPORTANT]
 > **Configuration Dev Tunnels VS Code (si utilisé en développement local) :**

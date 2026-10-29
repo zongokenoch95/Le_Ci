@@ -54,7 +54,7 @@
           "contentBodyFolderDisplayName": "",
           "contentBodyFolderUri": "",
           "contentBodySource": 0,
-          "contentBodyText": "{\"message\": \"[sms_body]\", \"sender\": \"[sms_number]\"}",
+          "contentBodyText": "{\"message\": \"[sms_message]\", \"sender\": \"[sms_number]\"}",
           "contentType": "application/json",
           "followRedirects": false,
           "headerParams": [
@@ -86,7 +86,7 @@
           "saveResponseUseAllFilesAccess": false,
           "saveReturnCodeToVariable": true,
           "saveReturnHeadersToVariable": false,
-          "urlToOpen": "https://seek-screening-unified-regulatory.trycloudflare.com/api/webhooks/orange-money",
+          "urlToOpen": "https://leci-production.up.railway.app/api/webhooks/orange-money",
           "useAllFilesAccess": false,
           "useLocalFileUri": false,
           "useStaticContentBodyFile": true

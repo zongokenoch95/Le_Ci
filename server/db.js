@@ -1032,16 +1032,29 @@ export async function reconcilePaymentWebhook({
     }
   }
 
-  // 2. Recherche des commandes en attente
-  let query = `SELECT * FROM orders WHERE statut = 'EN_ATTENTE_DE_PAIEMENT'`;
-  const params = [];
-  if (amount && Number(amount) > 0) {
-    query += ` AND montant_total = ?`;
-    params.push(Number(amount));
-  }
-  query += ` ORDER BY created_at ASC`;
+  // 2. Vérification que le SMS contient bien un montant valide (évite les faux positifs si MacroDroid envoie "[sms_body]" littéralement)
+  if (!amount || Number(amount) <= 0) {
+    await logAuditEvent({
+      ...auditBase,
+      eventType: 'PARSE_FAILED',
+      result: 'REJECTED',
+      details: `Aucun montant détecté dans le message reçu (${JSON.stringify(rawMessage).slice(0, 120)}). Vérifiez que MacroDroid utilise [sms_message] et non [sms_body].`
+    });
 
-  const pendingOrders = await all(query, params);
+    return {
+      success: false,
+      duplicate: false,
+      matched: false,
+      order: null,
+      message: `Aucun montant détecté dans le SMS reçu ("${String(rawMessage).slice(0, 60)}"). Vérifiez que MacroDroid utilise [sms_message] (Texte du SMS entrant) et non [sms_body].`
+    };
+  }
+
+  // 3. Recherche des commandes en attente pour ce montant exact
+  const pendingOrders = await all(
+    `SELECT * FROM orders WHERE statut = 'EN_ATTENTE_DE_PAIEMENT' AND montant_total = ? ORDER BY created_at ASC`,
+    [Number(amount)]
+  );
 
   if (!pendingOrders || pendingOrders.length === 0) {
     await recordUnmatchedPayment({
