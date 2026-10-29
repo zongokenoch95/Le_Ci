@@ -903,8 +903,39 @@ app.post('/api/loyalty/adjust', async (req, res) => {
 // ==========================================
 
 // ==========================================
-// ROUTES PRODUITS / PLATS (CRUD GÉRANCE)
+// ROUTES PRODUITS & CATÉGORIES DE PLATS (CRUD GÉRANCE)
 // ==========================================
+
+// Liste des catégories de plats
+app.get('/api/product-categories', async (req, res) => {
+  try {
+    const categories = await db.getProductCategories();
+    res.json({ success: true, categories });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Ajouter une nouvelle catégorie de plats
+app.post('/api/product-categories', authenticateJwt, requireRole(['gerant']), async (req, res) => {
+  try {
+    const { name } = req.body || {};
+    const categories = await db.addProductCategory(name);
+    res.status(201).json({ success: true, categories, message: 'Catégorie ajoutée avec succès !' });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Supprimer une catégorie de plats
+app.delete('/api/product-categories/:id', authenticateJwt, requireRole(['gerant']), async (req, res) => {
+  try {
+    const categories = await db.deleteProductCategory(req.params.id);
+    res.json({ success: true, categories, message: 'Catégorie supprimée' });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
 
 // Liste des plats (avec filtre disponible)
 app.get('/api/products', async (req, res) => {

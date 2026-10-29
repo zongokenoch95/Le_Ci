@@ -82,6 +82,10 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
+  getProductCategories,
+  addProductCategory,
+  deleteProductCategory,
+  ProductCategory,
   getAdminDetailedStats,
   Product,
   AdminDetailedStats,
@@ -170,8 +174,18 @@ export function AdminDashboard() {
   });
   const [teamMessage, setTeamMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // État Gestion des Plats
+  // État Gestion des Plats & Catégories
   const [products, setProducts] = useState<Product[]>([]);
+  const [productCategories, setProductCategories] = useState<ProductCategory[]>([
+    { id: 1, name: 'Signature de la maison' },
+    { id: 2, name: 'Douceurs salées' },
+    { id: 3, name: 'Douceurs sucrées' },
+    { id: 4, name: 'Gâteaux' },
+    { id: 5, name: 'Paquets' }
+  ]);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [addingCategory, setAddingCategory] = useState(false);
+  const [categorySuccessMsg, setCategorySuccessMsg] = useState('');
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [productCategoryFilter, setProductCategoryFilter] = useState('Tous');
   const [productSearch, setProductSearch] = useState('');
@@ -287,17 +301,55 @@ export function AdminDashboard() {
     }
   };
 
-  // Chargement des plats
+  // Chargement des plats et des catégories
   const loadProducts = async () => {
     if (!isGerant) return;
     try {
       setLoadingProducts(true);
-      const list = await getProducts();
+      const [list, cats] = await Promise.all([
+        getProducts(),
+        getProductCategories().catch(() => [])
+      ]);
       setProducts(list);
+      if (cats && cats.length > 0) {
+        setProductCategories(cats);
+      }
     } catch (err) {
       console.error(err);
     } finally {
       setLoadingProducts(false);
+    }
+  };
+
+  const handleAddCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const clean = newCategoryName.trim();
+    if (!clean) return;
+    setAddingCategory(true);
+    setCategorySuccessMsg('');
+    try {
+      const updated = await addProductCategory(clean);
+      setProductCategories(updated);
+      setNewCategoryName('');
+      setCategorySuccessMsg(`Catégorie « ${clean} » ajoutée avec succès !`);
+      setTimeout(() => setCategorySuccessMsg(''), 3500);
+    } catch (err: any) {
+      alert(err.message || 'Erreur lors de l\'ajout de la catégorie');
+    } finally {
+      setAddingCategory(false);
+    }
+  };
+
+  const handleDeleteCategory = async (cat: ProductCategory) => {
+    if (!window.confirm(`Supprimer la catégorie « ${cat.name} » ?`)) return;
+    try {
+      const updated = await deleteProductCategory(cat.id);
+      setProductCategories(updated);
+      if (productCategoryFilter === cat.name) {
+        setProductCategoryFilter('Tous');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Erreur lors de la suppression de la catégorie');
     }
   };
 
@@ -974,8 +1026,8 @@ export function AdminDashboard() {
                 const addrMatch = notesStr.match(/Adresse:\s*([^|\[]+(?:\|\s*Repère:[^|\[]+)?)/i);
                 const dateMatch = notesStr.match(/Date souhaitée:\s*([^|\[]+)/i);
 
-                const payerNameVal = order.payerName || (notesStr.match(/Payeur:\s*([^|(]+?)\s*\(/i)?.[1]?.trim()) || order.customerName || 'En attente';
-                const payerPhoneVal = order.payerPhone || (notesStr.match(/Payeur:[^)]*\(([^)]+)\)/i)?.[1]?.trim()) || order.customerPhone || 'En attente';
+                const payerNameVal = order.payerName || (notesStr.match(/Payeur:\s*([^|(]+?)\s*\(/i)?.[1]?.trim()) || 'En attente de saisie';
+                const payerPhoneVal = order.payerPhone || (notesStr.match(/Payeur:[^)]*\(([^)]+)\)/i)?.[1]?.trim()) || 'En attente de saisie';
 
                 return (
                   <div
@@ -1434,6 +1486,65 @@ export function AdminDashboard() {
               </button>
             </div>
 
+            {/* Gestion & Ajout de catégories de plats */}
+            <div className="bg-[#1E293B] p-4 sm:p-5 rounded-3xl border border-white/10 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-xs font-extrabold text-white uppercase tracking-wider flex items-center gap-2">
+                    <Layers size={15} className="text-[#D4AF37]" />
+                    <span>Catégories de plats ({productCategories.length})</span>
+                  </h3>
+                  <p className="text-[11px] text-gray-400">
+                    Ajoutez de nouvelles catégories pour classer vos pâtisseries dans le catalogue et le menu.
+                  </p>
+                </div>
+
+                <form onSubmit={handleAddCategory} className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    placeholder="Nouvelle catégorie (ex: Viennoiseries)..."
+                    className="px-3.5 py-2 bg-[#0F172A] border border-gray-700 rounded-xl text-white text-xs focus:ring-2 focus:ring-[#D4AF37] focus:outline-none min-w-[210px]"
+                  />
+                  <button
+                    type="submit"
+                    disabled={addingCategory || !newCategoryName.trim()}
+                    className="px-4 py-2 rounded-xl bg-[#D4AF37] hover:bg-[#c29d2b] text-black font-extrabold text-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+                  >
+                    <Plus size={14} />
+                    <span>{addingCategory ? 'Ajout...' : 'Ajouter la catégorie'}</span>
+                  </button>
+                </form>
+              </div>
+
+              {categorySuccessMsg && (
+                <div className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                  <CheckCircle2 size={14} />
+                  <span>{categorySuccessMsg}</span>
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-2 pt-1">
+                {productCategories.map(cat => (
+                  <div
+                    key={cat.id}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-white/5 border border-white/10 text-xs text-gray-200 font-semibold"
+                  >
+                    <span>{cat.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteCategory(cat)}
+                      title={`Supprimer la catégorie ${cat.name}`}
+                      className="text-gray-500 hover:text-rose-400 transition cursor-pointer ml-1"
+                    >
+                      <X size={13} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {/* Filtres et recherche plats */}
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
@@ -1448,7 +1559,7 @@ export function AdminDashboard() {
               </div>
 
               <div className="flex flex-wrap gap-1.5">
-                {['Tous', 'Douceurs salées', 'Douceurs sucrées', 'Gâteaux', 'Paquets'].map(cat => (
+                {['Tous', ...Array.from(new Set([...productCategories.map(c => c.name), ...products.map(p => p.category).filter(Boolean)]))].map(cat => (
                   <button
                     key={cat}
                     onClick={() => setProductCategoryFilter(cat)}
@@ -2214,10 +2325,11 @@ export function AdminDashboard() {
                     onChange={(e) => setProductFormData({ ...productFormData, category: e.target.value })}
                     className="w-full px-3 py-2.5 bg-[#0F172A] border border-gray-700 rounded-xl text-white text-xs"
                   >
-                    <option value="Douceurs salées">Douceurs salées</option>
-                    <option value="Douceurs sucrées">Douceurs sucrées</option>
-                    <option value="Gâteaux">Gâteaux</option>
-                    <option value="Paquets">Paquets</option>
+                    {Array.from(new Set([...productCategories.map(c => c.name), productFormData.category].filter(Boolean))).map(catName => (
+                      <option key={catName} value={catName}>
+                        {catName}
+                      </option>
+                    ))}
                   </select>
                 </div>
 

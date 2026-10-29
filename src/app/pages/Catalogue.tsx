@@ -5,10 +5,10 @@ import { ShoppingBag, Check, Zap, ShieldCheck, Loader2, Cake, Sparkles, ArrowRig
 import { Link } from 'react-router-dom';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { useCart } from '../context/CartContext';
-import { getProducts, Product } from '../services/api';
+import { getProducts, getProductCategories, Product } from '../services/api';
 
-// Les catégories officielles vendues par la maison Lê Ci (avec Signature de la maison, Notion 28/10/26)
-const categories = ['Tous', 'Signature de la maison', 'Douceurs salés', 'Douceurs sucrées', 'Paquets', 'Gâteaux'];
+// Les catégories officielles par défaut vendues par la maison Lê Ci
+const defaultCategories = ['Tous', 'Signature de la maison', 'Douceurs salés', 'Douceurs sucrées', 'Paquets', 'Gâteaux'];
 
 // 26 produits créés à partir des dossiers d'images
 const fallbackProducts = [
@@ -257,6 +257,7 @@ const fallbackProducts = [
 
 export function Catalogue() {
   const [productsList, setProductsList] = useState<any[]>(fallbackProducts);
+  const [categories, setCategories] = useState<string[]>(defaultCategories);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('Tous');
   const [selectedCakePortions, setSelectedCakePortions] = useState<{ [id: number]: { label: string; price: number } }>({});
@@ -288,7 +289,19 @@ export function Catalogue() {
   useEffect(() => {
     async function loadCatalogue() {
       try {
-        const data = await getProducts({ available: true });
+        const [data, dbCats] = await Promise.all([
+          getProducts({ available: true }),
+          getProductCategories().catch(() => [])
+        ]);
+        if (Array.isArray(dbCats) && dbCats.length > 0) {
+          const merged = [...defaultCategories];
+          for (const c of dbCats) {
+            if (c.name && !merged.includes(c.name) && !(c.name === 'Douceurs salées' && merged.includes('Douceurs salés'))) {
+              merged.push(c.name);
+            }
+          }
+          setCategories(merged);
+        }
         if (Array.isArray(data) && data.length > 0) {
           const formatted = data.map((p: Product) => {
             let portions: any[] = [];

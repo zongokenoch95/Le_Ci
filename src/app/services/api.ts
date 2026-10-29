@@ -655,6 +655,46 @@ export interface AdminDetailedStats {
   };
 }
 
+export interface ProductCategory {
+  id: number;
+  name: string;
+  created_at?: string;
+}
+
+export async function getProductCategories(): Promise<ProductCategory[]> {
+  const res = await fetch(`${API_BASE}/product-categories`);
+  if (!res.ok) throw new Error('Erreur chargement des catégories');
+  const data = await res.json();
+  return data.categories || [];
+}
+
+export async function addProductCategory(name: string): Promise<ProductCategory[]> {
+  const res = await fetch(`${API_BASE}/product-categories`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ name })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Erreur lors de l\'ajout de la catégorie');
+  }
+  const data = await res.json();
+  return data.categories || [];
+}
+
+export async function deleteProductCategory(id: number): Promise<ProductCategory[]> {
+  const res = await fetch(`${API_BASE}/product-categories/${id}`, {
+    method: 'DELETE',
+    headers: authHeaders()
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Erreur lors de la suppression de la catégorie');
+  }
+  const data = await res.json();
+  return data.categories || [];
+}
+
 export async function getProducts(options?: { available?: boolean }): Promise<Product[]> {
   const url = options?.available ? `${API_BASE}/products?available=true` : `${API_BASE}/products`;
   const res = await fetch(url);

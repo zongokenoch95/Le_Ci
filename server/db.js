@@ -291,6 +291,27 @@ export async function initDb() {
     )
   `);
 
+  await run(`
+    CREATE TABLE IF NOT EXISTS product_categories (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT UNIQUE NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  const defaultCategories = [
+    'Signature de la maison',
+    'Douceurs salées',
+    'Douceurs sucrées',
+    'Gâteaux',
+    'Paquets'
+  ];
+  for (const catName of defaultCategories) {
+    try {
+      await run(`INSERT OR IGNORE INTO product_categories (name) VALUES (?)`, [catName]);
+    } catch (e) {}
+  }
+
   // Table pour le bandeau d'annonces / promotions défilant
   await run(`
     CREATE TABLE IF NOT EXISTS delivery_settings (
@@ -839,16 +860,6 @@ export async function createOrder(data) {
     expiresAt.toISOString()
   ]);
 
-  const initialPhone = normalizeBurkinaPhone(data.customerPhone);
-  if (initialPhone) {
-    try {
-      await run(
-        `INSERT OR IGNORE INTO order_payer_numbers (order_id, phone, added_by, added_at) VALUES (?, ?, 'client', ?)`,
-        [id, initialPhone, now.toISOString()]
-      );
-    } catch (e) {}
-  }
-
   const row = await get('SELECT * FROM orders WHERE id = ?', [id]);
   const formatted = formatOrder(row);
   return {
@@ -1090,8 +1101,7 @@ export async function reconcilePaymentWebhook({
 
     for (const o of pendingOrders) {
       const pPhone = normalizeBurkinaPhone(o.payer_phone) || String(o.payer_phone || '').replace(/\D/g, '').slice(-8);
-      const cPhone = normalizeBurkinaPhone(o.customer_phone) || String(o.customer_phone || '').replace(/\D/g, '').slice(-8);
-      if ((pPhone && pPhone === cleanSenderPhone) || (cPhone && cPhone === cleanSenderPhone)) {
+      if (pPhone && pPhone === cleanSenderPhone) {
         matchedOrderIds.add(o.id);
       }
     }
@@ -1711,19 +1721,41 @@ export async function getProductById(id) {
   return await get('SELECT * FROM products WHERE id = ?', [id]);
 }
 
+export async function getProductCategories() {
+  const rows = await all('SELECT id, name, created_at FROM product_categories ORDER BY id ASC');
+  return rows || [];
+}
+
+export async function addProductCategory(name) {
+  const cleanName = (name || '').trim();
+  if (!cleanName) throw new Error('Le nom de la catégorie est obligatoire');
+  await run('INSERT OR IGNORE INTO product_categories (name) VALUES (?)', [cleanName]);
+  return getProductCategories();
+}
+
+export async function deleteProductCategory(id) {
+  await run('DELETE FROM product_categories WHERE id = ?', [id]);
+  return getProductCategories();
+}
+
 export async function createProduct({ name, category, price, description, image, is_available = 1, portions_json, stock_quantity = 10 }) {
   if (!name || !price) throw new Error('Le nom et le prix du plat sont obligatoires');
   const now = new Date().toISOString();
   const numPrice = Math.max(500, Number(price)); // Minimum 500 FCFA
   const numStock = Math.max(0, parseInt(stock_quantity, 10) || 0);
   const portionsStr = typeof portions_json === 'string' ? portions_json : JSON.stringify(portions_json || []);
+  const cleanCategory = category ? category.trim() : 'Gâteaux';
+
+  try {
+    await run('INSERT OR IGNORE INTO product_categories (name) VALUES (?)', [cleanCategory]);
+  } catch (e) {}
 
   const res = await run(`
     INSERT INTO products (name, category, price, description, image, is_available, portions_json, stock_quantity, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `, [
     name.trim(),
-    category ? category.trim() : 'Gâteaux',
+    cleanCategory,
     numPrice,
     description ? description.trim() : '',
     image ? image.trim() : 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=1080',
@@ -1961,6 +1993,9 @@ export default {
   createProduct,
   updateProduct,
   deleteProduct,
+  getProductCategories,
+  addProductCategory,
+  deleteProductCategory,
   getAdminDetailedStats,
   getAnnouncementBanner,
   updateAnnouncementBanner,
