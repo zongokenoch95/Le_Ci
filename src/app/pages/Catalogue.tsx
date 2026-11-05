@@ -7,8 +7,10 @@ import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { useCart } from '../context/CartContext';
 import { getProducts, getProductCategories, Product } from '../services/api';
 
-// Les catégories officielles par défaut vendues par la maison Lê Ci
-const defaultCategories = ['Tous', 'Signature de la maison', 'Douceurs salés', 'Douceurs sucrées', 'Paquets', 'Gâteaux'];
+// Les catégories officielles par défaut vendues dans le catalogue de produits (hors Gâteaux)
+const defaultCategories = ['Tous', 'Signature de la maison', 'Douceurs salés', 'Douceurs sucrées', 'Paquets'];
+
+const isCakeCategory = (cat?: string) => Boolean(cat && /g[aâ]teau/i.test(cat.trim()));
 
 // 26 produits créés à partir des dossiers d'images
 const fallbackProducts = [
@@ -115,81 +117,7 @@ const fallbackProducts = [
     image: '/products/sucree_8.jpeg'
   },
 
-  // 3. Gâteaux (8 produits)
-  {
-    id: 12,
-    name: "Fraisier Signature Suprême Crème Mousseline",
-    category: 'Gâteaux',
-    price: '6 500 FCFA',
-    numericPrice: 6500,
-    description: "Génoise aérienne, fraises fraîches parfumées et crème mousseline vanillée.",
-    image: '/products/gateau_1.jpeg'
-  },
-  {
-    id: 13,
-    name: "Gâteau Festif Personnalisé Pâte d'Amande",
-    category: 'Gâteaux',
-    price: '12 000 FCFA',
-    numericPrice: 12000,
-    description: "Création sur-mesure décorée à la main pour vos anniversaires et célébrations.",
-    image: '/products/gateau_2.jpeg'
-  },
-  {
-    id: 14,
-    name: "Forêt Noire Grand Cru Cacao & Cerises",
-    category: 'Gâteaux',
-    price: '7 000 FCFA',
-    numericPrice: 7000,
-    description: "Génoise cacao intense, crème chantilly légère et cerises griottes juteuses.",
-    image: '/products/gateau_3.jpeg'
-  },
-  {
-    id: 15,
-    name: "Layer Cake Chocolat Praliné & Drip Caramel",
-    category: 'Gâteaux',
-    price: '9 500 FCFA',
-    numericPrice: 9500,
-    description: "Étages gourmands de chocolat et praliné avec coulant de caramel doré.",
-    image: '/products/gateau_4.jpeg'
-  },
-  {
-    id: 16,
-    name: "Entremet Miroir Fruits Rouges & Mousse Velours",
-    category: 'Gâteaux',
-    price: '8 000 FCFA',
-    numericPrice: 8000,
-    description: "Glaçage miroir étincelant sur mousse onctueuse aux fruits rouges frais.",
-    image: '/products/gateau_5.jpeg'
-  },
-  {
-    id: 17,
-    name: "Red Velvet Cake Onctueux Cream Cheese",
-    category: 'Gâteaux',
-    price: '7 500 FCFA',
-    numericPrice: 7500,
-    description: "Gâteau rouge velours traditionnel avec son glaçage doux au fromage frais.",
-    image: '/products/gateau_6.jpeg'
-  },
-  {
-    id: 18,
-    name: "Number Cake Décoré Fruits Frais & Macarons",
-    category: 'Gâteaux',
-    price: '14 000 FCFA',
-    numericPrice: 14000,
-    description: "Chiffre personnalisé sur sablé amande garni de crème vanille et macarons.",
-    image: '/products/gateau_7.jpeg'
-  },
-  {
-    id: 19,
-    name: "Pièce Montée d'Exception & Mariage Prestige",
-    category: 'Gâteaux',
-    price: '25 000 FCFA',
-    numericPrice: 25000,
-    description: "Chef-d'œuvre de haute pâtisserie pour mariages et grandes réceptions.",
-    image: '/products/gateau_8.jpeg'
-  },
-
-  // 4. Paquets (7 produits)
+  // 3. Paquets (7 produits)
   {
     id: 20,
     name: "Box Découverte Douceurs de Lê Ci",
@@ -296,32 +224,39 @@ export function Catalogue() {
         if (Array.isArray(dbCats) && dbCats.length > 0) {
           const merged = [...defaultCategories];
           for (const c of dbCats) {
-            if (c.name && !merged.includes(c.name) && !(c.name === 'Douceurs salées' && merged.includes('Douceurs salés'))) {
+            if (
+              c.name &&
+              !isCakeCategory(c.name) &&
+              !merged.includes(c.name) &&
+              !(c.name === 'Douceurs salées' && merged.includes('Douceurs salés'))
+            ) {
               merged.push(c.name);
             }
           }
           setCategories(merged);
         }
         if (Array.isArray(data) && data.length > 0) {
-          const formatted = data.map((p: Product) => {
-            let portions: any[] = [];
-            if (p.portions && Array.isArray(p.portions)) {
-              portions = p.portions;
-            } else if (p.portions_json) {
-              try { portions = JSON.parse(p.portions_json); } catch(e) {}
-            }
-            return {
-              id: p.id,
-              name: p.name,
-              category: p.category || 'Gâteaux',
-              price: `${p.price.toLocaleString('fr-FR')} FCFA`,
-              numericPrice: p.price,
-              image: p.image || '/products/gateau_1.jpeg',
-              description: p.description || "",
-              stock_quantity: p.stock_quantity !== undefined ? p.stock_quantity : 10,
-              portions
-            };
-          });
+          const formatted = data
+            .filter((p: Product) => !isCakeCategory(p.category))
+            .map((p: Product) => {
+              let portions: any[] = [];
+              if (p.portions && Array.isArray(p.portions)) {
+                portions = p.portions;
+              } else if (p.portions_json) {
+                try { portions = JSON.parse(p.portions_json); } catch(e) {}
+              }
+              return {
+                id: p.id,
+                name: p.name,
+                category: p.category || 'Douceurs sucrées',
+                price: `${p.price.toLocaleString('fr-FR')} FCFA`,
+                numericPrice: p.price,
+                image: p.image || '/products/sucree_1.jpeg',
+                description: p.description || "",
+                stock_quantity: p.stock_quantity !== undefined ? p.stock_quantity : 10,
+                portions
+              };
+            });
           setProductsList(formatted);
         }
       } catch (err) {
@@ -334,9 +269,10 @@ export function Catalogue() {
   }, []);
 
   const filteredProducts = productsList.filter(product => {
+    if (isCakeCategory(product.category)) return false;
     if (selectedCategory === 'Tous') return true;
     if (selectedCategory === 'Signature de la maison') {
-      const signatureIds = [1, 4, 6, 7, 12, 14, 18, 19, 20, 22];
+      const signatureIds = [1, 4, 6, 7, 20, 22];
       const nameLower = (product.name || '').toLowerCase();
       const descLower = (product.description || '').toLowerCase();
       return signatureIds.includes(product.id) || 
@@ -402,59 +338,22 @@ export function Catalogue() {
 
         {/* Filtres par Catégorie */}
         <div className="mb-10">
-          {/* 4 Boutons de Catégories + Tous */}
           <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
             {categories.map((category) => (
               <button
                 key={category}
-                onClick={() => {
-                  if (category === 'Gâteaux') {
-                    navigate('/sur-commande');
-                  } else {
-                    setSelectedCategory(category);
-                  }
-                }}
+                onClick={() => setSelectedCategory(category)}
                 className={`px-6 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-                selectedCategory === category
-                  ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30 scale-105'
-                  : 'bg-white text-gray-700 border border-purple-100 hover:border-purple-300 hover:bg-purple-50/50'
-              }`}
+                  selectedCategory === category
+                    ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30 scale-105'
+                    : 'bg-white text-gray-700 border border-purple-100 hover:border-purple-300 hover:bg-purple-50/50'
+                }`}
               >
-                {category === 'Gâteaux' ? 'Gâteaux (Sur-mesure)' : category}
+                {category}
               </button>
             ))}
           </div>
         </div>
-
-        
-        {/* Choix entre Gâteau Classique et Gâteau Sur-Mesure (Demande Notion #3 & #4) */}
-        {(selectedCategory === 'Gâteaux' || selectedCategory === 'Tous') && (
-          <div className="mb-10 p-6 rounded-3xl bg-gradient-to-r from-purple-900 to-[#581C87] text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="space-y-1.5 max-w-xl text-center md:text-left">
-              <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#D4AF37] px-3 py-1 rounded-full bg-white/10 inline-block">
-                ✦ Deux formules de gâteaux au choix ✦
-              </span>
-              <h3 className="text-xl sm:text-2xl font-black">
-                Gâteau Simple ou Création Sur-Mesure ?
-              </h3>
-              <p className="text-xs text-purple-200/90 font-light leading-relaxed">
-                • <strong>Gâteau classique</strong> : Choisissez simplement votre recette ci-dessous et le nombre de parts.<br />
-                • <strong>Gâteau sur-mesure</strong> : Personnalisez toutes les variables (nom sur le gâteau, saveurs, thème, décoration, carte).
-              </p>
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto shrink-0">
-              <Link
-                to="/sur-commande"
-                className="px-6 py-3 rounded-full bg-white text-[#581C87] hover:bg-purple-50 font-extrabold text-xs shadow-lg transition flex items-center justify-center gap-2 cursor-pointer transform hover:-translate-y-0.5"
-              >
-                <Sparkles size={14} className="text-[#581C87]" />
-                <span>Créer un gâteau sur-mesure</span>
-                <ArrowRight size={14} />
-              </Link>
-            </div>
-          </div>
-        )}
 
         {/* Grille de Produits */}
         {loading ? (
@@ -483,76 +382,18 @@ export function Catalogue() {
                           alt={product.name}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         />
-                        <span className="absolute top-3 left-3 px-3 py-1 bg-white/90 backdrop-blur-md rounded-full text-[11px] font-bold text-gray-800 shadow-sm">
-                          {product.category}
-                        </span>
-                        {product.stock_quantity !== undefined && product.stock_quantity <= 0 ? (
-                          <span className="absolute top-3 right-3 px-3 py-1 bg-red-600 text-white rounded-full text-[10px] font-black uppercase tracking-wider shadow-md">
-                            Épuisé
-                          </span>
-                        ) : (product.stock_quantity !== undefined && product.stock_quantity <= 5 ? (
-                          <span className="absolute top-3 right-3 px-2.5 py-1 bg-amber-500 text-white rounded-full text-[10px] font-bold shadow-sm">
-                            Plus que {product.stock_quantity} en stock !
-                          </span>
-                        ) : null)}
                       </div>
 
                       <div className="p-5">
-                        <h3 className="font-bold text-gray-900 text-base group-hover:text-[#581C87] transition mb-1 line-clamp-1">
+                        <h3 className="font-bold text-gray-900 text-base group-hover:text-[#581C87] transition mb-1.5 line-clamp-1">
                           {product.name}
                         </h3>
                         <p className="text-xs text-gray-500 mb-3 line-clamp-2 leading-relaxed">
                           {product.description || 'Création artisanale raffinée avec des ingrédients d excellence.'}
                         </p>
-                        
-                        {/* Sélecteur de parts pour les Gâteaux (Notion #4) */}
-                        {(product.category === 'Gâteaux' || product.category?.includes('Gât')) && (
-                          <div className="mb-3 p-2.5 rounded-xl bg-purple-50/70 border border-purple-200/60 text-xs">
-                            <label className="block text-[10px] font-extrabold text-[#581C87] uppercase tracking-wider mb-1 flex items-center gap-1">
-                              <Cake size={12} /> Format & Nombre de parts :
-                            </label>
-                            <select
-                              value={selectedCakePortions[product.id]?.label || (product.portions?.[0]?.label || '6-8 parts')}
-                              onChange={(e) => {
-                                const selectedLabel = e.target.value;
-                                let calculatedPrice = product.numericPrice;
-                                if (product.portions && product.portions.length > 0) {
-                                  const matched = product.portions.find((p: any) => p.label === selectedLabel);
-                                  if (matched) calculatedPrice = matched.price;
-                                } else {
-                                  let mult = 1;
-                                  if (selectedLabel.includes('8')) mult = 1.25;
-                                  if (selectedLabel.includes('10') || selectedLabel.includes('12')) mult = 1.5;
-                                  if (selectedLabel.includes('15') || selectedLabel.includes('20')) mult = 2;
-                                  calculatedPrice = Math.round((product.numericPrice * mult) / 500) * 500;
-                                }
-                                setSelectedCakePortions({
-                                  ...selectedCakePortions,
-                                  [product.id]: { label: selectedLabel, price: calculatedPrice }
-                                });
-                              }}
-                              className="w-full p-1.5 rounded-lg border border-purple-200 bg-white font-bold text-gray-800 text-[11px] outline-none"
-                            >
-                              {product.portions && product.portions.length > 0 ? (
-                                product.portions.map((port: any, pIdx: number) => (
-                                  <option key={pIdx} value={port.label}>
-                                    {port.label} ({port.price.toLocaleString('fr-FR')} FCFA)
-                                  </option>
-                                ))
-                              ) : (
-                                <>
-                                  <option value="6-8 parts">6 à 8 parts ({product.numericPrice.toLocaleString('fr-FR')} FCFA)</option>
-                                  <option value="8-10 parts">8 à 10 parts ({Math.round(product.numericPrice * 1.25).toLocaleString('fr-FR')} FCFA)</option>
-                                  <option value="10-12 parts">10 à 12 parts ({Math.round(product.numericPrice * 1.5).toLocaleString('fr-FR')} FCFA)</option>
-                                  <option value="15-20 parts">15 à 20 parts ({Math.round(product.numericPrice * 2).toLocaleString('fr-FR')} FCFA)</option>
-                                </>
-                              )}
-                            </select>
-                          </div>
-                        )}
   
                         <div className="text-base font-extrabold text-[#581C87]">
-                          {selectedCakePortions[product.id] ? `${selectedCakePortions[product.id].price.toLocaleString('fr-FR')} FCFA` : product.price}
+                          {product.price}
                         </div>
                       </div>
                     </div>

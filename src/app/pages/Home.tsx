@@ -1,18 +1,18 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import { Link, useNavigate } from 'react-router-dom';
-import { 
-  ArrowRight, 
-  ShieldCheck, 
-  Heart, 
-  Clock, 
-  Sparkles, 
-  Gift, 
-  Cake, 
-  Package, 
-  UtensilsCrossed, 
-  Copy, 
-  CheckCircle2, 
+import {
+  ArrowRight,
+  ShieldCheck,
+  Heart,
+  Clock,
+  Sparkles,
+  Gift,
+  Cake,
+  Package,
+  UtensilsCrossed,
+  Copy,
+  CheckCircle2,
   ChevronRight,
   Crown,
   ShoppingBag,
@@ -276,9 +276,7 @@ export function Home() {
           viewport={{ once: true }}
           className="text-center mb-16"
         >
-          <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold bg-purple-100 text-[#581C87] uppercase tracking-wider mb-3">
-            <Sparkles size={13} /> Univers Gourmands
-          </span>
+
           <h2 className="text-3xl sm:text-5xl font-extrabold text-gray-900 tracking-tight">
             Nos produits
           </h2>
@@ -290,7 +288,6 @@ export function Home() {
         {/* Grille des 4 Catégories */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {productCategories.map((cat, idx) => {
-            const IconComp = cat.icon;
             const targetUrl = cat.id === 'gateaux' ? '/sur-commande' : `/catalogue?category=${encodeURIComponent(cat.categoryQuery)}`;
             return (
               <motion.div
@@ -313,32 +310,18 @@ export function Home() {
                       alt={cat.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                    
-                    {/* Badge en haut */}
-                    <span className="absolute top-3.5 left-3.5 px-3 py-1 bg-white/95 backdrop-blur-md rounded-full text-[10px] font-extrabold text-[#581C87] shadow-sm uppercase tracking-wider border border-purple-100">
-                      {cat.tag}
-                    </span>
-
-                    <span className="absolute bottom-3.5 right-3.5 px-2.5 py-0.5 bg-black/50 backdrop-blur-md rounded-full text-[10px] font-semibold text-white">
-                      {cat.badge}
-                    </span>
-
-                    <div className="absolute bottom-3 left-3 flex items-center gap-2 text-white">
-                      <div className="w-8 h-8 rounded-full bg-[#581C87]/90 flex items-center justify-center text-white shadow">
-                        <IconComp size={16} />
-                      </div>
-                      <h3 className="text-lg font-extrabold drop-shadow-md">
-                        {cat.title}
-                      </h3>
-                    </div>
                   </div>
 
                   {/* Corps de la carte */}
                   <div className="p-6 flex-1 flex flex-col justify-between">
-                    <p className="text-xs sm:text-sm text-gray-600 font-light leading-relaxed mb-6">
-                      {cat.description}
-                    </p>
+                    <div>
+                      <h3 className="text-lg font-extrabold text-gray-900 group-hover:text-[#581C87] transition mb-2">
+                        {cat.title}
+                      </h3>
+                      <p className="text-xs sm:text-sm text-gray-600 font-light leading-relaxed mb-6">
+                        {cat.description}
+                      </p>
+                    </div>
 
                     {/* Bouton Pill visuel pour explorer la catégorie */}
                     <div
@@ -360,7 +343,7 @@ export function Home() {
             to="/catalogue"
             className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-[#581C87] hover:bg-[#6B21A8] text-white font-extrabold text-sm shadow-xl shadow-purple-950/20 transition-all flex items-center justify-center gap-2 transform hover:-translate-y-0.5 cursor-pointer"
           >
-            <span>Voir tout notre catalogue</span>
+            <span>Voir notre catalogue</span>
             <ArrowRight size={16} />
           </Link>
 
@@ -369,7 +352,7 @@ export function Home() {
             className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-white hover:bg-purple-50 text-[#581C87] font-extrabold text-sm border-2 border-[#581C87] transition-all flex items-center justify-center gap-2 transform hover:-translate-y-0.5 cursor-pointer"
           >
             <Cake size={16} />
-            <span>Personnaliser un gâteau</span>
+            <span>Commander un gâteau</span>
           </Link>
         </div>
       </section>
@@ -384,7 +367,7 @@ export function Home() {
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          
+
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -423,33 +406,19 @@ export function Home() {
                         alt={item.name}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-
-                      {/* Tag Signature */}
-                      <span className="absolute top-3 left-3 px-3 py-1 bg-gradient-to-r from-[#D4AF37] to-amber-300 text-purple-950 text-[10px] font-black rounded-full uppercase tracking-wider shadow-md">
-                        {item.tag}
-                      </span>
-
-                      {/* Catégorie */}
-                      <span className="absolute top-3 right-3 px-2.5 py-0.5 bg-black/60 backdrop-blur-md rounded-full text-[10px] font-semibold text-white">
-                        {item.category}
-                      </span>
-
-                      <div className="absolute bottom-3 left-3 right-3">
-                        <h3 className="text-base sm:text-lg font-black text-white drop-shadow leading-snug line-clamp-1">
-                          {item.name}
-                        </h3>
-                        <div className="text-amber-300 text-sm font-black mt-0.5">
-                          {item.price}
-                        </div>
-                      </div>
                     </div>
 
-                    {/* Description */}
+                    {/* Titre, Description & Prix */}
                     <div className="p-5">
-                      <p className="text-xs text-purple-100/80 font-light leading-relaxed line-clamp-2">
+                      <h3 className="text-base sm:text-lg font-black text-white leading-snug line-clamp-1 mb-1.5">
+                        {item.name}
+                      </h3>
+                      <p className="text-xs text-purple-100/80 font-light leading-relaxed line-clamp-2 mb-3">
                         {item.description}
                       </p>
+                      <div className="text-amber-300 text-sm font-black">
+                        {item.price}
+                      </div>
                     </div>
                   </div>
 
@@ -469,11 +438,10 @@ export function Home() {
                         <button
                           type="button"
                           onClick={() => handleAddSignatureToCart(item, false)}
-                          className={`flex-1 py-2.5 px-3 rounded-full font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                            isAdded
-                              ? 'bg-emerald-500 text-white shadow-md'
-                              : 'bg-white/15 hover:bg-white/25 text-white border border-white/20'
-                          }`}
+                          className={`flex-1 py-2.5 px-3 rounded-full font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${isAdded
+                            ? 'bg-emerald-500 text-white shadow-md'
+                            : 'bg-white/15 hover:bg-white/25 text-white border border-white/20'
+                            }`}
                         >
                           {isAdded ? (
                             <>
@@ -522,7 +490,7 @@ export function Home() {
       {/* ========================================================================= */}
       <section id="promotions-evenements" className="bg-gradient-to-b from-white via-purple-50/40 to-white py-20 sm:py-24 border-t border-purple-100/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          
+
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
