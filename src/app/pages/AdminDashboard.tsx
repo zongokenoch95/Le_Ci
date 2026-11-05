@@ -836,19 +836,7 @@ export function AdminDashboard() {
                 </button>
 
                 <button
-                    onClick={() => setActiveTab('delivery')}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
-                      activeTab === 'delivery'
-                        ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30'
-                        : 'text-gray-300 hover:bg-white/5 hover:text-white'
-                    }`}
-                  >
-                    <Truck size={17} className={activeTab === 'delivery' ? 'text-purple-300' : ''} />
-                    <span>Tarifs Livraison</span>
-                  </button>
-
-                  <button
-                    onClick={() => setActiveTab('simulator')}
+                  onClick={() => setActiveTab('simulator')}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
                     activeTab === 'simulator' ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30'
                       : 'text-gray-300 hover:bg-white/5 hover:text-white'
@@ -1032,6 +1020,7 @@ export function AdminDashboard() {
 
                 const backupPhoneMatch = notesStr.match(/Tél secours:\s*([^|\[]+)/i);
                 const addrMatch = notesStr.match(/Adresse:\s*([^|\[]+(?:\|\s*Repère:[^|\[]+)?)/i);
+                const mapUrlMatch = notesStr.match(/(https?:\/\/[^\s|\]]+)/i);
                 const dateMatch = notesStr.match(/Date souhaitée:\s*([^|\[]+)/i);
 
                 const payerNameVal = order.payerName || (notesStr.match(/Payeur:\s*([^|(]+?)\s*\(/i)?.[1]?.trim()) || 'En attente de saisie';
@@ -1164,7 +1153,7 @@ export function AdminDashboard() {
                         </div>
                       </div>
 
-                      {/* SECTION 2 : Détails financiers (Prix des pâtisseries, Frais de livraison avec +, Carte de vœux, Montant total) */}
+                      {/* SECTION 2 : Détails financiers (Prix des pâtisseries, Carte de vœux, Montant total) */}
                       <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1.5 text-xs">
                         <div className="text-[11px] font-black uppercase tracking-wider text-[#D4AF37] mb-1">
                           2. Détails de facturation
@@ -1172,10 +1161,6 @@ export function AdminDashboard() {
                         <div className="flex justify-between text-gray-300">
                           <span>Prix des pâtisseries :</span>
                           <span className="font-bold text-white">{itemsSubtotal.toLocaleString('fr-FR')} FCFA</span>
-                        </div>
-                        <div className="flex justify-between text-gray-300">
-                          <span>Frais de livraison :</span>
-                          <span className="font-bold text-amber-300">+{calcDelivFee.toLocaleString('fr-FR')} FCFA</span>
                         </div>
                         {hasCard && (
                           <div className="flex justify-between text-gray-300">
@@ -1207,6 +1192,16 @@ export function AdminDashboard() {
                         <div className="text-gray-200">
                           <span className="text-gray-400 font-semibold">Lieu / Adresse :</span>{' '}
                           <span>{addrMatch ? addrMatch[1].trim() : (isDelivery ? 'Livraison à domicile' : 'Retrait à l\'atelier')}</span>
+                          {mapUrlMatch && (
+                            <a
+                              href={mapUrlMatch[1]}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="ml-2 inline-flex items-center gap-1 text-[#D4AF37] hover:underline font-bold"
+                            >
+                              📍 Ouvrir dans Google Maps ↗
+                            </a>
+                          )}
                         </div>
                         {dateMatch && (
                           <div className="text-gray-200">

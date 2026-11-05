@@ -804,36 +804,17 @@ export async function createOrder(data) {
   const items = data.items || [];
   const itemsJson = JSON.stringify(items);
   
-  // Sécurité renforcée Notion 28/10/26 :
-  // Le calcul du montant total et de la livraison est vérifié et validé côté serveur
+  // Les frais de livraison sont supprimés de la facture (discutés directement entre le client et le livreur)
   const itemsTotal = items.reduce((acc, it) => acc + (Number(it.price) || 0) * (Number(it.quantity) || 1), 0);
-  let serverDeliveryFee = 0;
-  let distanceKm = 0;
-
-  const isDelivery = data.deliveryType === 'livraison' || (data.notes && data.notes.includes('Livraison')) || data.customerLat || data.manualDistanceKm;
-  if (isDelivery && data.deliveryType !== 'sur_place') {
-    if (data.deliveryFee !== undefined && !isNaN(Number(data.deliveryFee)) && Number(data.deliveryFee) >= 0) {
-      serverDeliveryFee = Math.round(Number(data.deliveryFee));
-      distanceKm = Number(data.distanceKm || data.manualDistanceKm || 3.5);
-    } else {
-      const deliveryCalc = await calculateDeliveryFee({
-        customerLat: data.customerLat,
-        customerLng: data.customerLng,
-        totalCartAmount: itemsTotal,
-        manualDistanceKm: data.manualDistanceKm || data.distanceKm
-      });
-      serverDeliveryFee = deliveryCalc.deliveryFee;
-      distanceKm = deliveryCalc.distanceKm;
-    }
-  }
+  const serverDeliveryFee = 0;
 
   const cardSupplement = data.hasGreetingCard ? 200 : 0;
   const discountAmount = Math.max(0, Number(data.discountAmount || 0));
   
-  // Si le calcul serveur est possible, garantir que le montant total n'est pas manipulable côté client
+  // Garantir que le montant total correspond aux articles + carte de vœux - remise fidélité (sans frais de livraison)
   let finalAmount = parseInt(data.montantTotal || data.amount || 0, 10);
   if (itemsTotal > 0) {
-    const verifiedTotal = Math.max(0, itemsTotal + serverDeliveryFee + cardSupplement - discountAmount);
+    const verifiedTotal = Math.max(0, itemsTotal + cardSupplement - discountAmount);
     finalAmount = verifiedTotal;
   }
 

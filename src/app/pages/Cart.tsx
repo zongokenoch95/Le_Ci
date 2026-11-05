@@ -33,13 +33,9 @@ import {
   createOrder, 
   getLoyaltyMember, 
   redeemLoyaltyPoints, 
-  LoyaltyMember,
-  getDeliverySettings,
-  calculateDeliveryFee,
-  DeliverySettings
+  LoyaltyMember
 } from '../services/api';
 import { validateBurkinaPhone } from '../utils/phoneValidation';
-import { DeliveryMapPicker, DeliveryLocationData } from '../components/DeliveryMapPicker';
 
 // Options de parts et saveurs standards pour les gâteaux catalogue
 const cakePortions = [
@@ -92,14 +88,9 @@ export const Cart: React.FC = () => {
   const [recipientName, setRecipientName] = useState<string>(savedPref?.customerName || '');
   const [backupPhone, setBackupPhone] = useState<string>(savedPref?.backupPhone || '');
 
-  // 4. Lieu & Livraison au kilomètre (Notion 28/10/26 : GPS ou carte)
-  const [deliveryAddress, setDeliveryAddress] = useState<string>(savedPref?.deliveryAddress || '');
-  const [deliveryLandmark, setDeliveryLandmark] = useState<string>(savedPref?.deliveryLandmark || '');
-  const [deliveryLocation, setDeliveryLocation] = useState<DeliveryLocationData | null>(null);
-  const [distanceKm, setDistanceKm] = useState<number>(savedPref?.distanceKm || 3.5);
-  const [deliverySettings, setDeliverySettings] = useState<DeliverySettings | null>(null);
-  const [deliveryFee, setDeliveryFee] = useState<number>(savedPref?.deliveryFee || 1000);
-  const [isFreeDelivery, setIsFreeDelivery] = useState(false);
+  // 4. Lieu de livraison : 2 champs uniquement (Quartier facultatif ou Lien Google Maps)
+  const [deliveryQuarter, setDeliveryQuarter] = useState<string>(savedPref?.deliveryQuarter || '');
+  const [deliveryMapLink, setDeliveryMapLink] = useState<string>(savedPref?.deliveryMapLink || '');
 
   // 5. Options pour gâteaux standards du catalogue
   const [cakeOptions, setCakeOptions] = useState<{ [itemId: string | number]: { portion: string; flavor: string } }>({});
@@ -144,25 +135,6 @@ export const Cart: React.FC = () => {
     }
   };
 
-  // Chargement des paramètres de livraison
-  useEffect(() => {
-    getDeliverySettings()
-      .then(settings => {
-        if (settings) {
-          setDeliverySettings(settings);
-        }
-      })
-      .catch(err => console.warn('Erreur barème livraison:', err));
-  }, []);
-
-  useEffect(() => {
-    if (deliverySettings && deliverySettings.free_threshold > 0 && totalAmount >= deliverySettings.free_threshold) {
-      setIsFreeDelivery(true);
-    } else {
-      setIsFreeDelivery(false);
-    }
-  }, [totalAmount, deliverySettings]);
-
   // Recherche automatique membre fidélité dès 8 chiffres
   useEffect(() => {
     const cleanPhone = recipientPhone.replace(/\D/g, '').slice(-8);
@@ -189,7 +161,7 @@ export const Cart: React.FC = () => {
     }
   }, [recipientPhone, totalAmount]);
 
-  // Calcul réductions & frais de livraison effectifs
+  // Calcul réductions (frais de livraison supprimés : discutés après entre le client et le livreur)
   const pointValue = memberInfo?.settings?.point_value_fcfa || 1;
   const loyaltyDiscount = useLoyaltyPoints ? pointsToUse * pointValue : 0;
   const tierDiscountPercent = memberInfo?.tier === 'GOLD' 
@@ -197,12 +169,11 @@ export const Cart: React.FC = () => {
     : (memberInfo?.tier === 'SILVER' ? (memberInfo.settings?.silver_discount_percent || 5) : 0);
   const tierDiscountAmount = Math.round((totalAmount * tierDiscountPercent) / 100);
   const cardSupplement = hasGreetingCard ? 200 : 0;
-  const effectiveDeliveryFee = deliveryType === 'sur_place' ? 0 : (isFreeDelivery ? 0 : deliveryFee);
 
-  // Montant Net Total (incluant systématiquement les frais de livraison)
-  const finalAmountToPay = Math.max(0, totalAmount + effectiveDeliveryFee + cardSupplement - loyaltyDiscount - tierDiscountAmount);
+  // Montant Net Total (sans frais de livraison)
+  const finalAmountToPay = Math.max(0, totalAmount + cardSupplement - loyaltyDiscount - tierDiscountAmount);
 
-  // Validation du formulaire de panier (Conformité téléphonique BF & Livraison, Notion 28/10/26)
+  // Validation du formulaire de panier
   const validateCartCheckout = () => {
     // Vérification de la date et heure de réception
     if (!deliveryDate) {
@@ -230,10 +201,6 @@ export const Cart: React.FC = () => {
       }
     }
 
-    if (deliveryType === 'livraison' && !deliveryAddress.trim()) {
-      setSingleError('deliveryAddress', 'Veuillez choisir votre mode de livraison (Votre position actuelle ou Un autre endroit).', 'field-cart-address');
-      return false;
-    }
     if (hasGreetingCard && !cardMessage.trim()) {
       setSingleError('cardMessage', 'Veuillez rédiger le mot à inscrire sur la carte de vœux.', 'field-cart-cardMessage');
       return false;
@@ -257,13 +224,16 @@ export const Cart: React.FC = () => {
     setErrorMsg('');
 
     try {
-      const fullDeliveryAddress = [
-        deliveryAddress.trim(),
-        deliveryLandmark.trim() ? `Repère: ${deliveryLandmark.trim()}` : ''
-      ].filter(Boolean).join(' | ');
+      const deliveryParts = [
+        deliveryQuarter.trim() ? `Quartier: ${deliveryQuarter.trim()}` : '',
+        deliveryMapLink.trim() ? `Lien Maps: ${deliveryMapLink.trim()}` : ''
+      ].filter(Boolean);
+      const fullDeliveryAddress = deliveryParts.length > 0
+        ? deliveryParts.join(' — ')
+        : 'Livraison à domicile (à convenir avec le livreur)';
 
       const finalNotes = [
-        `Mode: ${deliveryType === 'livraison' ? `Livraison (${distanceKm} km - ${effectiveDeliveryFee} FCFA)` : 'Retrait atelier'}`,
+        `Mode: ${deliveryType === 'livraison' ? 'Livraison à domicile' : 'Retrait atelier'}`,
         `Date souhaitée: ${deliveryDate} (${deliveryTimeSlot})`,
         `Réceptionnaire: ${recipientPhone.trim()}`,
         backupPhone.trim() ? `Tél secours: ${backupPhone.trim()}` : '',
@@ -274,7 +244,6 @@ export const Cart: React.FC = () => {
         orderNotes.trim() ? `Notes spéciales: ${orderNotes.trim()}` : ''
       ].filter(Boolean).join(' | ');
 
-      // Sécurité Notion 28/10/26 : Envoi des paramètres de livraison au serveur pour calcul et validation sécurisée
       const order = await createOrder({
         customerName: memberInfo?.name || `Client (${recipientPhone.trim()})`,
         customerPhone: recipientPhone.trim(),
@@ -300,11 +269,7 @@ export const Cart: React.FC = () => {
         modePaiement: 'orange_money',
         notes: finalNotes,
         deliveryType,
-        customerLat: deliveryLocation?.lat || undefined,
-        customerLng: deliveryLocation?.lng || undefined,
-        distanceKm,
-        manualDistanceKm: distanceKm,
-        deliveryFee: effectiveDeliveryFee,
+        deliveryFee: 0,
         hasGreetingCard,
         discountAmount: loyaltyDiscount + tierDiscountAmount
       });
@@ -560,7 +525,7 @@ export const Cart: React.FC = () => {
                     <Truck size={22} className="shrink-0 text-[#581C87]" />
                     <div>
                       <div className="font-extrabold text-xs sm:text-sm">Livraison à domicile</div>
-                      <div className="text-[11px] text-gray-500 font-light mt-0.5">Calculée selon le barème kilométrique</div>
+                      <div className="text-[11px] text-gray-500 font-light mt-0.5">Frais de livraison discutés avec le livreur</div>
                     </div>
                   </button>
 
@@ -575,7 +540,7 @@ export const Cart: React.FC = () => {
                   >
                     <Store size={22} className="shrink-0 text-[#581C87]" />
                     <div>
-                      <div className="font-extrabold text-xs sm:text-sm">Retrait à l'atelier (Gratuit)</div>
+                      <div className="font-extrabold text-xs sm:text-sm">Retrait à l'atelier</div>
                       <div className="text-[11px] text-gray-500 font-light mt-0.5">Emballage soigné & prêt à l'heure</div>
                     </div>
                   </button>
@@ -750,34 +715,46 @@ export const Cart: React.FC = () => {
                 </div>
               </div>
 
-              {/* 5. LIEU DE LIVRAISON (si livraison choisie, Notion 28/10/26 : GPS ou Carte) */}
+              {/* 5. LIEU DE LIVRAISON (2 champs : Quartier facultatif ou Lien Google Maps du lieu) */}
               {deliveryType === 'livraison' && (
                 <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm" id="field-cart-address">
                   <h2 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
                     <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">5</span>
-                    Lieu & Adresse de livraison
+                    Lieu de livraison
                   </h2>
-                  <p className="text-xs text-gray-500 mb-4 font-light">
-                    Indiquez votre quartier par GPS ou sur la carte avec vos repères pour le livreur.
+                  <p className="text-xs text-gray-500 mb-5 font-light">
+                    Indiquez votre quartier (facultatif) ou collez le lien Google Maps du lieu de livraison. Les frais de livraison seront discutés après entre vous et le livreur.
                   </p>
 
-                  <DeliveryMapPicker
-                    totalCartAmount={totalAmount}
-                    initialAddress={deliveryAddress}
-                    initialLandmark={deliveryLandmark}
-                    initialDistanceKm={distanceKm}
-                    initialFee={deliveryFee}
-                    error={fieldErrors.deliveryAddress}
-                    onChange={(loc) => {
-                      setDeliveryAddress(loc.address);
-                      setDeliveryLandmark(loc.landmark);
-                      setDeliveryLocation(loc);
-                      setDistanceKm(loc.distanceKm);
-                      setDeliveryFee(loc.deliveryFee);
-                      setIsFreeDelivery(loc.isFree);
-                      clearFieldError('deliveryAddress');
-                    }}
-                  />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
+                        <MapPin size={14} className="text-[#581C87]" />
+                        <span>Quartier <span className="text-[11px] font-normal text-gray-400">(facultatif)</span></span>
+                      </label>
+                      <input
+                        type="text"
+                        value={deliveryQuarter}
+                        onChange={(e) => setDeliveryQuarter(e.target.value)}
+                        placeholder="Ex : Ouaga 2000, Karpala, Patte d'Oie..."
+                        className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm bg-white transition"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
+                        <Navigation size={14} className="text-[#581C87]" />
+                        <span>Coller un lien Google Maps du lieu</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={deliveryMapLink}
+                        onChange={(e) => setDeliveryMapLink(e.target.value)}
+                        placeholder="Ex : https://maps.app.goo.gl/..."
+                        className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm bg-white transition"
+                      />
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -863,21 +840,6 @@ export const Cart: React.FC = () => {
                   <div className="flex justify-between">
                     <span>Sous-total articles :</span>
                     <span className="font-bold text-gray-900">{totalAmount.toLocaleString('fr-FR')} FCFA</span>
-                  </div>
-
-                  <div className="flex justify-between items-center">
-                    <span>Frais de livraison ({deliveryType === 'sur_place' ? 'Retrait atelier' : (deliveryAddress || `${distanceKm} km`)}) :</span>
-                    <span className="font-bold text-gray-900">
-                      {deliveryType === 'sur_place' ? (
-                        <span className="text-emerald-700 font-extrabold">Gratuit</span>
-                      ) : (
-                        isFreeDelivery ? (
-                          <span className="text-emerald-700 font-extrabold">Offerte (Seuil atteint)</span>
-                        ) : (
-                          <span className="text-[#581C87] font-extrabold">+{effectiveDeliveryFee.toLocaleString('fr-FR')} FCFA</span>
-                        )
-                      )}
-                    </span>
                   </div>
 
                   {hasGreetingCard && (

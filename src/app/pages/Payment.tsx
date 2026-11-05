@@ -613,7 +613,7 @@ export function Payment() {
                   })}
                 </div>
 
-                {/* SECTION 2 : Prix des pâtisseries, Frais de livraison (+), Carte de vœux, Montant total */}
+                {/* SECTION 2 : Prix des pâtisseries, Carte de vœux, Montant total */}
                 <div className="pt-3 border-t border-gray-200 space-y-1.5 text-xs sm:text-sm">
                   <h4 className="text-[11px] font-black uppercase tracking-wider text-[#581C87] mb-2">
                     2. Récapitulatif financier
@@ -621,12 +621,6 @@ export function Payment() {
                   <div className="flex justify-between py-0.5">
                     <span className="text-gray-600">Prix des pâtisseries :</span>
                     <span className="font-bold text-gray-900">{itemsSubtotal.toLocaleString('fr-FR')} FCFA</span>
-                  </div>
-                  <div className="flex justify-between py-0.5">
-                    <span className="text-gray-600">Frais de livraison :</span>
-                    <span className="font-bold text-gray-900">
-                      +{calculatedDeliveryFee.toLocaleString('fr-FR')} FCFA
-                    </span>
                   </div>
                   {hasCard && (
                     <div className="flex justify-between py-0.5">
@@ -775,21 +769,14 @@ export function Payment() {
                     })}
                   </div>
 
-                  {/* SECTION 2 : Prix des pâtisseries, Frais de livraison (+ devant), Carte de vœux, Montant total */}
+                  {/* SECTION 2 : Prix des pâtisseries, Carte de vœux, Montant total */}
                   <div className="pt-3 border-t border-purple-200/70 space-y-2">
                     <div className="text-[11px] font-black uppercase tracking-wider text-[#581C87]">
-                      2. Montants & Livraison
+                      2. Montants
                     </div>
                     <div className="flex justify-between items-center text-xs sm:text-sm text-gray-700">
                       <span>Prix des pâtisseries :</span>
                       <span className="font-bold text-gray-900">{itemsSubtotal.toLocaleString('fr-FR')} FCFA</span>
-                    </div>
-
-                    <div className="flex justify-between items-center text-xs sm:text-sm text-gray-700">
-                      <span>Frais de livraison :</span>
-                      <span className="font-bold text-[#581C87]">
-                        +{calculatedDeliveryFee.toLocaleString('fr-FR')} FCFA
-                      </span>
                     </div>
 
                     {hasCard && (
