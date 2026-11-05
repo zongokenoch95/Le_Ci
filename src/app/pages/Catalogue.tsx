@@ -7,8 +7,8 @@ import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { useCart } from '../context/CartContext';
 import { getProducts, getProductCategories, Product } from '../services/api';
 
-// Les catégories officielles par défaut vendues dans le catalogue de produits (hors Gâteaux)
-const defaultCategories = ['Tous', 'Signature de la maison', 'Douceurs salés', 'Douceurs sucrées', 'Paquets'];
+// Les catégories officielles par défaut vendues par la maison Lê Ci
+const defaultCategories = ['Tous', 'Signature de la maison', 'Douceurs salés', 'Douceurs sucrées', 'Paquets', 'Gâteaux'];
 
 const isCakeCategory = (cat?: string) => Boolean(cat && /g[aâ]teau/i.test(cat.trim()));
 
@@ -342,7 +342,13 @@ export function Catalogue() {
             {categories.map((category) => (
               <button
                 key={category}
-                onClick={() => setSelectedCategory(category)}
+                onClick={() => {
+                  if (isCakeCategory(category)) {
+                    navigate('/sur-commande');
+                  } else {
+                    setSelectedCategory(category);
+                  }
+                }}
                 className={`px-6 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                   selectedCategory === category
                     ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30 scale-105'
