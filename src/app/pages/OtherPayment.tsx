@@ -503,8 +503,8 @@ export function OtherPayment() {
                     {/* Opérateur opérationnel (§10.8) */}
                     <div className="p-4 rounded-2xl border-2 border-[#FF6600] bg-orange-50/40 flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="h-11 px-2.5 rounded-xl bg-white border border-gray-100 flex items-center justify-center shadow-sm">
-                          <img src="/img/orange-money.svg" alt="Orange Money" className="h-7 w-auto object-contain" />
+                        <div className="w-12 h-12 rounded-2xl bg-white border border-gray-100 flex items-center justify-center shadow-sm p-1 overflow-hidden">
+                          <img src="/img/Orange.jpg" alt="Orange Money" className="w-full h-full object-contain" />
                         </div>
                         <div>
                           <span className="font-extrabold text-sm block text-gray-900">Orange Money Burkina Faso</span>

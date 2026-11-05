@@ -838,8 +838,8 @@ export function Payment() {
                         }`}
                       >
                         <div className="flex items-center justify-between mb-3">
-                          <div className="h-11 px-2.5 rounded-xl bg-white border border-gray-100 flex items-center justify-center shadow-sm">
-                            <img src="/img/orange-money.svg" alt="Orange Money" className="h-7 w-auto object-contain" />
+                          <div className="w-12 h-12 rounded-2xl bg-white border border-gray-100 flex items-center justify-center shadow-sm p-1 overflow-hidden">
+                            <img src="/img/Orange.jpg" alt="Orange Money" className="w-full h-full object-contain" />
                           </div>
                           {selectedOperator === 'orange' && <CheckCircle2 size={18} className="text-[#FF6600]" />}
                         </div>
@@ -860,8 +860,8 @@ export function Payment() {
                         }`}
                       >
                         <div className="flex items-center justify-between mb-3">
-                          <div className="w-11 h-11 rounded-xl bg-white border border-gray-100 flex items-center justify-center shadow-sm p-1">
-                            <img src="/img/moov-money.png" alt="Moov Money" className="w-full h-full object-contain" />
+                          <div className="w-12 h-12 rounded-2xl bg-white border border-gray-100 flex items-center justify-center shadow-sm p-1 overflow-hidden">
+                            <img src="/img/moov.jpg" alt="Moov Money" className="w-full h-full object-contain" />
                           </div>
                           {selectedOperator === 'moov' && <CheckCircle2 size={18} className="text-[#0055A5]" />}
                         </div>
@@ -882,8 +882,8 @@ export function Payment() {
                         }`}
                       >
                         <div className="flex items-center justify-between mb-3">
-                          <div className="h-11 px-2.5 rounded-xl bg-white border border-gray-100 flex items-center justify-center shadow-sm">
-                            <img src="/img/wave-logo.png" alt="Wave" className="h-7 w-auto object-contain" />
+                          <div className="w-12 h-12 rounded-2xl bg-white border border-gray-100 flex items-center justify-center shadow-sm p-1 overflow-hidden">
+                            <img src="/img/wave.png" alt="Wave" className="w-full h-full object-contain" />
                           </div>
                           {selectedOperator === 'wave' && <CheckCircle2 size={18} className="text-[#1DA1F2]" />}
                         </div>
@@ -1035,15 +1035,15 @@ export function Payment() {
                 <div className="bg-purple-50/70 p-4 rounded-2xl border border-purple-100 flex flex-col gap-3 text-xs sm:text-sm">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="h-10 px-2 rounded-xl bg-white border border-purple-100 flex items-center justify-center shadow-xs shrink-0">
+                      <div className="w-10 h-10 p-1 rounded-xl bg-white border border-purple-100 flex items-center justify-center shadow-xs shrink-0 overflow-hidden">
                         {selectedOperator === 'orange' && (
-                          <img src="/img/orange-money.svg" alt="Orange Money" className="h-6 w-auto object-contain" />
+                          <img src="/img/Orange.jpg" alt="Orange Money" className="w-full h-full object-contain" />
                         )}
                         {selectedOperator === 'moov' && (
-                          <img src="/img/moov-money.png" alt="Moov Money" className="h-7 w-7 object-contain" />
+                          <img src="/img/moov.jpg" alt="Moov Money" className="w-full h-full object-contain" />
                         )}
                         {selectedOperator === 'wave' && (
-                          <img src="/img/wave-logo.png" alt="Wave" className="h-6 w-auto object-contain" />
+                          <img src="/img/wave.png" alt="Wave" className="w-full h-full object-contain" />
                         )}
                       </div>
                       <div>
