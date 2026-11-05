@@ -838,8 +838,8 @@ export function Payment() {
                         }`}
                       >
                         <div className="flex items-center justify-between mb-3">
-                          <div className="w-10 h-10 rounded-2xl bg-[#FF6600] text-white flex items-center justify-center font-black text-xs shadow-sm">
-                            OM
+                          <div className="h-11 px-2.5 rounded-xl bg-white border border-gray-100 flex items-center justify-center shadow-sm">
+                            <img src="/img/orange-money.svg" alt="Orange Money" className="h-7 w-auto object-contain" />
                           </div>
                           {selectedOperator === 'orange' && <CheckCircle2 size={18} className="text-[#FF6600]" />}
                         </div>
@@ -860,8 +860,8 @@ export function Payment() {
                         }`}
                       >
                         <div className="flex items-center justify-between mb-3">
-                          <div className="w-10 h-10 rounded-2xl bg-[#0055A5] text-white flex items-center justify-center font-black text-xs shadow-sm">
-                            M
+                          <div className="w-11 h-11 rounded-xl bg-white border border-gray-100 flex items-center justify-center shadow-sm p-1">
+                            <img src="/img/moov-money.png" alt="Moov Money" className="w-full h-full object-contain" />
                           </div>
                           {selectedOperator === 'moov' && <CheckCircle2 size={18} className="text-[#0055A5]" />}
                         </div>
@@ -882,8 +882,8 @@ export function Payment() {
                         }`}
                       >
                         <div className="flex items-center justify-between mb-3">
-                          <div className="w-10 h-10 rounded-2xl bg-[#1DA1F2] text-white flex items-center justify-center font-black text-xs shadow-sm">
-                            W
+                          <div className="h-11 px-2.5 rounded-xl bg-white border border-gray-100 flex items-center justify-center shadow-sm">
+                            <img src="/img/wave-logo.png" alt="Wave" className="h-7 w-auto object-contain" />
                           </div>
                           {selectedOperator === 'wave' && <CheckCircle2 size={18} className="text-[#1DA1F2]" />}
                         </div>
@@ -1034,11 +1034,24 @@ export function Payment() {
                 {/* Rappel des coordonnées de transfert saisies + Bouton Payer avec un autre numéro (§10.6.1) */}
                 <div className="bg-purple-50/70 p-4 rounded-2xl border border-purple-100 flex flex-col gap-3 text-xs sm:text-sm">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <span className="text-gray-500 block text-xs">Paiement attendu depuis :</span>
-                      <span className="font-extrabold text-gray-900">
-                        {payerName || 'Client'} ({payerPhone}) • via {selectedOperator === 'orange' ? 'Orange Money' : (selectedOperator === 'moov' ? 'Moov Money' : 'Wave')}
-                      </span>
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 px-2 rounded-xl bg-white border border-purple-100 flex items-center justify-center shadow-xs shrink-0">
+                        {selectedOperator === 'orange' && (
+                          <img src="/img/orange-money.svg" alt="Orange Money" className="h-6 w-auto object-contain" />
+                        )}
+                        {selectedOperator === 'moov' && (
+                          <img src="/img/moov-money.png" alt="Moov Money" className="h-7 w-7 object-contain" />
+                        )}
+                        {selectedOperator === 'wave' && (
+                          <img src="/img/wave-logo.png" alt="Wave" className="h-6 w-auto object-contain" />
+                        )}
+                      </div>
+                      <div>
+                        <span className="text-gray-500 block text-xs">Paiement attendu depuis :</span>
+                        <span className="font-extrabold text-gray-900">
+                          {payerName || 'Client'} ({payerPhone}) • via {selectedOperator === 'orange' ? 'Orange Money' : (selectedOperator === 'moov' ? 'Moov Money' : 'Wave')}
+                        </span>
+                      </div>
                     </div>
                     <button
                       type="button"
