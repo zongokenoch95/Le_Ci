@@ -312,6 +312,27 @@ export async function initDb() {
     } catch (e) {}
   }
 
+  await run(`
+    CREATE TABLE IF NOT EXISTS product_subcategories (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      category_name TEXT NOT NULL,
+      name TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(category_name, name)
+    )
+  `);
+
+  const defaultCakeSubcategories = [
+    ['Gâteaux', 'Anniversaire'],
+    ['Gâteaux', 'Mariage'],
+    ['Gâteaux', 'Autre évènement']
+  ];
+  for (const [catName, subName] of defaultCakeSubcategories) {
+    try {
+      await run(`INSERT OR IGNORE INTO product_subcategories (category_name, name) VALUES (?, ?)`, [catName, subName]);
+    } catch (e) {}
+  }
+
   // Table pour le bandeau d'annonces / promotions défilant
   await run(`
     CREATE TABLE IF NOT EXISTS delivery_settings (
@@ -408,12 +429,13 @@ export async function initDb() {
   
   try {
     await run(`ALTER TABLE products ADD COLUMN portions_json TEXT DEFAULT '[]'`);
-    try {
-      await run(`ALTER TABLE products ADD COLUMN stock_quantity INTEGER DEFAULT 10`);
-    } catch (e) {}
-  } catch (e) {
-    // Colonne déjà existante
-  }
+  } catch (e) {}
+  try {
+    await run(`ALTER TABLE products ADD COLUMN stock_quantity INTEGER DEFAULT 10`);
+  } catch (e) {}
+  try {
+    await run(`ALTER TABLE products ADD COLUMN subcategory TEXT DEFAULT ''`);
+  } catch (e) {}
 
   const prodCount = await get('SELECT COUNT(*) as count FROM products');
   if (prodCount && prodCount.count === 0) {
@@ -611,6 +633,13 @@ export async function initDb() {
     }
     console.log('🥐 [Catalogue] Plats et pâtisseries initialisés dans SQLite.');
   }
+
+  // Attribution par défaut des sous-catégories aux gâteaux existants sans sous-catégorie
+  try {
+    await run(`UPDATE products SET subcategory = 'Mariage' WHERE category = 'Gâteaux' AND (subcategory IS NULL OR subcategory = '') AND (name LIKE '%Mariage%' OR name LIKE '%Pièce Montée%')`);
+    await run(`UPDATE products SET subcategory = 'Autre évènement' WHERE category = 'Gâteaux' AND (subcategory IS NULL OR subcategory = '') AND (name LIKE '%Entremet%' OR name LIKE '%Red Velvet%')`);
+    await run(`UPDATE products SET subcategory = 'Anniversaire' WHERE category = 'Gâteaux' AND (subcategory IS NULL OR subcategory = '')`);
+  } catch (e) {}
 
   console.log('✅ [SQLite] Base de données connectée — orders, audit_logs, fidélisation, récompenses, employés et plats prêts.');
 }
@@ -1719,24 +1748,59 @@ export async function deleteProductCategory(id) {
   return getProductCategories();
 }
 
-export async function createProduct({ name, category, price, description, image, is_available = 1, portions_json, stock_quantity = 10 }) {
+export async function getProductSubcategories(categoryName = null) {
+  if (categoryName) {
+    const rows = await all(
+      'SELECT id, category_name, name, created_at FROM product_subcategories WHERE category_name = ? ORDER BY id ASC',
+      [categoryName.trim()]
+    );
+    return rows || [];
+  }
+  const rows = await all('SELECT id, category_name, name, created_at FROM product_subcategories ORDER BY id ASC');
+  return rows || [];
+}
+
+export async function addProductSubcategory(categoryName, name) {
+  const cleanCat = (categoryName || '').trim();
+  const cleanName = (name || '').trim();
+  if (!cleanCat || !cleanName) {
+    throw new Error('La catégorie parente et le nom de la sous-catégorie sont obligatoires');
+  }
+  await run(
+    'INSERT OR IGNORE INTO product_subcategories (category_name, name) VALUES (?, ?)',
+    [cleanCat, cleanName]
+  );
+  return getProductSubcategories();
+}
+
+export async function deleteProductSubcategory(id) {
+  await run('DELETE FROM product_subcategories WHERE id = ?', [id]);
+  return getProductSubcategories();
+}
+
+export async function createProduct({ name, category, subcategory = '', price, description, image, is_available = 1, portions_json, stock_quantity = 10 }) {
   if (!name || !price) throw new Error('Le nom et le prix du plat sont obligatoires');
   const now = new Date().toISOString();
   const numPrice = Math.max(500, Number(price)); // Minimum 500 FCFA
   const numStock = Math.max(0, parseInt(stock_quantity, 10) || 0);
   const portionsStr = typeof portions_json === 'string' ? portions_json : JSON.stringify(portions_json || []);
   const cleanCategory = category ? category.trim() : 'Gâteaux';
+  const cleanSubcategory = subcategory ? subcategory.trim() : '';
 
   try {
     await run('INSERT OR IGNORE INTO product_categories (name) VALUES (?)', [cleanCategory]);
+    if (cleanSubcategory) {
+      await run('INSERT OR IGNORE INTO product_subcategories (category_name, name) VALUES (?, ?)', [cleanCategory, cleanSubcategory]);
+    }
   } catch (e) {}
 
   const res = await run(`
-    INSERT INTO products (name, category, price, description, image, is_available, portions_json, stock_quantity, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO products (name, category, subcategory, price, description, image, is_available, portions_json, stock_quantity, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `, [
     name.trim(),
     cleanCategory,
+    cleanSubcategory,
     numPrice,
     description ? description.trim() : '',
     image ? image.trim() : 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=1080',
@@ -1750,7 +1814,7 @@ export async function createProduct({ name, category, price, description, image,
   return getProductById(res.lastID);
 }
 
-export async function updateProduct(id, { name, category, price, description, image, is_available, portions_json, stock_quantity }) {
+export async function updateProduct(id, { name, category, subcategory, price, description, image, is_available, portions_json, stock_quantity }) {
   const prod = await getProductById(id);
   if (!prod) throw new Error('Plat introuvable');
 
@@ -1758,11 +1822,20 @@ export async function updateProduct(id, { name, category, price, description, im
   const numPrice = price !== undefined ? Math.max(500, Number(price)) : prod.price;
   const numStock = stock_quantity !== undefined ? Math.max(0, parseInt(stock_quantity, 10) || 0) : (prod.stock_quantity ?? 10);
   const portionsStr = portions_json !== undefined ? (typeof portions_json === 'string' ? portions_json : JSON.stringify(portions_json)) : (prod.portions_json || '[]');
+  const nextCat = category ? category.trim() : prod.category;
+  const nextSub = subcategory !== undefined ? subcategory.trim() : (prod.subcategory || '');
+
+  try {
+    if (nextCat && nextSub) {
+      await run('INSERT OR IGNORE INTO product_subcategories (category_name, name) VALUES (?, ?)', [nextCat, nextSub]);
+    }
+  } catch (e) {}
 
   await run(`
     UPDATE products SET
       name = COALESCE(?, name),
       category = COALESCE(?, category),
+      subcategory = ?,
       price = ?,
       description = COALESCE(?, description),
       image = COALESCE(?, image),
@@ -1773,7 +1846,8 @@ export async function updateProduct(id, { name, category, price, description, im
     WHERE id = ?
   `, [
     name ? name.trim() : prod.name,
-    category ? category.trim() : prod.category,
+    nextCat,
+    nextSub,
     numPrice,
     description !== undefined ? description.trim() : prod.description,
     image !== undefined ? image.trim() : prod.image,

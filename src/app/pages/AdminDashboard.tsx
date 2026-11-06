@@ -86,6 +86,10 @@ import {
   addProductCategory,
   deleteProductCategory,
   ProductCategory,
+  getProductSubcategories,
+  addProductSubcategory,
+  deleteProductSubcategory,
+  ProductSubcategory,
   getAdminDetailedStats,
   Product,
   AdminDetailedStats,
@@ -186,6 +190,15 @@ export function AdminDashboard() {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [addingCategory, setAddingCategory] = useState(false);
   const [categorySuccessMsg, setCategorySuccessMsg] = useState('');
+  const [productSubcategories, setProductSubcategories] = useState<ProductSubcategory[]>([
+    { id: 1, category_name: 'Gâteaux', name: 'Anniversaire' },
+    { id: 2, category_name: 'Gâteaux', name: 'Mariage' },
+    { id: 3, category_name: 'Gâteaux', name: 'Autre évènement' }
+  ]);
+  const [subParentCategory, setSubParentCategory] = useState('Gâteaux');
+  const [newSubcategoryName, setNewSubcategoryName] = useState('');
+  const [addingSubcategory, setAddingSubcategory] = useState(false);
+  const [subcategorySuccessMsg, setSubcategorySuccessMsg] = useState('');
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [productCategoryFilter, setProductCategoryFilter] = useState('Tous');
   const [productSearch, setProductSearch] = useState('');
@@ -199,6 +212,7 @@ export function AdminDashboard() {
   const [productFormData, setProductFormData] = useState({
     name: '',
     category: 'Gâteaux',
+    subcategory: 'Anniversaire',
     price: 1500,
     description: '',
     image: '',
@@ -306,13 +320,17 @@ export function AdminDashboard() {
     if (!isGerant) return;
     try {
       setLoadingProducts(true);
-      const [list, cats] = await Promise.all([
+      const [list, cats, subcats] = await Promise.all([
         getProducts(),
-        getProductCategories().catch(() => [])
+        getProductCategories().catch(() => []),
+        getProductSubcategories().catch(() => [])
       ]);
       setProducts(list);
       if (cats && cats.length > 0) {
         setProductCategories(cats);
+      }
+      if (subcats && subcats.length > 0) {
+        setProductSubcategories(subcats);
       }
     } catch (err) {
       console.error(err);
@@ -350,6 +368,35 @@ export function AdminDashboard() {
       }
     } catch (err: any) {
       alert(err.message || 'Erreur lors de la suppression de la catégorie');
+    }
+  };
+
+  const handleAddSubcategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanSub = newSubcategoryName.trim();
+    if (!cleanSub || !subParentCategory) return;
+    setAddingSubcategory(true);
+    setSubcategorySuccessMsg('');
+    try {
+      const updated = await addProductSubcategory(subParentCategory, cleanSub);
+      setProductSubcategories(updated);
+      setNewSubcategoryName('');
+      setSubcategorySuccessMsg(`Sous-catégorie « ${cleanSub} » ajoutée dans « ${subParentCategory} » !`);
+      setTimeout(() => setSubcategorySuccessMsg(''), 3500);
+    } catch (err: any) {
+      alert(err.message || 'Erreur lors de l\'ajout de la sous-catégorie');
+    } finally {
+      setAddingSubcategory(false);
+    }
+  };
+
+  const handleDeleteSubcategory = async (sub: ProductSubcategory) => {
+    if (!window.confirm(`Supprimer la sous-catégorie « ${sub.name} » (${sub.category_name}) ?`)) return;
+    try {
+      const updated = await deleteProductSubcategory(sub.id);
+      setProductSubcategories(updated);
+    } catch (err: any) {
+      alert(err.message || 'Erreur lors de la suppression de la sous-catégorie');
     }
   };
 
@@ -600,6 +647,7 @@ export function AdminDashboard() {
     setProductFormData({
       name: '',
       category: 'Gâteaux',
+      subcategory: 'Anniversaire',
       price: 1500,
       description: '',
       image: 'https://images.unsplash.com/photo-1582180834946-f3d376b18376?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080',
@@ -630,6 +678,7 @@ export function AdminDashboard() {
     setProductFormData({
       name: p.name,
       category: p.category || 'Gâteaux',
+      subcategory: p.subcategory || '',
       price: p.price,
       description: p.description || '',
       image: p.image || '',
@@ -1548,6 +1597,75 @@ export function AdminDashboard() {
                   </div>
                 ))}
               </div>
+
+              {/* Gestion des sous-catégories par catégorie de plats (ex: Gâteaux -> Anniversaire, Mariage, Autre évènement...) */}
+              <div className="pt-4 mt-3 border-t border-white/10 space-y-3">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                  <div>
+                    <h4 className="text-xs font-extrabold text-[#D4AF37] uppercase tracking-wider flex items-center gap-2">
+                      <Sparkles size={14} className="text-[#D4AF37]" />
+                      <span>Sous-catégories par catégorie de plats ({productSubcategories.length})</span>
+                    </h4>
+                    <p className="text-[11px] text-gray-400">
+                      Créez des sous-catégories pour chaque catégorie de plats (ex : pour <strong>Gâteaux</strong> : Anniversaire, Mariage, Baptême, Autre évènement...).
+                    </p>
+                  </div>
+
+                  <form onSubmit={handleAddSubcategory} className="flex flex-wrap items-center gap-2">
+                    <select
+                      value={subParentCategory}
+                      onChange={(e) => setSubParentCategory(e.target.value)}
+                      className="px-3 py-2 bg-[#0F172A] border border-gray-700 rounded-xl text-white text-xs focus:ring-2 focus:ring-[#D4AF37] focus:outline-none"
+                    >
+                      {productCategories.map(c => (
+                        <option key={c.id} value={c.name}>{c.name}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="text"
+                      value={newSubcategoryName}
+                      onChange={(e) => setNewSubcategoryName(e.target.value)}
+                      placeholder="Nouvelle sous-catégorie (ex: Baptême)..."
+                      className="px-3.5 py-2 bg-[#0F172A] border border-gray-700 rounded-xl text-white text-xs focus:ring-2 focus:ring-[#D4AF37] focus:outline-none min-w-[210px]"
+                    />
+                    <button
+                      type="submit"
+                      disabled={addingSubcategory || !newSubcategoryName.trim()}
+                      className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+                    >
+                      <Plus size={14} />
+                      <span>{addingSubcategory ? 'Ajout...' : 'Ajouter la sous-catégorie'}</span>
+                    </button>
+                  </form>
+                </div>
+
+                {subcategorySuccessMsg && (
+                  <div className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                    <CheckCircle2 size={14} />
+                    <span>{subcategorySuccessMsg}</span>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {productSubcategories.map(sub => (
+                    <div
+                      key={sub.id}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-purple-500/15 border border-purple-400/30 text-xs text-purple-200 font-semibold"
+                    >
+                      <span className="text-[10px] text-purple-300/80 uppercase font-bold">{sub.category_name} ›</span>
+                      <span className="text-white font-bold">{sub.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteSubcategory(sub)}
+                        title={`Supprimer la sous-catégorie ${sub.name}`}
+                        className="text-purple-300 hover:text-rose-400 transition cursor-pointer ml-1"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {/* Filtres et recherche plats */}
@@ -1600,7 +1718,7 @@ export function AdminDashboard() {
                           className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                         />
                         <span className="absolute top-2 left-2 px-2.5 py-0.5 rounded-full bg-black/70 backdrop-blur-md text-[10px] font-bold text-[#D4AF37]">
-                          {product.category}
+                          {product.category}{product.subcategory ? ` › ${product.subcategory}` : ''}
                         </span>
                       </div>
 
@@ -2320,14 +2438,22 @@ export function AdminDashboard() {
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
                     Catégorie
                   </label>
                   <select
                     value={productFormData.category}
-                    onChange={(e) => setProductFormData({ ...productFormData, category: e.target.value })}
+                    onChange={(e) => {
+                      const nextCat = e.target.value;
+                      const matchingSubs = productSubcategories.filter(s => s.category_name === nextCat);
+                      setProductFormData({
+                        ...productFormData,
+                        category: nextCat,
+                        subcategory: matchingSubs.length > 0 ? matchingSubs[0].name : ''
+                      });
+                    }}
                     className="w-full px-3 py-2.5 bg-[#0F172A] border border-gray-700 rounded-xl text-white text-xs"
                   >
                     {Array.from(new Set([...productCategories.map(c => c.name), productFormData.category].filter(Boolean))).map(catName => (
@@ -2338,6 +2464,33 @@ export function AdminDashboard() {
                   </select>
                 </div>
 
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                    Sous-catégorie ({productFormData.category})
+                  </label>
+                  <select
+                    value={productFormData.subcategory}
+                    onChange={(e) => setProductFormData({ ...productFormData, subcategory: e.target.value })}
+                    className="w-full px-3 py-2.5 bg-[#0F172A] border border-gray-700 rounded-xl text-white text-xs"
+                  >
+                    <option value="">— Aucune / Général —</option>
+                    {Array.from(
+                      new Set([
+                        ...productSubcategories
+                          .filter(s => s.category_name === productFormData.category)
+                          .map(s => s.name),
+                        productFormData.subcategory
+                      ].filter(Boolean))
+                    ).map(subName => (
+                      <option key={subName} value={subName}>
+                        {subName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
                     Prix de base (FCFA)

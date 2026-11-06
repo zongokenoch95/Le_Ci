@@ -612,6 +612,7 @@ export interface Product {
   id: number;
   name: string;
   category: string;
+  subcategory?: string;
   price: number;
   description?: string;
   image?: string;
@@ -695,6 +696,50 @@ export async function deleteProductCategory(id: number): Promise<ProductCategory
   return data.categories || [];
 }
 
+export interface ProductSubcategory {
+  id: number;
+  category_name: string;
+  name: string;
+  created_at?: string;
+}
+
+export async function getProductSubcategories(category?: string): Promise<ProductSubcategory[]> {
+  const url = category
+    ? `${API_BASE}/product-subcategories?category=${encodeURIComponent(category)}`
+    : `${API_BASE}/product-subcategories`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Erreur chargement des sous-catégories');
+  const data = await res.json();
+  return data.subcategories || [];
+}
+
+export async function addProductSubcategory(category_name: string, name: string): Promise<ProductSubcategory[]> {
+  const res = await fetch(`${API_BASE}/product-subcategories`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ category_name, name })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Erreur lors de l\'ajout de la sous-catégorie');
+  }
+  const data = await res.json();
+  return data.subcategories || [];
+}
+
+export async function deleteProductSubcategory(id: number): Promise<ProductSubcategory[]> {
+  const res = await fetch(`${API_BASE}/product-subcategories/${id}`, {
+    method: 'DELETE',
+    headers: authHeaders()
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Erreur lors de la suppression de la sous-catégorie');
+  }
+  const data = await res.json();
+  return data.subcategories || [];
+}
+
 export async function getProducts(options?: { available?: boolean }): Promise<Product[]> {
   const url = options?.available ? `${API_BASE}/products?available=true` : `${API_BASE}/products`;
   const res = await fetch(url);
@@ -705,10 +750,13 @@ export async function getProducts(options?: { available?: boolean }): Promise<Pr
 export async function createProduct(data: {
   name: string;
   category: string;
+  subcategory?: string;
   price: number;
   description?: string;
   image?: string;
   is_available?: boolean | number;
+  portions_json?: string;
+  stock_quantity?: number;
 }): Promise<{ success: boolean; product: Product; message: string }> {
   const res = await fetch(`${API_BASE}/products`, {
     method: 'POST',

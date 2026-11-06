@@ -949,6 +949,38 @@ app.delete('/api/product-categories/:id', authenticateJwt, requireRole(['gerant'
   }
 });
 
+// Liste des sous-catégories de plats (optionnellement filtrées par ?category=...)
+app.get('/api/product-subcategories', async (req, res) => {
+  try {
+    const category = req.query.category ? String(req.query.category) : null;
+    const subcategories = await db.getProductSubcategories(category);
+    res.json({ success: true, subcategories });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Ajouter une nouvelle sous-catégorie pour une catégorie de plats
+app.post('/api/product-subcategories', authenticateJwt, requireRole(['gerant']), async (req, res) => {
+  try {
+    const { category_name, name } = req.body || {};
+    const subcategories = await db.addProductSubcategory(category_name, name);
+    res.status(201).json({ success: true, subcategories, message: 'Sous-catégorie ajoutée avec succès !' });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Supprimer une sous-catégorie de plats
+app.delete('/api/product-subcategories/:id', authenticateJwt, requireRole(['gerant']), async (req, res) => {
+  try {
+    const subcategories = await db.deleteProductSubcategory(req.params.id);
+    res.json({ success: true, subcategories, message: 'Sous-catégorie supprimée' });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // Liste des plats (avec filtre disponible)
 app.get('/api/products', async (req, res) => {
   try {
