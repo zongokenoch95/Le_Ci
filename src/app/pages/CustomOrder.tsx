@@ -544,37 +544,40 @@ export function CustomOrder() {
                 Choisissez d'abord la taille de votre gâteau selon le nombre de parts souhaité :
               </p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="space-y-2.5">
                 {activePortionsOptions.map((opt) => {
                   const isSelected = currentPortion.id === opt.id;
                   return (
-                    <button
+                    <label
                       key={opt.id}
-                      type="button"
                       onClick={() => setSelectedPortionId(opt.id)}
-                      className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${isSelected
-                          ? 'border-[#581C87] bg-purple-50/60 shadow-md ring-2 ring-[#581C87]/20'
+                      className={`p-3.5 px-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                        isSelected
+                          ? 'border-[#581C87] bg-purple-50/60 shadow-xs'
                           : 'border-gray-200 hover:border-purple-200 bg-white'
-                        }`}
+                      }`}
                     >
-                      <div>
-                        <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="radio"
+                          name="cakePortion"
+                          checked={isSelected}
+                          onChange={() => setSelectedPortionId(opt.id)}
+                          className="w-4 h-4 accent-[#581C87] cursor-pointer"
+                        />
+                        <div>
                           <span className="font-extrabold text-sm text-gray-900">{opt.label}</span>
-                          {isSelected && (
-                            <div className="w-5 h-5 rounded-full bg-[#581C87] text-white flex items-center justify-center">
-                              <Check size={12} strokeWidth={3} />
-                            </div>
+                          {opt.desc && (
+                            <span className="text-xs text-gray-500 font-light ml-2 hidden sm:inline">
+                              — {opt.desc}
+                            </span>
                           )}
                         </div>
-                        <p className="text-xs text-gray-500 font-light mt-1">{opt.desc}</p>
                       </div>
-                      <div className="mt-4 pt-3 border-t border-gray-100 flex items-baseline justify-between">
-                        <span className="text-[11px] text-gray-400">Prix :</span>
-                        <span className="font-black text-[#581C87] text-sm">
-                          {opt.price > 0 ? `${opt.price.toLocaleString('fr-FR')} FCFA` : 'Sur devis'}
-                        </span>
-                      </div>
-                    </button>
+                      <span className="font-black text-[#581C87] text-sm shrink-0">
+                        {opt.price > 0 ? `${opt.price.toLocaleString('fr-FR')} FCFA` : 'Sur devis'}
+                      </span>
+                    </label>
                   );
                 })}
               </div>
