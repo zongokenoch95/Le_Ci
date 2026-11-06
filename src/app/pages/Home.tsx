@@ -269,7 +269,7 @@ export function Home() {
       {/* 2. SECTION NOS PRODUITS (CATÉGORIES DE PRODUITS VENDUS) */}
       {/* Instruction 8 : Affiche les catégories vendues SANS afficher les produits */}
       {/* ========================================================================= */}
-      <section id="nos-produits" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-24">
+      <section id="nos-produits" className="max-w-7xl lg:max-w-5xl xl:max-w-6xl mx-auto px-4 sm:px-6 lg:px-14 xl:px-20 py-20 sm:py-24">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -366,7 +366,7 @@ export function Home() {
         <div className="absolute top-0 right-0 w-96 h-96 bg-purple-600/15 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="max-w-7xl lg:max-w-5xl xl:max-w-6xl mx-auto px-4 sm:px-6 lg:px-14 xl:px-20 relative z-10">
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -489,7 +489,7 @@ export function Home() {
       {/* Instruction 9 : En dessous des catégories */}
       {/* ========================================================================= */}
       <section id="promotions-evenements" className="bg-gradient-to-b from-white via-purple-50/40 to-white py-20 sm:py-24 border-t border-purple-100/60">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl lg:max-w-5xl xl:max-w-6xl mx-auto px-4 sm:px-6 lg:px-14 xl:px-20">
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
