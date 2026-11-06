@@ -182,11 +182,12 @@ export function AdminDashboard() {
   const [teamMessage, setTeamMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // État Gestion des Plats & Catégories
+  const [menuSubSection, setMenuSubSection] = useState<'all' | 'plats' | 'categories' | 'subcategories'>('all');
   const [products, setProducts] = useState<Product[]>([]);
   const [productCategories, setProductCategories] = useState<ProductCategory[]>([
-    { id: 1, name: 'Douceurs salées' },
-    { id: 2, name: 'Douceurs sucrées' },
-    { id: 3, name: 'Signature de la maison' },
+    { id: 1, name: 'Signature de la maison' },
+    { id: 2, name: 'Douceurs salées' },
+    { id: 3, name: 'Douceurs sucrées' },
     { id: 4, name: 'Paquets' },
     { id: 5, name: 'Gâteaux' }
   ]);
@@ -197,7 +198,7 @@ export function AdminDashboard() {
   const [productSubcategories, setProductSubcategories] = useState<ProductSubcategory[]>([
     { id: 1, category_name: 'Gâteaux', name: 'Anniversaire', theme: 'Thème Anniversaire Festif & Personnalisé', image: '/products/gateau_1.jpeg' },
     { id: 2, category_name: 'Gâteaux', name: 'Mariage', theme: 'Thème Mariage Prestige & Pièce Montée', image: '/products/gateau_8.jpeg' },
-    { id: 3, category_name: 'Gâteaux', name: 'Autre évènement', theme: 'Thème Autres Événements & Célébrations', image: '/products/gateau_5.jpeg' }
+    { id: 3, category_name: 'Gâteaux', name: 'Autres', theme: 'Thème Autres Événements & Célébrations', image: '/products/gateau_5.jpeg' }
   ]);
   const [subParentCategory, setSubParentCategory] = useState('Gâteaux');
   const [newSubcategoryName, setNewSubcategoryName] = useState('');
@@ -212,19 +213,28 @@ export function AdminDashboard() {
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [portionsList, setPortionsList] = useState<{ label: string; price: number }[]>([
-    { label: '6 parts', price: 15000 },
-    { label: '8 parts', price: 20000 },
-    { label: '10-12 parts', price: 25000 }
+    { label: '6 parts', price: 12000 },
+    { label: '8 parts', price: 15000 },
+    { label: '10 parts', price: 20000 },
+    { label: '12 parts', price: 25000 },
+    { label: '15 parts', price: 30000 },
+    { label: '20 parts', price: 40000 },
+    { label: '+ de 20 parts', price: 50000 }
+  ]);
+  const [compositionList, setCompositionList] = useState<{ name: string; count: number }[]>([
+    { name: 'Mini pizza', count: 20 },
+    { name: 'Nem', count: 13 },
+    { name: 'Pastel', count: 11 }
   ]);
   const [productFormData, setProductFormData] = useState({
     name: '',
     category: 'Gâteaux',
     subcategory: 'Anniversaire',
-    price: 1500,
+    price: 12000,
     description: '',
     image: '',
     is_available: true,
-    stock_quantity: 10
+    min_pieces: 20
   });
 
   // État Statistiques Ventes Détaillées
@@ -720,7 +730,16 @@ export function AdminDashboard() {
   };
 
   // Actions Gestion des Plats
-  
+  const getDefaultCakePortions = (basePrice = 12000) => [
+    { label: '6 parts', price: Math.max(500, basePrice) },
+    { label: '8 parts', price: Math.max(500, Math.round(basePrice * 1.25)) },
+    { label: '10 parts', price: Math.max(500, Math.round(basePrice * 1.65)) },
+    { label: '12 parts', price: Math.max(500, Math.round(basePrice * 2)) },
+    { label: '15 parts', price: Math.max(500, Math.round(basePrice * 2.5)) },
+    { label: '20 parts', price: Math.max(500, Math.round(basePrice * 3.3)) },
+    { label: '+ de 20 parts', price: Math.max(500, Math.round(basePrice * 4.1)) }
+  ];
+
   const handleAddPortionRow = () => {
     setPortionsList([...portionsList, { label: `${portionsList.length * 2 + 6} parts`, price: 20000 }]);
   };
@@ -735,22 +754,37 @@ export function AdminDashboard() {
     setPortionsList(portionsList.filter((_, i) => i !== idx));
   };
 
+  const handleAddCompositionRow = () => {
+    setCompositionList([...compositionList, { name: '', count: 10 }]);
+  };
+
+  const handleUpdateComposition = (idx: number, field: 'name' | 'count', val: any) => {
+    const copy = [...compositionList];
+    copy[idx] = { ...copy[idx], [field]: val };
+    setCompositionList(copy);
+  };
+
+  const handleRemoveComposition = (idx: number) => {
+    setCompositionList(compositionList.filter((_, i) => i !== idx));
+  };
+
   const handleOpenAddProduct = () => {
     setEditingProduct(null);
-    setPortionsList([
-      { label: '6 parts', price: 15000 },
-      { label: '8 parts', price: 20000 },
-      { label: '10-12 parts', price: 25000 }
+    setPortionsList(getDefaultCakePortions(12000));
+    setCompositionList([
+      { name: 'Mini pizza', count: 20 },
+      { name: 'Nem', count: 13 },
+      { name: 'Pastel', count: 11 }
     ]);
     setProductFormData({
       name: '',
       category: 'Gâteaux',
       subcategory: 'Anniversaire',
-      price: 1500,
+      price: 12000,
       description: '',
       image: 'https://images.unsplash.com/photo-1582180834946-f3d376b18376?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080',
       is_available: true,
-      stock_quantity: 10
+      min_pieces: 20
     });
     setIsProductModalOpen(true);
   };
@@ -766,13 +800,35 @@ export function AdminDashboard() {
       }
     } catch (e) {}
     if (parsedPortions.length === 0 && (p.category === 'Gâteaux' || p.category?.includes('Gât'))) {
-      parsedPortions = [
-        { label: '6 parts', price: p.price },
-        { label: '8 parts', price: Math.round(p.price * 1.3) },
-        { label: '10-12 parts', price: Math.round(p.price * 1.6) }
-      ];
+      parsedPortions = getDefaultCakePortions(p.price || 12000);
     }
     setPortionsList(parsedPortions);
+
+    let parsedComp: { name: string; count: number }[] = [];
+    try {
+      if (p.composition && Array.isArray(p.composition)) {
+        parsedComp = p.composition;
+      } else if (p.composition_json) {
+        parsedComp = JSON.parse(p.composition_json);
+      }
+    } catch (e) {}
+    if (parsedComp.length === 0) {
+      if (/sal[eé]/i.test(p.category || '')) {
+        parsedComp = [
+          { name: 'Mini pizza', count: 20 },
+          { name: 'Nem', count: 13 },
+          { name: 'Pastel', count: 11 }
+        ];
+      } else if (/sucr[eé]/i.test(p.category || '')) {
+        parsedComp = [
+          { name: 'Mini brownies', count: 20 },
+          { name: 'Mini cake', count: 13 },
+          { name: 'Choux à la crème', count: 11 }
+        ];
+      }
+    }
+    setCompositionList(parsedComp);
+
     setProductFormData({
       name: p.name,
       category: p.category || 'Gâteaux',
@@ -781,7 +837,7 @@ export function AdminDashboard() {
       description: p.description || '',
       image: p.image || '',
       is_available: Boolean(p.is_available),
-      stock_quantity: p.stock_quantity !== undefined ? p.stock_quantity : 10
+      min_pieces: p.min_pieces && p.min_pieces > 0 ? p.min_pieces : 20
     });
     setIsProductModalOpen(true);
   };
@@ -789,10 +845,36 @@ export function AdminDashboard() {
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const cat = productFormData.category || '';
+      const isCake = /g[aâ]teau/i.test(cat);
+      const isMix = /sal[eé]|sucr[eé]/i.test(cat);
+      const isPaquet = /paquet/i.test(cat);
+
+      const validComposition = isMix
+        ? compositionList.filter(c => c.name.trim() && Number(c.count) > 0).map(c => ({ name: c.name.trim(), count: Number(c.count) }))
+        : [];
+
+      let finalDescription = productFormData.description.trim();
+      if (isMix && validComposition.length > 0 && !finalDescription) {
+        const partsStr = validComposition.map(c => `${c.count} ${c.name}`).join(', ');
+        finalDescription = `Paquet constitué de ${partsStr}.`;
+      } else if (isPaquet && productFormData.min_pieces > 0 && !finalDescription) {
+        finalDescription = `Paquet de ${productFormData.name} (minimum ${productFormData.min_pieces} pièces, ajustable selon vos envies).`;
+      }
+
+      const payload = {
+        ...productFormData,
+        description: finalDescription,
+        price: isCake && portionsList.length > 0 ? Number(portionsList[0].price) || productFormData.price : productFormData.price,
+        portions_json: JSON.stringify(isCake ? portionsList : []),
+        composition_json: JSON.stringify(validComposition),
+        min_pieces: isPaquet ? Math.max(1, Number(productFormData.min_pieces) || 20) : 0
+      };
+
       if (editingProduct) {
-        await updateProduct(editingProduct.id, { ...productFormData, portions_json: JSON.stringify(portionsList) });
+        await updateProduct(editingProduct.id, payload);
       } else {
-        await createProduct({ ...productFormData, portions_json: JSON.stringify(portionsList) });
+        await createProduct(payload);
       }
       setIsProductModalOpen(false);
       loadProducts();
@@ -1615,127 +1697,340 @@ export function AdminDashboard() {
 
         {/* ============================================================ */}
         {/* ONGLET 3 : GESTION DES PLATS (RÉSERVÉ GÉRANT)                 */}
+        {/* 3 SECTIONS : 1. Section Menu | 2. Section Catégorie | 3. Section Sous-catégorie */}
         {/* ============================================================ */}
         {activeTab === 'menu' && isGerant && (
-          <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-8">
+            {/* En-tête + Navigation des 3 sections du module */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-[#1E293B] p-5 rounded-3xl border border-white/10">
               <div>
                 <h2 className="text-2xl font-black text-white flex items-center gap-2">
                   <UtensilsCrossed className="text-[#D4AF37]" size={26} />
-                  <span>Gestion des Plats & Carte Sucrée</span>
+                  <span>Module Gestion des Plats du Menu</span>
                 </h2>
                 <p className="text-xs text-gray-400 mt-1">
-                  Ajoutez, modifiez, ajustez les prix (minimum 500 FCFA) et activez la disponibilité de vos pâtisseries.
+                  Organisé en 3 sections : <strong>Section Menu</strong> (plats), <strong>Section Catégorie</strong> et <strong>Section Sous-catégorie</strong>.
                 </p>
               </div>
 
-              <button
-                onClick={handleOpenAddProduct}
-                className="px-5 py-2.5 rounded-2xl bg-[#D4AF37] hover:bg-[#c29d2b] text-black font-extrabold text-xs flex items-center gap-2 shadow-lg transition cursor-pointer"
-              >
-                <Plus size={16} />
-                <span>Nouveau Plat</span>
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setMenuSubSection('all')}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-extrabold transition cursor-pointer ${
+                    menuSubSection === 'all'
+                      ? 'bg-[#D4AF37] text-black shadow-md'
+                      : 'bg-[#0F172A] text-gray-300 border border-white/10 hover:bg-white/10'
+                  }`}
+                >
+                  Toutes les sections
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMenuSubSection('plats')}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-extrabold transition cursor-pointer flex items-center gap-1.5 ${
+                    menuSubSection === 'plats'
+                      ? 'bg-[#D4AF37] text-black shadow-md'
+                      : 'bg-[#0F172A] text-gray-300 border border-white/10 hover:bg-white/10'
+                  }`}
+                >
+                  <UtensilsCrossed size={13} />
+                  <span>1. Section Menu ({products.length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMenuSubSection('categories')}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-extrabold transition cursor-pointer flex items-center gap-1.5 ${
+                    menuSubSection === 'categories'
+                      ? 'bg-[#D4AF37] text-black shadow-md'
+                      : 'bg-[#0F172A] text-gray-300 border border-white/10 hover:bg-white/10'
+                  }`}
+                >
+                  <Layers size={13} />
+                  <span>2. Section Catégorie ({productCategories.length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMenuSubSection('subcategories')}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-extrabold transition cursor-pointer flex items-center gap-1.5 ${
+                    menuSubSection === 'subcategories'
+                      ? 'bg-[#D4AF37] text-black shadow-md'
+                      : 'bg-[#0F172A] text-gray-300 border border-white/10 hover:bg-white/10'
+                  }`}
+                >
+                  <Sparkles size={13} />
+                  <span>3. Section Sous-catégorie ({productSubcategories.length})</span>
+                </button>
+              </div>
             </div>
 
-            {/* Gestion & Ajout de catégories de plats */}
-            <div className="bg-[#1E293B] p-4 sm:p-5 rounded-3xl border border-white/10 space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-xs font-extrabold text-white uppercase tracking-wider flex items-center gap-2">
-                    <Layers size={15} className="text-[#D4AF37]" />
-                    <span>Catégories de produits ({productCategories.length})</span>
-                  </h3>
-                  <p className="text-[11px] text-gray-400">
-                    Ajoutez, modifiez ou supprimez les catégories (Douceurs salées, Douceurs sucrées, Signature de la maison, Paquets, Gâteaux...).
-                  </p>
-                </div>
-
-                <form onSubmit={handleAddCategory} className="flex flex-wrap items-center gap-2">
-                  <input
-                    type="text"
-                    value={newCategoryName}
-                    onChange={(e) => setNewCategoryName(e.target.value)}
-                    placeholder={editingCategory ? `Renommer « ${editingCategory.name} »...` : 'Nouvelle catégorie (ex: Viennoiseries)...'}
-                    className="px-3.5 py-2 bg-[#0F172A] border border-gray-700 rounded-xl text-white text-xs focus:ring-2 focus:ring-[#D4AF37] focus:outline-none min-w-[210px]"
-                  />
-                  <button
-                    type="submit"
-                    disabled={addingCategory || !newCategoryName.trim()}
-                    className="px-4 py-2 rounded-xl bg-[#D4AF37] hover:bg-[#c29d2b] text-black font-extrabold text-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
-                  >
-                    {editingCategory ? <Save size={14} /> : <Plus size={14} />}
-                    <span>
-                      {addingCategory
-                        ? 'Enregistrement...'
-                        : editingCategory
-                          ? 'Modifier la catégorie'
-                          : 'Ajouter la catégorie'}
+            {/* ================================================================= */}
+            {/* SECTION 1 : MENU (CRÉER, MODIFIER, SUPPRIMER N'IMPORTE QUEL PLAT) */}
+            {/* ================================================================= */}
+            {(menuSubSection === 'all' || menuSubSection === 'plats') && (
+              <div className="bg-[#1E293B]/60 p-5 sm:p-6 rounded-3xl border border-white/10 space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
+                  <div>
+                    <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#D4AF37]/20 text-[#D4AF37] mb-1">
+                      Section 1
                     </span>
-                  </button>
-                  {editingCategory && (
-                    <button
-                      type="button"
-                      onClick={handleCancelEditCategory}
-                      className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-gray-300 font-bold text-xs transition cursor-pointer"
-                    >
-                      Annuler
-                    </button>
-                  )}
-                </form>
-              </div>
-
-              {categorySuccessMsg && (
-                <div className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
-                  <CheckCircle2 size={14} />
-                  <span>{categorySuccessMsg}</span>
-                </div>
-              )}
-
-              <div className="flex flex-wrap gap-2 pt-1">
-                {productCategories.map(cat => (
-                  <div
-                    key={cat.id}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition ${
-                      editingCategory?.id === cat.id
-                        ? 'bg-[#D4AF37]/20 border-[#D4AF37] text-[#D4AF37]'
-                        : 'bg-white/5 border-white/10 text-gray-200'
-                    }`}
-                  >
-                    <span>{cat.name}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleStartEditCategory(cat)}
-                      title={`Modifier la catégorie ${cat.name}`}
-                      className="text-gray-400 hover:text-[#D4AF37] transition cursor-pointer ml-1"
-                    >
-                      <Edit3 size={12} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteCategory(cat)}
-                      title={`Supprimer la catégorie ${cat.name}`}
-                      className="text-gray-500 hover:text-rose-400 transition cursor-pointer"
-                    >
-                      <X size={13} />
-                    </button>
+                    <h3 className="text-lg font-black text-white flex items-center gap-2">
+                      <UtensilsCrossed size={18} className="text-[#D4AF37]" />
+                      <span>Section Menu — Gestion des Plats ({products.length})</span>
+                    </h3>
+                    <p className="text-xs text-gray-400">
+                      Créez, modifiez ou supprimez n'importe quel plat (Signature de la maison, Douceurs salées, Douceurs sucrées, Paquets, Gâteaux).
+                    </p>
                   </div>
-                ))}
-              </div>
 
-              {/* Gestion des sous-catégories par catégorie de plats (ex: Gâteaux -> Anniversaire, Mariage, Autre évènement...) */}
-              <div className="pt-4 mt-3 border-t border-white/10 space-y-4">
+                  <button
+                    onClick={handleOpenAddProduct}
+                    className="px-5 py-2.5 rounded-2xl bg-[#D4AF37] hover:bg-[#c29d2b] text-black font-extrabold text-xs flex items-center gap-2 shadow-lg transition cursor-pointer self-start sm:self-auto"
+                  >
+                    <Plus size={16} />
+                    <span>Nouveau Plat</span>
+                  </button>
+                </div>
+
+                {/* Filtres et recherche plats */}
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
+                    <input
+                      type="text"
+                      value={productSearch}
+                      onChange={(e) => setProductSearch(e.target.value)}
+                      placeholder="Rechercher un plat dans le menu..."
+                      className="w-full pl-10 pr-4 py-2.5 bg-[#0F172A] border border-white/10 rounded-2xl text-white text-xs focus:ring-2 focus:ring-[#D4AF37] focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5">
+                    {['Tous', ...Array.from(new Set([...productCategories.map(c => c.name), ...products.map(p => p.category).filter(Boolean)]))].map(cat => (
+                      <button
+                        key={cat}
+                        onClick={() => setProductCategoryFilter(cat)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                          productCategoryFilter === cat
+                            ? 'bg-[#D4AF37] text-black'
+                            : 'bg-white/5 text-gray-300 hover:bg-white/10'
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Grille des plats */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                  {products
+                    .filter(p => productCategoryFilter === 'Tous' || p.category === productCategoryFilter)
+                    .filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()))
+                    .map(product => {
+                      let parsedComp: { name: string; count: number }[] = [];
+                      try {
+                        if (product.composition && Array.isArray(product.composition)) {
+                          parsedComp = product.composition;
+                        } else if (product.composition_json) {
+                          parsedComp = JSON.parse(product.composition_json);
+                        }
+                      } catch (e) {}
+
+                      return (
+                        <div
+                          key={product.id}
+                          className={`p-4 rounded-3xl border transition flex flex-col justify-between group ${
+                            product.is_available ? 'bg-[#0F172A] border-white/10' : 'bg-black/30 border-dashed border-gray-700 opacity-60'
+                          }`}
+                        >
+                          <div>
+                            <div className="relative aspect-video rounded-2xl overflow-hidden mb-3 bg-black/40">
+                              <img
+                                src={product.image || 'https://images.unsplash.com/photo-1582180834946-f3d376b18376?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080'}
+                                alt={product.name}
+                                className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                              />
+                              <span className="absolute top-2 left-2 px-2.5 py-0.5 rounded-full bg-black/70 backdrop-blur-md text-[10px] font-bold text-[#D4AF37]">
+                                {product.category}{product.subcategory ? ` › ${product.subcategory}` : ''}
+                              </span>
+                            </div>
+
+                            <h3 className="font-bold text-white text-sm mb-1">{product.name}</h3>
+                            <p className="text-[11px] text-gray-400 line-clamp-2 mb-3">
+                              {product.description || 'Pâtisserie fine confectionnée à la main.'}
+                            </p>
+                            <div className="text-base font-black text-[#D4AF37] mb-2">
+                              {product.price.toLocaleString('fr-FR')} FCFA
+                            </div>
+                            <div className="flex flex-wrap items-center gap-1.5 mb-3">
+                              {/g[aâ]teau/i.test(product.category || '') && (
+                                <span className="text-[10px] text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded-full border border-purple-500/30 font-medium">
+                                  Parts : 6, 8, 10, 12, 15, 20, +20
+                                </span>
+                              )}
+                              {/paquet/i.test(product.category || '') && (
+                                <span className="text-[10px] text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-500/30 font-medium">
+                                  Min. {product.min_pieces && product.min_pieces > 0 ? product.min_pieces : 20} pièces (ajustable)
+                                </span>
+                              )}
+                              {parsedComp.length > 0 && (
+                                <span className="text-[10px] text-emerald-300 bg-emerald-500/15 px-2 py-0.5 rounded-full border border-emerald-500/30 font-medium truncate max-w-full">
+                                  {parsedComp.map(c => `${c.count} ${c.name}`).join(' + ')}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="pt-3 border-t border-white/10 flex items-center justify-between gap-2">
+                            <button
+                              onClick={() => handleToggleProductAvailability(product)}
+                              className={`px-2.5 py-1.5 rounded-xl text-[10px] font-extrabold flex items-center gap-1 transition cursor-pointer ${
+                                product.is_available
+                                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                  : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                              }`}
+                            >
+                              {product.is_available ? <Eye size={12} /> : <EyeOff size={12} />}
+                              <span>{product.is_available ? 'Actif' : 'Masqué'}</span>
+                            </button>
+
+                            <div className="flex gap-1.5">
+                              <button
+                                onClick={() => handleOpenEditProduct(product)}
+                                title="Modifier ce plat"
+                                className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
+                              >
+                                <Edit3 size={14} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteProduct(product.id, product.name)}
+                                title="Supprimer ce plat"
+                                className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition cursor-pointer"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+
+            {/* ================================================================= */}
+            {/* SECTION 2 : CATÉGORIE (GÉRER LES CATÉGORIES DE PRODUITS)          */}
+            {/* ================================================================= */}
+            {(menuSubSection === 'all' || menuSubSection === 'categories') && (
+              <div className="bg-[#1E293B] p-5 sm:p-6 rounded-3xl border border-white/10 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
+                  <div>
+                    <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#D4AF37]/20 text-[#D4AF37] mb-1">
+                      Section 2
+                    </span>
+                    <h3 className="text-lg font-black text-white flex items-center gap-2">
+                      <Layers size={18} className="text-[#D4AF37]" />
+                      <span>Section Catégorie — Gestion des Catégories ({productCategories.length})</span>
+                    </h3>
+                    <p className="text-xs text-gray-400">
+                      Créer, modifier ou supprimer les catégories de produits (Signature de la maison, Douceurs salées, Douceurs sucrées, Paquets, Gâteaux).
+                    </p>
+                  </div>
+
+                  <form onSubmit={handleAddCategory} className="flex flex-wrap items-center gap-2">
+                    <input
+                      type="text"
+                      value={newCategoryName}
+                      onChange={(e) => setNewCategoryName(e.target.value)}
+                      placeholder={editingCategory ? `Renommer « ${editingCategory.name} »...` : 'Nouvelle catégorie...'}
+                      className="px-3.5 py-2 bg-[#0F172A] border border-gray-700 rounded-xl text-white text-xs focus:ring-2 focus:ring-[#D4AF37] focus:outline-none min-w-[210px]"
+                    />
+                    <button
+                      type="submit"
+                      disabled={addingCategory || !newCategoryName.trim()}
+                      className="px-4 py-2 rounded-xl bg-[#D4AF37] hover:bg-[#c29d2b] text-black font-extrabold text-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+                    >
+                      {editingCategory ? <Save size={14} /> : <Plus size={14} />}
+                      <span>
+                        {addingCategory
+                          ? 'Enregistrement...'
+                          : editingCategory
+                            ? 'Modifier la catégorie'
+                            : 'Ajouter la catégorie'}
+                      </span>
+                    </button>
+                    {editingCategory && (
+                      <button
+                        type="button"
+                        onClick={handleCancelEditCategory}
+                        className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-gray-300 font-bold text-xs transition cursor-pointer"
+                      >
+                        Annuler
+                      </button>
+                    )}
+                  </form>
+                </div>
+
+                {categorySuccessMsg && (
+                  <div className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                    <CheckCircle2 size={14} />
+                    <span>{categorySuccessMsg}</span>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-2.5 pt-1">
+                  {productCategories.map(cat => (
+                    <div
+                      key={cat.id}
+                      className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-bold transition ${
+                        editingCategory?.id === cat.id
+                          ? 'bg-[#D4AF37]/20 border-[#D4AF37] text-[#D4AF37]'
+                          : 'bg-[#0F172A] border-white/10 text-gray-200'
+                      }`}
+                    >
+                      <span>{cat.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleStartEditCategory(cat)}
+                        title={`Modifier la catégorie ${cat.name}`}
+                        className="text-gray-400 hover:text-[#D4AF37] transition cursor-pointer ml-1"
+                      >
+                        <Edit3 size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteCategory(cat)}
+                        title={`Supprimer la catégorie ${cat.name}`}
+                        className="text-gray-500 hover:text-rose-400 transition cursor-pointer"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ================================================================= */}
+            {/* SECTION 3 : SOUS-CATÉGORIE (GÉRER LES SOUS-CATÉGORIES)            */}
+            {/* ================================================================= */}
+            {(menuSubSection === 'all' || menuSubSection === 'subcategories') && (
+              <div className="bg-[#1E293B] p-5 sm:p-6 rounded-3xl border border-white/10 space-y-4">
                 <div>
-                  <h4 className="text-xs font-extrabold text-[#D4AF37] uppercase tracking-wider flex items-center gap-2">
-                    <Sparkles size={14} className="text-[#D4AF37]" />
-                    <span>Sous-catégories par catégorie ({productSubcategories.length})</span>
-                  </h4>
-                  <p className="text-[11px] text-gray-400 mt-0.5">
-                    Ajoutez, modifiez ou supprimez des sous-catégories. Pour la catégorie <strong>Gâteaux</strong> (ex : Anniversaire, Mariage, Autres), associez un <strong>thème</strong> et une <strong>image chargée depuis votre appareil</strong>.
+                  <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 mb-1">
+                    Section 3
+                  </span>
+                  <h3 className="text-lg font-black text-white flex items-center gap-2">
+                    <Sparkles size={18} className="text-[#D4AF37]" />
+                    <span>Section Sous-catégorie — Gestion des Sous-catégories ({productSubcategories.length})</span>
+                  </h3>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Gérez les sous-catégories de chaque catégorie (ex. pour <strong>Gâteaux</strong> : <strong>Anniversaire</strong>, <strong>Mariage</strong>, <strong>Autres</strong> avec thème et image chargée depuis votre appareil).
                   </p>
                 </div>
 
-                <form onSubmit={handleAddSubcategory} className="bg-[#0F172A]/80 p-3.5 rounded-2xl border border-white/10 space-y-3">
+                <form onSubmit={handleAddSubcategory} className="bg-[#0F172A]/80 p-4 rounded-2xl border border-white/10 space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     <div>
                       <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
@@ -1864,7 +2159,7 @@ export function AdminDashboard() {
                       className={`flex items-center justify-between gap-2 p-2.5 rounded-2xl border text-xs transition ${
                         editingSubcategory?.id === sub.id
                           ? 'bg-purple-500/30 border-purple-300 text-white'
-                          : 'bg-purple-500/10 border-purple-400/25 text-purple-200'
+                          : 'bg-[#0F172A] border-purple-400/25 text-purple-200'
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
@@ -1914,122 +2209,7 @@ export function AdminDashboard() {
                   ))}
                 </div>
               </div>
-            </div>
-
-            {/* Filtres et recherche plats */}
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="relative flex-1">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
-                <input
-                  type="text"
-                  value={productSearch}
-                  onChange={(e) => setProductSearch(e.target.value)}
-                  placeholder="Rechercher une pâtisserie..."
-                  className="w-full pl-10 pr-4 py-2.5 bg-[#1E293B] border border-white/10 rounded-2xl text-white text-xs focus:ring-2 focus:ring-[#D4AF37] focus:outline-none"
-                />
-              </div>
-
-              <div className="flex flex-wrap gap-1.5">
-                {['Tous', ...Array.from(new Set([...productCategories.map(c => c.name), ...products.map(p => p.category).filter(Boolean)]))].map(cat => (
-                  <button
-                    key={cat}
-                    onClick={() => setProductCategoryFilter(cat)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-                      productCategoryFilter === cat
-                        ? 'bg-[#D4AF37] text-black'
-                        : 'bg-white/5 text-gray-300 hover:bg-white/10'
-                    }`}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Grille des plats */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-              {products
-                .filter(p => productCategoryFilter === 'Tous' || p.category === productCategoryFilter)
-                .filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()))
-                .map(product => (
-                  <div
-                    key={product.id}
-                    className={`p-4 rounded-3xl border transition flex flex-col justify-between group ${
-                      product.is_available ? 'bg-[#1E293B] border-white/10' : 'bg-black/30 border-dashed border-gray-700 opacity-60'
-                    }`}
-                  >
-                    <div>
-                      <div className="relative aspect-video rounded-2xl overflow-hidden mb-3 bg-black/40">
-                        <img
-                          src={product.image || 'https://images.unsplash.com/photo-1582180834946-f3d376b18376?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080'}
-                          alt={product.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                        />
-                        <span className="absolute top-2 left-2 px-2.5 py-0.5 rounded-full bg-black/70 backdrop-blur-md text-[10px] font-bold text-[#D4AF37]">
-                          {product.category}{product.subcategory ? ` › ${product.subcategory}` : ''}
-                        </span>
-                      </div>
-
-                      <h3 className="font-bold text-white text-sm mb-1">{product.name}</h3>
-                      <p className="text-[11px] text-gray-400 line-clamp-2 mb-3">
-                        {product.description || 'Pâtisserie fine confectionnée à la main.'}
-                      </p>
-                      <div className="text-base font-black text-[#D4AF37] mb-2">
-                        {product.price.toLocaleString('fr-FR')} FCFA
-                      </div>
-                      <div className="flex flex-wrap items-center gap-1.5 mb-3">
-                        {(product.stock_quantity ?? 10) > 5 ? (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                            {product.stock_quantity ?? 10} en stock
-                          </span>
-                        ) : (product.stock_quantity ?? 10) > 0 ? (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                            Plus que {product.stock_quantity} restant(s)
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
-                            Rupture de stock
-                          </span>
-                        )}
-                        {product.category === 'Gâteaux' && (
-                          <span className="text-[10px] text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded-full border border-purple-500/30 font-medium">
-                            Multi-parts
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="pt-3 border-t border-white/10 flex items-center justify-between gap-2">
-                      <button
-                        onClick={() => handleToggleProductAvailability(product)}
-                        className={`px-2.5 py-1.5 rounded-xl text-[10px] font-extrabold flex items-center gap-1 transition cursor-pointer ${
-                          product.is_available
-                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                            : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                        }`}
-                      >
-                        {product.is_available ? <Eye size={12} /> : <EyeOff size={12} />}
-                        <span>{product.is_available ? 'En Stock' : 'Indisponible'}</span>
-                      </button>
-
-                      <div className="flex gap-1.5">
-                        <button
-                          onClick={() => handleOpenEditProduct(product)}
-                          className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
-                        >
-                          <Edit3 size={14} />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteProduct(product.id, product.name)}
-                          className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition cursor-pointer"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-            </div>
+            )}
           </div>
         )}
 
@@ -2658,7 +2838,7 @@ export function AdminDashboard() {
       {/* MODAL AJOUT / ÉDITION DE PLAT (GÉRANT) */}
       {isProductModalOpen && isGerant && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#1E293B] rounded-3xl border border-white/15 max-w-lg w-full p-6 space-y-4 shadow-2xl">
+          <div className="bg-[#1E293B] rounded-3xl border border-white/15 max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 space-y-4 shadow-2xl">
             <div className="flex justify-between items-center">
               <h3 className="text-base font-extrabold text-white">
                 {editingProduct ? 'Modifier la Pâtisserie' : 'Ajouter un Nouveau Plat'}
@@ -2696,6 +2876,25 @@ export function AdminDashboard() {
                     onChange={(e) => {
                       const nextCat = e.target.value;
                       const matchingSubs = productSubcategories.filter(s => s.category_name === nextCat);
+                      if (/sal[eé]/i.test(nextCat) && compositionList.length === 0) {
+                        setCompositionList([
+                          { name: 'Mini pizza', count: 20 },
+                          { name: 'Nem', count: 13 },
+                          { name: 'Pastel', count: 11 }
+                        ]);
+                      } else if (/sucr[eé]/i.test(nextCat)) {
+                        setCompositionList([
+                          { name: 'Mini brownies', count: 20 },
+                          { name: 'Mini cake', count: 13 },
+                          { name: 'Choux à la crème', count: 11 }
+                        ]);
+                      } else if (/sal[eé]/i.test(nextCat)) {
+                        setCompositionList([
+                          { name: 'Mini pizza', count: 20 },
+                          { name: 'Nem', count: 13 },
+                          { name: 'Pastel', count: 11 }
+                        ]);
+                      }
                       setProductFormData({
                         ...productFormData,
                         category: nextCat,
@@ -2738,59 +2937,128 @@ export function AdminDashboard() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
-                    Prix de base (FCFA)
-                  </label>
-                  <input
-                    type="number"
-                    min="500"
-                    required
-                    value={productFormData.price}
-                    onChange={(e) => setProductFormData({ ...productFormData, price: Number(e.target.value) })}
-                    className="w-full px-3 py-2.5 bg-[#0F172A] border border-gray-700 rounded-xl text-white text-xs"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
-                    Quantité en stock
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    required
-                    value={productFormData.stock_quantity}
-                    onChange={(e) => setProductFormData({ ...productFormData, stock_quantity: Number(e.target.value) })}
-                    className="w-full px-3 py-2.5 bg-[#0F172A] border border-gray-700 rounded-xl text-white text-xs"
-                    placeholder="ex: 10"
-                  />
-                </div>
+              {/* Prix de base (sans Quantité en stock) */}
+              <div>
+                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                  {/paquet/i.test(productFormData.category || '')
+                    ? 'Prix du paquet minimum (FCFA)'
+                    : /g[aâ]teau/i.test(productFormData.category || '')
+                      ? 'Prix de départ — 6 parts (FCFA)'
+                      : 'Prix du plat / coffret (FCFA)'}
+                </label>
+                <input
+                  type="number"
+                  min="500"
+                  required
+                  value={productFormData.price}
+                  onChange={(e) => setProductFormData({ ...productFormData, price: Number(e.target.value) })}
+                  className="w-full px-3.5 py-2.5 bg-[#0F172A] border border-gray-700 rounded-xl text-white text-xs"
+                />
               </div>
 
-              {/* Configurateur de tarifs multi-parts (Gâteaux uniquement, Notion #6) */}
-              {(productFormData.category === 'Gâteaux' || productFormData.category?.includes('Gât')) && (
-                <div className="p-3.5 rounded-2xl bg-black/40 border border-purple-500/30 space-y-3">
-                  <div className="flex items-center justify-between">
+              {/* Configurateur de mélange précis (Douceurs salées & Douceurs sucrées) */}
+              {/sal[eé]|sucr[eé]/i.test(productFormData.category || '') && (
+                <div className="p-3.5 rounded-2xl bg-black/40 border border-emerald-500/30 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
                     <div>
-                      <label className="block text-[11px] font-bold text-purple-300 uppercase tracking-wider">
-                        Tarifs selon les parts (Gâteaux)
+                      <label className="block text-[11px] font-bold text-emerald-300 uppercase tracking-wider">
+                        Composition du mélange (nombre précis de pièces)
                       </label>
                       <p className="text-[10px] text-gray-400">
-                        Définissez les formats (6 parts, 8 parts...) et le prix de chaque part
+                        {/sal[eé]/i.test(productFormData.category || '')
+                          ? 'Ex : 20 mini pizza, 13 nem et 11 pastel'
+                          : 'Ex : 20 mini brownies, 13 mini cake et 11 choux à la crème'}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAddCompositionRow}
+                      className="px-2.5 py-1 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-200 border border-emerald-500/40 text-[11px] font-bold cursor-pointer transition shrink-0"
+                    >
+                      + Ajouter une pièce
+                    </button>
+                  </div>
+
+                  <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                    {compositionList.map((cRow, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5 w-28 shrink-0">
+                          <input
+                            type="number"
+                            min="1"
+                            value={cRow.count}
+                            onChange={(e) => handleUpdateComposition(idx, 'count', Number(e.target.value))}
+                            className="w-full px-2.5 py-1.5 bg-[#0F172A] border border-gray-700 rounded-lg text-emerald-300 font-bold text-xs text-center"
+                          />
+                          <span className="text-[10px] text-gray-400">pcs</span>
+                        </div>
+                        <input
+                          type="text"
+                          value={cRow.name}
+                          onChange={(e) => handleUpdateComposition(idx, 'name', e.target.value)}
+                          placeholder="Nom de la douceur (ex: Mini pizza, Nem, Pastel...)"
+                          className="flex-1 px-3 py-1.5 bg-[#0F172A] border border-gray-700 rounded-lg text-white text-xs"
+                        />
+                        {compositionList.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveComposition(idx)}
+                            className="p-1.5 text-rose-400 hover:text-rose-300 hover:bg-rose-900/30 rounded cursor-pointer transition"
+                            title="Retirer cette douceur"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Configurateur de Paquet (Douceur unique avec nombre minimal de pièces + possibilité d'augmenter) */}
+              {/paquet/i.test(productFormData.category || '') && (
+                <div className="p-3.5 rounded-2xl bg-black/40 border border-amber-500/30 space-y-2">
+                  <label className="block text-[11px] font-bold text-amber-300 uppercase tracking-wider">
+                    Nombre minimal de pièces (Paquet de douceur unique)
+                  </label>
+                  <p className="text-[10px] text-gray-400">
+                    Le client pourra commander à partir de ce minimum et augmenter le nombre de pièces (ex : minimum 20 mini pizzas, possibilité d'augmenter à 41 pièces...).
+                  </p>
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="number"
+                      min="1"
+                      value={productFormData.min_pieces}
+                      onChange={(e) => setProductFormData({ ...productFormData, min_pieces: Math.max(1, Number(e.target.value) || 1) })}
+                      className="w-32 px-3 py-2 bg-[#0F172A] border border-amber-500/40 rounded-xl text-amber-300 font-extrabold text-xs"
+                    />
+                    <span className="text-xs text-gray-300 font-semibold">pièces minimum</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Configurateur de tarifs multi-parts (Gâteaux : 6, 8, 10, 12, 15, 20 et + de 20 parts) */}
+              {(productFormData.category === 'Gâteaux' || productFormData.category?.includes('Gât')) && (
+                <div className="p-3.5 rounded-2xl bg-black/40 border border-purple-500/30 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <label className="block text-[11px] font-bold text-purple-300 uppercase tracking-wider">
+                        Parts du gâteau et prix selon les parts
+                      </label>
+                      <p className="text-[10px] text-gray-400">
+                        Par défaut : 6, 8, 10, 12, 15, 20 et + de 20 parts. Le prix varie selon le gâteau.
                       </p>
                     </div>
                     <button
                       type="button"
                       onClick={handleAddPortionRow}
-                      className="px-2.5 py-1 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-500/40 text-[11px] font-bold cursor-pointer transition"
+                      className="px-2.5 py-1 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-500/40 text-[11px] font-bold cursor-pointer transition shrink-0"
                     >
                       + Ajouter une part
                     </button>
                   </div>
 
-                  <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                     {portionsList.map((pRow, idx) => (
                       <div key={idx} className="flex items-center gap-2">
                         <input
@@ -2891,7 +3159,7 @@ export function AdminDashboard() {
                   className="rounded text-[#D4AF37] focus:ring-[#D4AF37]"
                 />
                 <label htmlFor="availCheck" className="text-xs text-gray-300 font-semibold cursor-pointer">
-                  Activer immédiatement ce plat au catalogue (En stock)
+                  Activer immédiatement ce plat au catalogue
                 </label>
               </div>
 

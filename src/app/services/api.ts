@@ -605,9 +605,17 @@ export interface PortionOption {
   price: number;
 }
 
+export interface CompositionPiece {
+  name: string;
+  count: number;
+}
+
 export interface Product {
   portions_json?: string;
   portions?: PortionOption[];
+  min_pieces?: number;
+  composition_json?: string;
+  composition?: CompositionPiece[];
   stock_quantity?: number;
   id: number;
   name: string;
@@ -795,6 +803,8 @@ export async function createProduct(data: {
   is_available?: boolean | number;
   portions_json?: string;
   stock_quantity?: number;
+  min_pieces?: number;
+  composition_json?: string;
 }): Promise<{ success: boolean; product: Product; message: string }> {
   const res = await fetch(`${API_BASE}/products`, {
     method: 'POST',

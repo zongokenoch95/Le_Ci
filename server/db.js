@@ -334,8 +334,12 @@ export async function initDb() {
   const defaultCakeSubcategories = [
     ['Gâteaux', 'Anniversaire', 'Thème Anniversaire Festif & Personnalisé', '/products/gateau_1.jpeg'],
     ['Gâteaux', 'Mariage', 'Thème Mariage Prestige & Pièce Montée', '/products/gateau_8.jpeg'],
-    ['Gâteaux', 'Autre évènement', 'Thème Autres Événements & Célébrations', '/products/gateau_5.jpeg']
+    ['Gâteaux', 'Autres', 'Thème Autres Événements & Célébrations', '/products/gateau_5.jpeg']
   ];
+  try {
+    await run(`UPDATE product_subcategories SET name = 'Autres' WHERE category_name = 'Gâteaux' AND name = 'Autre évènement'`);
+    await run(`UPDATE products SET subcategory = 'Autres' WHERE category = 'Gâteaux' AND subcategory = 'Autre évènement'`);
+  } catch (e) {}
   for (const [catName, subName, themeVal, imageVal] of defaultCakeSubcategories) {
     try {
       await run(
@@ -451,6 +455,12 @@ export async function initDb() {
   } catch (e) {}
   try {
     await run(`ALTER TABLE products ADD COLUMN subcategory TEXT DEFAULT ''`);
+  } catch (e) {}
+  try {
+    await run(`ALTER TABLE products ADD COLUMN min_pieces INTEGER DEFAULT 0`);
+  } catch (e) {}
+  try {
+    await run(`ALTER TABLE products ADD COLUMN composition_json TEXT DEFAULT '[]'`);
   } catch (e) {}
 
   const prodCount = await get('SELECT COUNT(*) as count FROM products');
@@ -1838,12 +1848,14 @@ export async function deleteProductSubcategory(id) {
   return getProductSubcategories();
 }
 
-export async function createProduct({ name, category, subcategory = '', price, description, image, is_available = 1, portions_json, stock_quantity = 10 }) {
+export async function createProduct({ name, category, subcategory = '', price, description, image, is_available = 1, portions_json, stock_quantity = 10, min_pieces = 0, composition_json = '[]' }) {
   if (!name || !price) throw new Error('Le nom et le prix du plat sont obligatoires');
   const now = new Date().toISOString();
   const numPrice = Math.max(500, Number(price)); // Minimum 500 FCFA
-  const numStock = Math.max(0, parseInt(stock_quantity, 10) || 0);
+  const numStock = Math.max(0, parseInt(stock_quantity, 10) || 10);
+  const numMinPieces = Math.max(0, parseInt(min_pieces, 10) || 0);
   const portionsStr = typeof portions_json === 'string' ? portions_json : JSON.stringify(portions_json || []);
+  const compositionStr = typeof composition_json === 'string' ? composition_json : JSON.stringify(composition_json || []);
   const cleanCategory = category ? category.trim() : 'Gâteaux';
   const cleanSubcategory = subcategory ? subcategory.trim() : '';
 
@@ -1855,8 +1867,8 @@ export async function createProduct({ name, category, subcategory = '', price, d
   } catch (e) {}
 
   const res = await run(`
-    INSERT INTO products (name, category, subcategory, price, description, image, is_available, portions_json, stock_quantity, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO products (name, category, subcategory, price, description, image, is_available, portions_json, stock_quantity, min_pieces, composition_json, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `, [
     name.trim(),
     cleanCategory,
@@ -1867,6 +1879,8 @@ export async function createProduct({ name, category, subcategory = '', price, d
     is_available ? 1 : 0,
     portionsStr,
     numStock,
+    numMinPieces,
+    compositionStr,
     now,
     now
   ]);
@@ -1874,14 +1888,16 @@ export async function createProduct({ name, category, subcategory = '', price, d
   return getProductById(res.lastID);
 }
 
-export async function updateProduct(id, { name, category, subcategory, price, description, image, is_available, portions_json, stock_quantity }) {
+export async function updateProduct(id, { name, category, subcategory, price, description, image, is_available, portions_json, stock_quantity, min_pieces, composition_json }) {
   const prod = await getProductById(id);
   if (!prod) throw new Error('Plat introuvable');
 
   const now = new Date().toISOString();
   const numPrice = price !== undefined ? Math.max(500, Number(price)) : prod.price;
-  const numStock = stock_quantity !== undefined ? Math.max(0, parseInt(stock_quantity, 10) || 0) : (prod.stock_quantity ?? 10);
+  const numStock = stock_quantity !== undefined ? Math.max(0, parseInt(stock_quantity, 10) || 10) : (prod.stock_quantity ?? 10);
+  const numMinPieces = min_pieces !== undefined ? Math.max(0, parseInt(min_pieces, 10) || 0) : (prod.min_pieces ?? 0);
   const portionsStr = portions_json !== undefined ? (typeof portions_json === 'string' ? portions_json : JSON.stringify(portions_json)) : (prod.portions_json || '[]');
+  const compositionStr = composition_json !== undefined ? (typeof composition_json === 'string' ? composition_json : JSON.stringify(composition_json)) : (prod.composition_json || '[]');
   const nextCat = category ? category.trim() : prod.category;
   const nextSub = subcategory !== undefined ? subcategory.trim() : (prod.subcategory || '');
 
@@ -1902,6 +1918,8 @@ export async function updateProduct(id, { name, category, subcategory, price, de
       is_available = COALESCE(?, is_available),
       portions_json = ?,
       stock_quantity = ?,
+      min_pieces = ?,
+      composition_json = ?,
       updated_at = ?
     WHERE id = ?
   `, [
@@ -1914,6 +1932,8 @@ export async function updateProduct(id, { name, category, subcategory, price, de
     is_available !== undefined ? (is_available ? 1 : 0) : prod.is_available,
     portionsStr,
     numStock,
+    numMinPieces,
+    compositionStr,
     now,
     id
   ]);

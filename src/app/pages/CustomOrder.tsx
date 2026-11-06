@@ -24,30 +24,45 @@ interface CakeCatalogItem {
   portions?: PortionOption[];
 }
 
-// Sous-catégories par défaut pour les gâteaux (Point 1)
-const defaultCakeSubcategories = ['Anniversaire', 'Mariage', 'Autre évènement'];
+// Sous-catégories par défaut pour les gâteaux (Point 1 : Anniversaire, Mariage, Autres)
+const defaultCakeSubcategories = ['Anniversaire', 'Mariage', 'Autres'];
 
-// 8 Gâteaux par défaut du catalogue de la maison Lê Ci répartis par sous-catégorie
+// 8 Gâteaux par défaut du catalogue de la maison Lê Ci répartis par sous-catégorie (avec prix variables)
 const fallbackCatalogCakes: CakeCatalogItem[] = [
-  { id: 12, name: 'Fraisier Signature Suprême', image: '/products/gateau_1.jpeg', subcategory: 'Anniversaire' },
-  { id: 13, name: 'Gâteau Festif Personnalisé Pâte d\'Amande', image: '/products/gateau_2.jpeg', subcategory: 'Anniversaire' },
-  { id: 14, name: 'Forêt Noire Grand Cru Cacao & Cerises', image: '/products/gateau_3.jpeg', subcategory: 'Anniversaire' },
-  { id: 15, name: 'Layer Cake Chocolat Praliné & Drip Caramel', image: '/products/gateau_4.jpeg', subcategory: 'Anniversaire' },
-  { id: 18, name: 'Number Cake Décoré Fruits Frais & Macarons', image: '/products/gateau_7.jpeg', subcategory: 'Anniversaire' },
-  { id: 19, name: 'Pièce Montée d\'Exception & Mariage Prestige', image: '/products/gateau_8.jpeg', subcategory: 'Mariage' },
-  { id: 16, name: 'Entremet Miroir Fruits Rouges & Velours', image: '/products/gateau_5.jpeg', subcategory: 'Autre évènement' },
-  { id: 17, name: 'Red Velvet Cake Onctueux Cream Cheese', image: '/products/gateau_6.jpeg', subcategory: 'Autre évènement' }
+  { id: 12, name: 'Fraisier Signature Suprême', image: '/products/gateau_1.jpeg', subcategory: 'Anniversaire', price: 12000 },
+  { id: 13, name: 'Gâteau Festif Personnalisé Pâte d\'Amande', image: '/products/gateau_2.jpeg', subcategory: 'Anniversaire', price: 14000 },
+  { id: 14, name: 'Forêt Noire Grand Cru Cacao & Cerises', image: '/products/gateau_3.jpeg', subcategory: 'Anniversaire', price: 13000 },
+  { id: 15, name: 'Layer Cake Chocolat Praliné & Drip Caramel', image: '/products/gateau_4.jpeg', subcategory: 'Anniversaire', price: 15000 },
+  { id: 18, name: 'Number Cake Décoré Fruits Frais & Macarons', image: '/products/gateau_7.jpeg', subcategory: 'Anniversaire', price: 16000 },
+  { id: 19, name: 'Pièce Montée d\'Exception & Mariage Prestige', image: '/products/gateau_8.jpeg', subcategory: 'Mariage', price: 25000 },
+  { id: 16, name: 'Entremet Miroir Fruits Rouges & Velours', image: '/products/gateau_5.jpeg', subcategory: 'Autres', price: 13500 },
+  { id: 17, name: 'Red Velvet Cake Onctueux Cream Cheese', image: '/products/gateau_6.jpeg', subcategory: 'Autres', price: 12500 }
 ];
 
-// Nombre de parts avec tarifs indicatifs transparents en FCFA (Point 3)
+// Nombre de parts par défaut (6, 8, 10, 12, 15, 20 et + de 20 parts)
 const defaultPortionsOptions = [
-  { id: '6-8', label: '6 à 8 parts', price: 15000, desc: 'Idéal en petit comité / famille' },
-  { id: '10-12', label: '10 à 12 parts', price: 25000, desc: 'Anniversaire ou dîner festif' },
-  { id: '15-20', label: '15 à 20 parts', price: 35000, desc: 'Célébrations & fêtes d\'enfants' },
-  { id: '25-30', label: '25 à 30 parts', price: 50000, desc: 'Grand anniversaire / baptême' },
-  { id: '40-50', label: '40 à 50 parts', price: 80000, desc: 'Grand événement / Cérémonie' },
-  { id: 'custom', label: 'Plus de 50 parts', price: 0, desc: 'Pièce montée / Devis sur-mesure' }
+  { id: '6', label: '6 parts', price: 12000, desc: 'Petit comité (6 parts)' },
+  { id: '8', label: '8 parts', price: 15000, desc: 'Format familial (8 parts)' },
+  { id: '10', label: '10 parts', price: 20000, desc: 'Format festif (10 parts)' },
+  { id: '12', label: '12 parts', price: 25000, desc: 'Belle tablée (12 parts)' },
+  { id: '15', label: '15 parts', price: 30000, desc: 'Réception & fête (15 parts)' },
+  { id: '20', label: '20 parts', price: 40000, desc: 'Grande célébration (20 parts)' },
+  { id: 'plus-20', label: '+ de 20 parts', price: 50000, desc: 'Grand événement (+ de 20 parts)' }
 ];
+
+function buildPortionsForBasePrice(basePrice = 12000) {
+  const b = Math.max(5000, Number(basePrice) || 12000);
+  const round500 = (n: number) => Math.round(n / 500) * 500;
+  return [
+    { id: '6', label: '6 parts', price: round500(b), desc: 'Petit comité (6 parts)' },
+    { id: '8', label: '8 parts', price: round500(b * 1.25), desc: 'Format familial (8 parts)' },
+    { id: '10', label: '10 parts', price: round500(b * 1.65), desc: 'Format festif (10 parts)' },
+    { id: '12', label: '12 parts', price: round500(b * 2.0), desc: 'Belle tablée (12 parts)' },
+    { id: '15', label: '15 parts', price: round500(b * 2.5), desc: 'Réception & fête (15 parts)' },
+    { id: '20', label: '20 parts', price: round500(b * 3.3), desc: 'Grande célébration (20 parts)' },
+    { id: 'plus-20', label: '+ de 20 parts', price: round500(b * 4.1), desc: 'Grand événement (+ de 20 parts)' }
+  ];
+}
 
 // Saveurs signatures (Point 3 - suite)
 const flavorOptions = [
@@ -63,13 +78,17 @@ const flavorOptions = [
 ];
 
 function inferCakeSubcategory(name: string, sub?: string): string {
-  if (sub && sub.trim()) return sub.trim();
+  if (sub && sub.trim()) {
+    const clean = sub.trim();
+    if (/autre/i.test(clean)) return 'Autres';
+    return clean;
+  }
   const lower = (name || '').toLowerCase();
   if (lower.includes('mariage') || lower.includes('pièce montée') || lower.includes('piece montee')) {
     return 'Mariage';
   }
   if (lower.includes('entremet') || lower.includes('red velvet')) {
-    return 'Autre évènement';
+    return 'Autres';
   }
   return 'Anniversaire';
 }
@@ -92,7 +111,7 @@ export function CustomOrder() {
   const [uploadedImagePreview, setUploadedImagePreview] = useState<string | null>(null);
 
   // Point 3 : Taille du gâteau (parts & prix) + Saveur
-  const [selectedPortionId, setSelectedPortionId] = useState('10-12');
+  const [selectedPortionId, setSelectedPortionId] = useState('10');
   const [selectedFlavor, setSelectedFlavor] = useState(flavorOptions[0]);
   const [customFlavorText, setCustomFlavorText] = useState('');
 
@@ -237,10 +256,12 @@ export function CustomOrder() {
       ? selectedCakeObj.portions.map((p, idx) => ({
         id: `custom-p-${idx}-${p.label}`,
         label: p.label,
-        price: Number(p.price) || 15000,
-        desc: `Format proposé pour ${selectedCakeObj.name}`
+        price: Number(p.price) || 12000,
+        desc: `Tarif spécifique pour ${selectedCakeObj.name}`
       }))
-      : defaultPortionsOptions;
+      : modelType === 'catalog' && selectedCakeObj?.price
+        ? buildPortionsForBasePrice(selectedCakeObj.price)
+        : defaultPortionsOptions;
 
   const currentPortion =
     activePortionsOptions.find((p) => p.id === selectedPortionId) || activePortionsOptions[0];
@@ -407,7 +428,7 @@ export function CustomOrder() {
               })}
             </div>
 
-            {selectedCakeCategory === 'Autre évènement' && (
+            {/autre/i.test(selectedCakeCategory) && (
               <motion.div
                 initial={{ opacity: 0, y: -5 }}
                 animate={{ opacity: 1, y: 0 }}

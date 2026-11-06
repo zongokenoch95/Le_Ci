@@ -185,19 +185,20 @@ export const Cart: React.FC = () => {
       return false;
     }
 
-    // Vérification du numéro de téléphone principal (Burkina Faso : 8 chiffres)
-    const phoneVal = validateBurkinaPhone(recipientPhone);
-    if (!phoneVal.isValid) {
-      setSingleError('recipientPhone', phoneVal.error || 'Veuillez saisir un numéro valide du Burkina Faso (8 chiffres).', 'field-cart-phone');
-      return false;
-    }
-
-    // Vérification du numéro de secours si renseigné
-    if (backupPhone.trim()) {
-      const backupVal = validateBurkinaPhone(backupPhone, true);
-      if (!backupVal.isValid) {
-        setSingleError('backupPhone', backupVal.error || 'Numéro de secours invalide (8 chiffres requis).', 'field-cart-backupPhone');
+    // Vérification des coordonnées du réceptionnaire uniquement en cas de livraison
+    if (deliveryType === 'livraison') {
+      const phoneVal = validateBurkinaPhone(recipientPhone);
+      if (!phoneVal.isValid) {
+        setSingleError('recipientPhone', phoneVal.error || 'Veuillez saisir un numéro valide du Burkina Faso (8 chiffres).', 'field-cart-phone');
         return false;
+      }
+
+      if (backupPhone.trim()) {
+        const backupVal = validateBurkinaPhone(backupPhone, true);
+        if (!backupVal.isValid) {
+          setSingleError('backupPhone', backupVal.error || 'Numéro de secours invalide (8 chiffres requis).', 'field-cart-backupPhone');
+          return false;
+        }
       }
     }
 
@@ -233,11 +234,11 @@ export const Cart: React.FC = () => {
         : 'Livraison à domicile (à convenir avec le livreur)';
 
       const finalNotes = [
-        `Mode: ${deliveryType === 'livraison' ? 'Livraison à domicile' : 'Retrait atelier'}`,
+        `Mode: ${deliveryType === 'livraison' ? 'Livraison à domicile' : 'Sans livraison (Retrait boutique)'}`,
         `Date souhaitée: ${deliveryDate} (${deliveryTimeSlot})`,
-        `Réceptionnaire: ${recipientPhone.trim()}`,
-        backupPhone.trim() ? `Tél secours: ${backupPhone.trim()}` : '',
-        deliveryType === 'livraison' ? `Adresse: ${fullDeliveryAddress}` : 'Retrait atelier',
+        deliveryType === 'livraison' && recipientPhone.trim() ? `Réceptionnaire: ${recipientPhone.trim()}` : '',
+        deliveryType === 'livraison' && backupPhone.trim() ? `Tél secours: ${backupPhone.trim()}` : '',
+        deliveryType === 'livraison' ? `Adresse: ${fullDeliveryAddress}` : 'Retrait boutique',
         hasGreetingCard ? `Carte de vœux (+200F): « ${cardMessage.trim()} »` : 'Sans carte',
         useLoyaltyPoints ? `Fidélité: -${loyaltyDiscount} FCFA (${pointsToUse} pts)` : '',
         tierDiscountPercent > 0 ? `Remise VIP ${memberInfo?.tier}: -${tierDiscountAmount} FCFA` : '',
@@ -245,8 +246,11 @@ export const Cart: React.FC = () => {
       ].filter(Boolean).join(' | ');
 
       const order = await createOrder({
-        customerName: memberInfo?.name || `Client (${recipientPhone.trim()})`,
-        customerPhone: recipientPhone.trim(),
+        customerName:
+          deliveryType === 'livraison'
+            ? memberInfo?.name || `Client (${recipientPhone.trim()})`
+            : memberInfo?.name || 'Client (Retrait boutique)',
+        customerPhone: deliveryType === 'livraison' ? recipientPhone.trim() : '',
         items: items.map((item) => {
           const isCakeItem = Boolean(item.isCake || item.category === 'Gâteaux' || item.name.toLowerCase().includes('gâteau') || item.name.toLowerCase().includes('layer') || item.name.toLowerCase().includes('fraisier'));
           const isCustomCakeItem = String(item.id).startsWith('custom-cake') || !!item.description;
@@ -638,67 +642,69 @@ export const Cart: React.FC = () => {
                 </div>
               </div>
 
-              {/* 4. COORDONNÉES DE LA PERSONNE QUI VA RECEVOIR LE COLIS (Point 21) */}
-              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
-                <h2 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">4</span>
-                  La personne qui va recevoir le colis
-                </h2>
-                <p className="text-xs text-gray-500 mb-6 font-light">
-                  Le livreur contactera ce numéro pour la remise en main propre.
-                </p>
+              {/* 4. COORDONNÉES DE LA PERSONNE QUI VA RECEVOIR LE COLIS (Uniquement si Avec livraison) */}
+              {deliveryType === 'livraison' && (
+                <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
+                  <h2 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">4</span>
+                    La personne qui va recevoir le colis
+                  </h2>
+                  <p className="text-xs text-gray-500 mb-6 font-light">
+                    Le livreur contactera ce numéro pour la remise en main propre.
+                  </p>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
-                      <Phone size={14} className="text-[#581C87]" />
-                      WhatsApp / Téléphone *
-                    </label>
-                    <input
-                      id="field-cart-phone"
-                      type="tel"
-                      value={recipientPhone}
-                      onChange={(e) => { setRecipientPhone(e.target.value); clearFieldError('recipientPhone'); }}
-                      placeholder="Ex: 70 00 00 00 ou +226 70 12 34 56"
-                      className={`w-full px-4 py-3.5 rounded-2xl outline-none text-sm transition ${fieldErrors.recipientPhone
-                        ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200'
-                        : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
-                        }`}
-                    />
-                    {fieldErrors.recipientPhone && (
-                      <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
-                        <AlertCircle size={13} className="text-red-500 shrink-0" />
-                        <span>{fieldErrors.recipientPhone}</span>
-                      </p>
-                    )}
-                    <span className="block text-[11px] text-gray-400 mt-1">Numéro du Burkina Faso à 8 chiffres (Orange, Moov, Telecel).</span>
-                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
+                        <Phone size={14} className="text-[#581C87]" />
+                        WhatsApp / Téléphone *
+                      </label>
+                      <input
+                        id="field-cart-phone"
+                        type="tel"
+                        value={recipientPhone}
+                        onChange={(e) => { setRecipientPhone(e.target.value); clearFieldError('recipientPhone'); }}
+                        placeholder="Ex: 70 00 00 00 ou +226 70 12 34 56"
+                        className={`w-full px-4 py-3.5 rounded-2xl outline-none text-sm transition ${fieldErrors.recipientPhone
+                          ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200'
+                          : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
+                          }`}
+                      />
+                      {fieldErrors.recipientPhone && (
+                        <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
+                          <AlertCircle size={13} className="text-red-500 shrink-0" />
+                          <span>{fieldErrors.recipientPhone}</span>
+                        </p>
+                      )}
+                      <span className="block text-[11px] text-gray-400 mt-1">Numéro du Burkina Faso à 8 chiffres (Orange, Moov, Telecel).</span>
+                    </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
-                      <Phone size={14} className="text-[#581C87]" />
-                      Second numéro de secours <span className="text-[11px] font-normal text-gray-400">(optionnel)</span>
-                    </label>
-                    <input
-                      id="field-cart-backupPhone"
-                      type="tel"
-                      value={backupPhone}
-                      onChange={(e) => { setBackupPhone(e.target.value); clearFieldError('backupPhone'); }}
-                      placeholder="Ex: 76 00 00 00 (famille, conjoint...)"
-                      className={`w-full px-4 py-3.5 rounded-2xl border outline-none text-sm bg-white transition ${fieldErrors.backupPhone
-                        ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200'
-                        : 'border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
-                        }`}
-                    />
-                    {fieldErrors.backupPhone && (
-                      <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
-                        <AlertCircle size={13} className="text-red-500 shrink-0" />
-                        <span>{fieldErrors.backupPhone}</span>
-                      </p>
-                    )}
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
+                        <Phone size={14} className="text-[#581C87]" />
+                        Second numéro de secours <span className="text-[11px] font-normal text-gray-400">(optionnel)</span>
+                      </label>
+                      <input
+                        id="field-cart-backupPhone"
+                        type="tel"
+                        value={backupPhone}
+                        onChange={(e) => { setBackupPhone(e.target.value); clearFieldError('backupPhone'); }}
+                        placeholder="Ex: 76 00 00 00 (famille, conjoint...)"
+                        className={`w-full px-4 py-3.5 rounded-2xl border outline-none text-sm bg-white transition ${fieldErrors.backupPhone
+                          ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200'
+                          : 'border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
+                          }`}
+                      />
+                      {fieldErrors.backupPhone && (
+                        <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
+                          <AlertCircle size={13} className="text-red-500 shrink-0" />
+                          <span>{fieldErrors.backupPhone}</span>
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* 5. LIEU DE LIVRAISON (2 champs : Quartier facultatif ou Lien Google Maps du lieu) */}
               {deliveryType === 'livraison' && (
@@ -745,7 +751,9 @@ export const Cart: React.FC = () => {
               <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
                 <div className="flex items-center justify-between mb-2">
                   <h2 className="text-base sm:text-lg font-extrabold text-gray-900 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">6</span>
+                    <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">
+                      {deliveryType === 'livraison' ? '6' : '4'}
+                    </span>
                     Carte de vœux manuscrite (+200 FCFA)
                   </h2>
                 </div>

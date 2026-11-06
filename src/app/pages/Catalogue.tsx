@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { ShoppingBag, Check, Zap, ShieldCheck, Loader2, Cake, Sparkles, ArrowRight } from 'lucide-react';
+import { ShoppingBag, Check, Zap, ShieldCheck, Loader2, Cake, Sparkles, ArrowRight, Plus, Minus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { useCart } from '../context/CartContext';
@@ -14,171 +14,209 @@ const isCakeCategory = (cat?: string) => Boolean(cat && /g[aâ]teau/i.test(cat.t
 
 // 26 produits créés à partir des dossiers d'images
 const fallbackProducts = [
-  // 1. Douceurs salées (3 produits)
+  // 1. Douceurs salées (mélange de plusieurs pièces de douceurs salées différentes - nombre précis)
   {
     id: 1,
-    name: "Plateau Feuilletés Salés Apéritifs",
+    name: "Plateau Mélange Douceurs Salées Classique",
     category: 'Douceurs salées',
-    price: '2 500 FCFA',
-    numericPrice: 2500,
-    description: "Feuilletés croustillants au fromage fondant et épices douces, parfaits pour vos réceptions.",
+    price: '5 000 FCFA',
+    numericPrice: 5000,
+    description: "Paquet constitué de 20 mini pizza, 13 nem et 11 pastel.",
+    composition: [
+      { name: 'Mini pizza', count: 20 },
+      { name: 'Nem', count: 13 },
+      { name: 'Pastel', count: 11 }
+    ],
     image: '/products/salee_1.jpeg'
   },
   {
     id: 2,
-    name: "Croissants Salés Gourmets Farcis",
+    name: "Assortiment Gourmet Feuilletés & Croissants Salés",
     category: 'Douceurs salées',
-    price: '2 000 FCFA',
-    numericPrice: 2000,
-    description: "Pâte pur beurre croustillante garnie de volaille assaisonnée et crème onctueuse.",
+    price: '4 500 FCFA',
+    numericPrice: 4500,
+    description: "Paquet constitué de 15 mini croissants farcis, 12 feuilletés fromage et 10 mini quiches.",
+    composition: [
+      { name: 'Mini croissants farcis', count: 15 },
+      { name: 'Feuilletés fromage', count: 12 },
+      { name: 'Mini quiches', count: 10 }
+    ],
     image: '/products/salee_2.jpeg'
   },
   {
     id: 3,
-    name: "Assortiment Bouchées & Pastels Salés",
+    name: "Grand Coffret Réception Bouchées Salées",
     category: 'Douceurs salées',
-    price: '3 000 FCFA',
-    numericPrice: 3000,
-    description: "Beignets salés dorés et croustillants avec sauce maison parfumée de Lê Ci.",
+    price: '7 500 FCFA',
+    numericPrice: 7500,
+    description: "Paquet constitué de 25 mini pizza, 20 nem, 15 pastel et 10 samoussas.",
+    composition: [
+      { name: 'Mini pizza', count: 25 },
+      { name: 'Nem', count: 20 },
+      { name: 'Pastel', count: 15 },
+      { name: 'Samoussas', count: 10 }
+    ],
     image: '/products/salee_3.jpeg'
   },
 
-  // 2. Douceurs sucrées (8 produits)
+  // 2. Douceurs sucrées (mélange de plusieurs pièces de douceurs sucrées différentes - nombre précis)
   {
     id: 4,
-    name: "Éclairs Fondants Chocolat & Ganache Dorée",
+    name: "Coffret Mélange Douceurs Sucrées Signature",
     category: 'Douceurs sucrées',
-    price: '1 500 FCFA',
-    numericPrice: 1500,
-    description: "Pâte à choux aérée garnie de ganache onctueuse au chocolat grand cru.",
+    price: '5 000 FCFA',
+    numericPrice: 5000,
+    description: "Paquet constitué de 20 mini brownies, 13 mini cake et 11 choux à la crème.",
+    composition: [
+      { name: 'Mini brownies', count: 20 },
+      { name: 'Mini cake', count: 13 },
+      { name: 'Choux à la crème', count: 11 }
+    ],
     image: '/products/sucree_1.jpeg'
   },
   {
     id: 5,
-    name: "Cupcakes Moelleux Crème Vanille Bourbon",
+    name: "Assortiment Cupcakes, Éclairs & Tartelettes",
     category: 'Douceurs sucrées',
-    price: '1 500 FCFA',
-    numericPrice: 1500,
-    description: "Gâteau ultra moelleux surmonté d'un tourbillon de crème montée veloutée.",
+    price: '4 500 FCFA',
+    numericPrice: 4500,
+    description: "Paquet constitué de 15 mini cupcakes vanille, 12 mini éclairs chocolat et 10 tartelettes fruits.",
+    composition: [
+      { name: 'Mini cupcakes vanille', count: 15 },
+      { name: 'Mini éclairs chocolat', count: 12 },
+      { name: 'Tartelettes fruits', count: 10 }
+    ],
     image: '/products/sucree_2.jpeg'
   },
   {
     id: 6,
-    name: "Macarons Assortis Prestige (Boîte Découverte)",
+    name: "Macarons & Mignardises Prestige (Boîte Découverte)",
     category: 'Douceurs sucrées',
-    price: '2 000 FCFA',
-    numericPrice: 2000,
-    description: "Coques craquantes et cœurs fondants : pistache, framboise, chocolat et caramel fleur de sel.",
+    price: '6 000 FCFA',
+    numericPrice: 6000,
+    description: "Paquet constitué de 16 macarons assortis, 14 financiers dorés et 12 choux craquelins.",
+    composition: [
+      { name: 'Macarons assortis', count: 16 },
+      { name: 'Financiers dorés', count: 14 },
+      { name: 'Choux craquelins', count: 12 }
+    ],
     image: '/products/sucree_3.jpeg'
   },
   {
     id: 7,
-    name: "Tartelettes Sablées Fraises & Fruits Rouges",
+    name: "Tartelettes Sablées Fraises & Douceurs Fruitées",
     category: 'Douceurs sucrées',
-    price: '2 500 FCFA',
-    numericPrice: 2500,
-    description: "Pâte sablée dorée, crème pâtissière légère et fruits frais sélectionnés.",
+    price: '4 000 FCFA',
+    numericPrice: 4000,
+    description: "Paquet constitué de 15 mini tartelettes fraises, 12 sablés confiture et 10 choux vanille.",
     image: '/products/sucree_4.jpeg'
   },
   {
     id: 8,
-    name: "Choux Craquelins Cœur Praliné Noisette",
+    name: "Choux Craquelins, Brownies & Cœur Praliné",
     category: 'Douceurs sucrées',
-    price: '1 800 FCFA',
-    numericPrice: 1800,
-    description: "Craquelin doré et croustillant garni d'une crème pralinée maison.",
+    price: '4 500 FCFA',
+    numericPrice: 4500,
+    description: "Paquet constitué de 18 choux craquelins praliné, 14 mini brownies et 10 mini cakes.",
     image: '/products/sucree_5.jpeg'
   },
   {
     id: 9,
-    name: "Donuts Gourmands Glacés & Vermicelles",
+    name: "Mélange Donuts Glacés, Sablés & Mini Cakes",
     category: 'Douceurs sucrées',
-    price: '1 000 FCFA',
-    numericPrice: 1000,
-    description: "Pâte briochée moelleuse avec glaçage gourmand coloré.",
+    price: '3 500 FCFA',
+    numericPrice: 3500,
+    description: "Paquet constitué de 15 mini donuts glacés, 12 sablés pur beurre et 10 mini cakes.",
     image: '/products/sucree_6.jpeg'
   },
   {
     id: 10,
-    name: "Sablés Délicats au Beurre & Confiture",
+    name: "Sablés Délicats, Mini Brownies & Choux",
     category: 'Douceurs sucrées',
-    price: '1 200 FCFA',
-    numericPrice: 1200,
-    description: "Biscuits fondants pur beurre garnis de confiture artisanale.",
+    price: '3 800 FCFA',
+    numericPrice: 3800,
+    description: "Paquet constitué de 20 sablés fondants, 12 mini brownies et 10 choux à la crème.",
     image: '/products/sucree_7.jpeg'
   },
   {
     id: 11,
-    name: "Mignardises Sucrées Festives de Lê Ci",
+    name: "Grand Plateau Mignardises Sucrées Festives",
     category: 'Douceurs sucrées',
-    price: '3 500 FCFA',
-    numericPrice: 3500,
-    description: "Sélection raffinée de petites bouchées sucrées pour vos pauses gourmandes.",
+    price: '6 500 FCFA',
+    numericPrice: 6500,
+    description: "Paquet constitué de 20 mini brownies, 15 mini cakes, 12 choux à la crème et 10 tartelettes.",
     image: '/products/sucree_8.jpeg'
   },
 
-  // 3. Paquets (7 produits)
+  // 3. Paquets (constitué de plusieurs pièces d'une douceur unique : nombre minimal avec possibilité d'augmenter)
   {
     id: 20,
-    name: "Box Découverte Douceurs de Lê Ci",
+    name: "Paquet Unique — Mini Pizzas Artisanales",
     category: 'Paquets',
     price: '5 000 FCFA',
     numericPrice: 5000,
-    description: "Coffret cadeau assorti contenant un mix de nos meilleures pâtisseries artisanales.",
+    min_pieces: 20,
+    description: "Paquet constitué uniquement de mini pizzas moelleuses (minimum 20 pièces, possibilité d'augmenter selon vos besoins).",
     image: '/products/paquet_1.jpeg'
   },
   {
     id: 21,
-    name: "Paquet Cadeau Gourmand Ruban Doré",
+    name: "Paquet Unique — Nems Dorés Croustillants",
     category: 'Paquets',
-    price: '6 500 FCFA',
-    numericPrice: 6500,
-    description: "Emballage d'exception prêt à offrir avec sélection de douceurs raffinées.",
+    price: '4 500 FCFA',
+    numericPrice: 4500,
+    min_pieces: 15,
+    description: "Paquet constitué uniquement de nems dorés faits maison (minimum 15 pièces, possibilité d'augmenter).",
     image: '/products/paquet_2.jpeg'
   },
   {
     id: 22,
-    name: "Coffret Dégustation Macarons & Mignardises",
+    name: "Paquet Unique — Pastels Farcis Savoureux",
     category: 'Paquets',
-    price: '8 000 FCFA',
-    numericPrice: 8000,
-    description: "Assortiment luxueux présenté dans son écrin de fête personnalisé.",
+    price: '4 000 FCFA',
+    numericPrice: 4000,
+    min_pieces: 20,
+    description: "Paquet constitué uniquement de pastels farcis avec sauce maison (minimum 20 pièces, possibilité d'augmenter).",
     image: '/products/paquet_3.jpeg'
   },
   {
     id: 23,
-    name: "Pack Fête Familiale (Gâteaux + Mignardises)",
+    name: "Paquet Unique — Mini Brownies Chocolat Intense",
     category: 'Paquets',
-    price: '15 000 FCFA',
-    numericPrice: 15000,
-    description: "Le pack complet pour combler vos invités : gâteau central et bouchées variées.",
+    price: '5 000 FCFA',
+    numericPrice: 5000,
+    min_pieces: 20,
+    description: "Paquet constitué uniquement de mini brownies fondants (minimum 20 pièces, possibilité d'augmenter).",
     image: '/products/paquet_4.jpeg'
   },
   {
     id: 24,
-    name: "Box Pause Douceur & Viennoiseries Assorties",
+    name: "Paquet Unique — Choux à la Crème Vanille",
     category: 'Paquets',
     price: '4 500 FCFA',
     numericPrice: 4500,
-    description: "Idéal pour les réunions et pauses gourmandes de bureau.",
+    min_pieces: 15,
+    description: "Paquet constitué uniquement de choux à la crème onctueuse (minimum 15 pièces, possibilité d'augmenter).",
     image: '/products/paquet_5.jpeg'
   },
   {
     id: 25,
-    name: "Coffret Écrin Anniversaire Surprise",
+    name: "Paquet Unique — Mini Cakes Moelleux",
     category: 'Paquets',
-    price: '10 000 FCFA',
-    numericPrice: 10000,
-    description: "Pack festif avec bougies, douceurs personnalisées et finitions prestige.",
+    price: '4 000 FCFA',
+    numericPrice: 4000,
+    min_pieces: 20,
+    description: "Paquet constitué uniquement de mini cakes pur beurre (minimum 20 pièces, possibilité d'augmenter).",
     image: '/products/paquet_6.jpeg'
   },
   {
     id: 26,
-    name: "Pack Réception & Cocktails d'Entreprise",
+    name: "Paquet Unique — Mini Croissants Salés",
     category: 'Paquets',
-    price: '20 000 FCFA',
-    numericPrice: 20000,
-    description: "Grande sélection de douceurs salées et sucrées pour événements professionnels.",
+    price: '5 500 FCFA',
+    numericPrice: 5500,
+    min_pieces: 25,
+    description: "Paquet constitué uniquement de mini croissants salés gourmets (minimum 25 pièces, possibilité d'augmenter).",
     image: '/products/paquet_7.jpeg'
   }
 ];
@@ -189,6 +227,7 @@ export function Catalogue() {
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('Tous');
   const [selectedCakePortions, setSelectedCakePortions] = useState<{ [id: number]: { label: string; price: number } }>({});
+  const [selectedPaquetPieces, setSelectedPaquetPieces] = useState<{ [id: number]: number }>({});
   const [searchParams] = useSearchParams();
   const categoryParam = searchParams.get('category');
 
@@ -245,6 +284,14 @@ export function Catalogue() {
               } else if (p.portions_json) {
                 try { portions = JSON.parse(p.portions_json); } catch(e) {}
               }
+              let composition: { name: string; count: number }[] = [];
+              if (p.composition && Array.isArray(p.composition)) {
+                composition = p.composition;
+              } else if (p.composition_json) {
+                try { composition = JSON.parse(p.composition_json); } catch(e) {}
+              }
+              const isPaquetCat = Boolean(p.category && /paquet/i.test(p.category));
+              const minPieces = p.min_pieces && p.min_pieces > 0 ? p.min_pieces : (isPaquetCat ? 20 : 0);
               return {
                 id: p.id,
                 name: p.name,
@@ -253,7 +300,8 @@ export function Catalogue() {
                 numericPrice: p.price,
                 image: p.image || '/products/sucree_1.jpeg',
                 description: p.description || "",
-                stock_quantity: p.stock_quantity !== undefined ? p.stock_quantity : 10,
+                min_pieces: minPieces,
+                composition,
                 portions
               };
             });
@@ -289,15 +337,29 @@ export function Catalogue() {
 
   const handleAddToCart = (product: any, goImmediate = false) => {
     const isCakeProduct = product.category === 'Gâteaux' || product.category?.includes('Gât');
+    const isPaquetProduct = Boolean(product.category && /paquet/i.test(product.category));
+    const minPieces = product.min_pieces && product.min_pieces > 0 ? product.min_pieces : 20;
+    const chosenPieces = isPaquetProduct ? Math.max(minPieces, selectedPaquetPieces[product.id] || minPieces) : 0;
+
     const chosenPortion = selectedCakePortions[product.id];
-    const defaultPortionLabel = product.portions?.[0]?.label || '6-8 parts';
+    const defaultPortionLabel = product.portions?.[0]?.label || '6 parts';
     const portionLabel = isCakeProduct ? (chosenPortion?.label || defaultPortionLabel) : undefined;
-    const finalName = chosenPortion ? `${product.name} (${chosenPortion.label})` : product.name;
-    const finalPrice = chosenPortion ? `${chosenPortion.price.toLocaleString('fr-FR')} FCFA` : product.price;
-    const finalNumericPrice = chosenPortion ? chosenPortion.price : product.numericPrice;
+
+    let finalName = product.name;
+    let finalNumericPrice = product.numericPrice;
+
+    if (isPaquetProduct) {
+      finalName = `${product.name} (${chosenPieces} pièces)`;
+      finalNumericPrice = Math.round((product.numericPrice / minPieces) * chosenPieces);
+    } else if (chosenPortion) {
+      finalName = `${product.name} (${chosenPortion.label})`;
+      finalNumericPrice = chosenPortion.price;
+    }
+
+    const finalPrice = `${finalNumericPrice.toLocaleString('fr-FR')} FCFA`;
 
     addToCart({
-      id: product.id,
+      id: isPaquetProduct ? `${product.id}-pcs-${chosenPieces}` : product.id,
       name: finalName,
       price: finalPrice,
       numericPrice: finalNumericPrice,
@@ -305,7 +367,8 @@ export function Catalogue() {
       category: product.category,
       portion: portionLabel,
       catalogModel: product.name,
-      isCake: isCakeProduct
+      isCake: isCakeProduct,
+      description: product.description
     }, 1);
     setAddedProductId(product.id);
     setTimeout(() => setAddedProductId(null), 1500);
@@ -397,53 +460,122 @@ export function Catalogue() {
                         <p className="text-xs text-gray-500 mb-3 line-clamp-2 leading-relaxed">
                           {product.description || 'Création artisanale raffinée avec des ingrédients d excellence.'}
                         </p>
-  
-                        <div className="text-base font-extrabold text-[#581C87]">
-                          {product.price}
-                        </div>
+
+                        {/* Affichage de la composition précise pour Douceurs salées / Douceurs sucrées */}
+                        {Array.isArray(product.composition) && product.composition.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mb-3">
+                            {product.composition.map((comp: { name: string; count: number }, idx: number) => (
+                              <span
+                                key={idx}
+                                className="px-2 py-0.5 rounded-md bg-purple-50 text-[#581C87] border border-purple-100 text-[10px] font-bold"
+                              >
+                                {comp.count} {comp.name}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Configurateur de nombre de pièces pour Paquets (minimum + possibilité d'augmenter) */}
+                        {/paquet/i.test(product.category || '') ? (
+                          <div className="mt-2 pt-2 border-t border-purple-100/80 space-y-2">
+                            {(() => {
+                              const minPcs = product.min_pieces && product.min_pieces > 0 ? product.min_pieces : 20;
+                              const currentPcs = Math.max(minPcs, selectedPaquetPieces[product.id] || minPcs);
+                              const computedPrice = Math.round((product.numericPrice / minPcs) * currentPcs);
+                              return (
+                                <>
+                                  <div className="flex items-center justify-between text-[11px]">
+                                    <span className="font-semibold text-gray-600">
+                                      Min. <strong className="text-[#581C87]">{minPcs} pièces</strong> :
+                                    </span>
+                                    <div className="flex items-center gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setSelectedPaquetPieces(prev => ({
+                                            ...prev,
+                                            [product.id]: Math.max(minPcs, currentPcs - 1)
+                                          }))
+                                        }
+                                        disabled={currentPcs <= minPcs}
+                                        className="w-6 h-6 rounded-md border border-purple-200 bg-purple-50 text-[#581C87] flex items-center justify-center disabled:opacity-40 cursor-pointer"
+                                      >
+                                        <Minus size={11} />
+                                      </button>
+                                      <input
+                                        type="number"
+                                        min={minPcs}
+                                        value={currentPcs}
+                                        onChange={(e) => {
+                                          const val = parseInt(e.target.value, 10);
+                                          setSelectedPaquetPieces(prev => ({
+                                            ...prev,
+                                            [product.id]: isNaN(val) ? minPcs : Math.max(minPcs, val)
+                                          }));
+                                        }}
+                                        className="w-14 text-center py-0.5 border border-purple-200 rounded-md text-xs font-extrabold text-[#581C87] focus:outline-none"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setSelectedPaquetPieces(prev => ({
+                                            ...prev,
+                                            [product.id]: currentPcs + 1
+                                          }))
+                                        }
+                                        className="w-6 h-6 rounded-md border border-purple-200 bg-purple-50 text-[#581C87] flex items-center justify-center cursor-pointer"
+                                      >
+                                        <Plus size={11} />
+                                      </button>
+                                    </div>
+                                  </div>
+                                  <div className="text-base font-extrabold text-[#581C87]">
+                                    {computedPrice.toLocaleString('fr-FR')} FCFA{' '}
+                                    <span className="text-[11px] font-medium text-gray-500">({currentPcs} pcs)</span>
+                                  </div>
+                                </>
+                              );
+                            })()}
+                          </div>
+                        ) : (
+                          <div className="text-base font-extrabold text-[#581C87]">
+                            {product.price}
+                          </div>
+                        )}
                       </div>
                     </div>
 
                     <div className="p-5 pt-0">
-                      {product.stock_quantity !== undefined && product.stock_quantity <= 0 ? (
+                      <div className="flex gap-2">
                         <button
-                          disabled
-                          className="w-full py-2.5 px-3 rounded-lg font-bold text-xs bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed flex items-center justify-center gap-1.5"
+                          onClick={() => handleAddToCart(product, false)}
+                          className={`flex-1 py-2.5 px-3 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                            isAdded
+                              ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                              : 'bg-white hover:bg-purple-50 text-gray-800 border border-gray-200 hover:border-purple-200 shadow-sm'
+                          }`}
+                          title="Ajouter au panier"
                         >
-                          <span>Rupture temporaire</span>
+                          {isAdded ? (
+                            <>
+                              <Check size={15} /> Ajouté !
+                            </>
+                          ) : (
+                            <>
+                              <ShoppingBag size={15} /> Ajouter au panier
+                            </>
+                          )}
                         </button>
-                      ) : (
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleAddToCart(product, false)}
-                        className={`flex-1 py-2.5 px-3 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                          isAdded
-                            ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-                            : 'bg-white hover:bg-purple-50 text-gray-800 border border-gray-200 hover:border-purple-200 shadow-sm'
-                        }`}
-                        title="Ajouter au panier"
-                      >
-                        {isAdded ? (
-                          <>
-                            <Check size={15} /> Ajouté !
-                          </>
-                        ) : (
-                          <>
-                            <ShoppingBag size={15} /> Ajouter au panier
-                          </>
-                        )}
-                      </button>
 
-                      <button
-                        onClick={() => handleAddToCart(product, true)}
-                        className="flex-1 py-2.5 px-3 rounded-lg font-extrabold text-xs bg-[#581C87] hover:bg-[#6B21A8] text-white shadow-md shadow-purple-900/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
-                        title="Commander immédiatement"
-                          >
-                            <Zap size={15} />
-                            <span>Commander</span>
-                          </button>
-                        </div>
-                      )}
+                        <button
+                          onClick={() => handleAddToCart(product, true)}
+                          className="flex-1 py-2.5 px-3 rounded-lg font-extrabold text-xs bg-[#581C87] hover:bg-[#6B21A8] text-white shadow-md shadow-purple-900/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                          title="Commander immédiatement"
+                        >
+                          <Zap size={15} />
+                          <span>Commander</span>
+                        </button>
+                      </div>
                     </div>
                   </motion.div>
                 );
