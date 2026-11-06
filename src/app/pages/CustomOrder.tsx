@@ -438,7 +438,7 @@ export function CustomOrder() {
                         <div
                           key={cake.id}
                           onClick={() => setSelectedCatalogCake(cake.name)}
-                          className={`group relative rounded-2xl overflow-hidden border-2 cursor-pointer transition-all flex flex-col justify-between bg-white ${isSelected
+                          className={`group relative rounded-none overflow-hidden border-2 cursor-pointer transition-all flex flex-col justify-between bg-white ${isSelected
                               ? 'border-[#581C87] shadow-lg ring-2 ring-[#581C87]/20 scale-[1.02]'
                               : 'border-gray-200 hover:border-purple-200'
                             }`}

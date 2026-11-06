@@ -301,7 +301,7 @@ export function Home() {
                 {/* Carte entière cliquable (Notion #16) */}
                 <Link
                   to={targetUrl}
-                  className="group relative bg-white rounded-3xl overflow-hidden border border-purple-100/80 shadow-md hover:shadow-2xl hover:border-purple-300 transition-all duration-300 flex flex-col justify-between h-full cursor-pointer block transform hover:-translate-y-1.5"
+                  className="group relative bg-white rounded-none overflow-hidden border border-purple-100/80 shadow-md hover:shadow-2xl hover:border-purple-300 transition-all duration-300 flex flex-col justify-between h-full cursor-pointer block transform hover:-translate-y-1.5"
                 >
                   {/* Photo représentative de la catégorie */}
                   <div className="relative aspect-[4/3] overflow-hidden bg-purple-50">
@@ -391,7 +391,7 @@ export function Home() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.5, delay: idx * 0.1 }}
-                  className="bg-white/10 backdrop-blur-md rounded-3xl overflow-hidden border border-white/15 hover:border-[#D4AF37]/50 shadow-2xl transition-all duration-300 flex flex-col justify-between group hover:-translate-y-1.5"
+                  className="bg-white/10 backdrop-blur-md rounded-none overflow-hidden border border-white/15 hover:border-[#D4AF37]/50 shadow-2xl transition-all duration-300 flex flex-col justify-between group hover:-translate-y-1.5"
                 >
                   <div>
                     {/* Photo de la création signature */}
@@ -512,10 +512,10 @@ export function Home() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: idx * 0.1 }}
-                className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-md hover:shadow-xl transition-all duration-300 flex flex-col sm:flex-row gap-6 items-center"
+                className="bg-white rounded-none p-6 sm:p-8 border border-purple-100 shadow-md hover:shadow-xl transition-all duration-300 flex flex-col sm:flex-row gap-6 items-center"
               >
                 {/* Image miniature */}
-                <div className="w-full sm:w-44 h-44 rounded-2xl overflow-hidden shrink-0 relative shadow-sm">
+                <div className="w-full sm:w-44 h-44 rounded-none overflow-hidden shrink-0 relative shadow-sm">
                   <ImageWithFallback
                     src={item.image}
                     alt={item.title}
