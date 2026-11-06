@@ -318,11 +318,11 @@ export function Home() {
                       {cat.title}
                     </h3>
 
-                    {/* Bouton Pill visuel pour explorer la catégorie */}
+                    {/* Bouton visuel pour explorer la catégorie */}
                     <div
-                      className="w-full py-3 px-5 rounded-full bg-purple-50 group-hover:bg-[#581C87] text-[#581C87] group-hover:text-white font-bold text-xs transition-all duration-300 flex items-center justify-center gap-2 shadow-sm border border-purple-200 group-hover:border-[#581C87]"
+                      className="w-full py-3 px-5 rounded-lg bg-purple-50 group-hover:bg-[#581C87] text-[#581C87] group-hover:text-white font-bold text-xs transition-all duration-300 flex items-center justify-center gap-2 shadow-sm border border-purple-200 group-hover:border-[#581C87]"
                     >
-                      <span>{cat.id === 'gateaux' ? 'Personnaliser mon gâteau' : 'Découvrir la sélection'}</span>
+                      <span>{cat.id === 'gateaux' ? 'Personnaliser mon gâteau' : 'Découvrir'}</span>
                       <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
                     </div>
                   </div>
@@ -336,7 +336,7 @@ export function Home() {
         <div className="mt-14 flex flex-col sm:flex-row items-center justify-center gap-4">
           <Link
             to="/catalogue"
-            className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-[#581C87] hover:bg-[#6B21A8] text-white font-extrabold text-sm shadow-xl shadow-purple-950/20 transition-all flex items-center justify-center gap-2 transform hover:-translate-y-0.5 cursor-pointer"
+            className="w-full sm:w-auto px-8 py-3.5 rounded-lg bg-[#581C87] hover:bg-[#6B21A8] text-white font-extrabold text-sm shadow-xl shadow-purple-950/20 transition-all flex items-center justify-center gap-2 transform hover:-translate-y-0.5 cursor-pointer"
           >
             <span>Voir notre catalogue</span>
             <ArrowRight size={16} />
@@ -344,7 +344,7 @@ export function Home() {
 
           <Link
             to="/sur-commande"
-            className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-white hover:bg-purple-50 text-[#581C87] font-extrabold text-sm border-2 border-[#581C87] transition-all flex items-center justify-center gap-2 transform hover:-translate-y-0.5 cursor-pointer"
+            className="w-full sm:w-auto px-8 py-3.5 rounded-lg bg-white hover:bg-purple-50 text-[#581C87] font-extrabold text-sm border-2 border-[#581C87] transition-all flex items-center justify-center gap-2 transform hover:-translate-y-0.5 cursor-pointer"
           >
             <Cake size={16} />
             <span>Commander un gâteau</span>
@@ -422,7 +422,7 @@ export function Home() {
                     {item.isCake ? (
                       <Link
                         to="/sur-commande"
-                        className="w-full py-2.5 px-4 rounded-full font-extrabold text-xs bg-gradient-to-r from-[#D4AF37] to-amber-300 hover:from-amber-300 hover:to-[#D4AF37] text-purple-950 shadow-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer transform active:scale-95 text-center"
+                        className="w-full py-2.5 px-4 rounded-lg font-extrabold text-xs bg-gradient-to-r from-[#D4AF37] to-amber-300 hover:from-amber-300 hover:to-[#D4AF37] text-purple-950 shadow-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer transform active:scale-95 text-center"
                       >
                         <Cake size={14} />
                         <span>Personnaliser</span>
@@ -433,7 +433,7 @@ export function Home() {
                         <button
                           type="button"
                           onClick={() => handleAddSignatureToCart(item, false)}
-                          className={`flex-1 py-2.5 px-3 rounded-full font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${isAdded
+                          className={`flex-1 py-2.5 px-3 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${isAdded
                             ? 'bg-emerald-500 text-white shadow-md'
                             : 'bg-white/15 hover:bg-white/25 text-white border border-white/20'
                             }`}
@@ -452,7 +452,7 @@ export function Home() {
                         <button
                           type="button"
                           onClick={() => handleAddSignatureToCart(item, true)}
-                          className="flex-1 py-2.5 px-3 rounded-full font-black text-xs bg-gradient-to-r from-[#D4AF37] to-amber-300 hover:from-amber-300 hover:to-[#D4AF37] text-purple-950 shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                          className="flex-1 py-2.5 px-3 rounded-lg font-black text-xs bg-gradient-to-r from-[#D4AF37] to-amber-300 hover:from-amber-300 hover:to-[#D4AF37] text-purple-950 shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
                         >
                           <span>Commander</span>
                         </button>
@@ -558,10 +558,10 @@ export function Home() {
                     )}
                   </div>
 
-                  {/* Bouton Pill */}
+                  {/* Bouton */}
                   <Link
                     to={item.actionLink}
-                    className="w-full sm:w-auto self-start px-6 py-2.5 rounded-full bg-[#581C87] hover:bg-[#6B21A8] text-white text-xs font-bold shadow-md shadow-purple-900/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full sm:w-auto self-start px-6 py-2.5 rounded-lg bg-[#581C87] hover:bg-[#6B21A8] text-white text-xs font-bold shadow-md shadow-purple-900/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <span>{item.actionText}</span>
                     <ChevronRight size={14} />

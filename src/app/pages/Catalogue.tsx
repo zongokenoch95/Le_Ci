@@ -408,7 +408,7 @@ export function Catalogue() {
                       {product.stock_quantity !== undefined && product.stock_quantity <= 0 ? (
                         <button
                           disabled
-                          className="w-full py-2.5 px-3 rounded-full font-bold text-xs bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed flex items-center justify-center gap-1.5"
+                          className="w-full py-2.5 px-3 rounded-lg font-bold text-xs bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed flex items-center justify-center gap-1.5"
                         >
                           <span>Rupture temporaire</span>
                         </button>
@@ -416,7 +416,7 @@ export function Catalogue() {
                         <div className="flex gap-2">
                           <button
                             onClick={() => handleAddToCart(product, false)}
-                        className={`flex-1 py-2.5 px-3 rounded-full font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                        className={`flex-1 py-2.5 px-3 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                           isAdded
                             ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
                             : 'bg-white hover:bg-purple-50 text-gray-800 border border-gray-200 hover:border-purple-200 shadow-sm'
@@ -436,7 +436,7 @@ export function Catalogue() {
 
                       <button
                         onClick={() => handleAddToCart(product, true)}
-                        className="flex-1 py-2.5 px-3 rounded-full font-extrabold text-xs bg-[#581C87] hover:bg-[#6B21A8] text-white shadow-md shadow-purple-900/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                        className="flex-1 py-2.5 px-3 rounded-lg font-extrabold text-xs bg-[#581C87] hover:bg-[#6B21A8] text-white shadow-md shadow-purple-900/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
                         title="Commander immédiatement"
                           >
                             <Zap size={15} />
