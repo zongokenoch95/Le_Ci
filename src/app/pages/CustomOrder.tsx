@@ -81,6 +81,7 @@ export function CustomOrder() {
 
   // Point 1 : Catégorie de gâteau (Anniversaire, Mariage, Autre évènement + sous-catégories créées par le gérant)
   const [cakeCategories, setCakeCategories] = useState<string[]>(defaultCakeSubcategories);
+  const [cakeSubcatThemes, setCakeSubcatThemes] = useState<Record<string, { theme?: string; image?: string }>>({});
   const [selectedCakeCategory, setSelectedCakeCategory] = useState<string>('Anniversaire');
   const [customEventPrecision, setCustomEventPrecision] = useState<string>('');
 
@@ -109,17 +110,25 @@ export function CustomOrder() {
           getProductSubcategories('Gâteaux').catch(() => [])
         ]);
 
-        // Fusionner les 3 catégories de base avec celles créées par le gérant dans le Dashboard
-        const mergedSubcats = [...defaultCakeSubcategories];
-        if (Array.isArray(subcatsData)) {
+        // Utiliser les sous-catégories de Gâteaux de la base de données (ou fallback par défaut)
+        const mergedSubcats: string[] = [];
+        const themesMap: Record<string, { theme?: string; image?: string }> = {};
+        if (Array.isArray(subcatsData) && subcatsData.length > 0) {
           for (const s of subcatsData) {
             if (s.name && !mergedSubcats.includes(s.name)) {
               mergedSubcats.push(s.name);
             }
+            if (s.name) {
+              themesMap[s.name] = { theme: s.theme || '', image: s.image || '' };
+            }
           }
+        }
+        if (mergedSubcats.length === 0) {
+          mergedSubcats.push(...defaultCakeSubcategories);
         }
 
         // Extraire les gâteaux depuis la base de données
+        let combinedCakes: CakeCatalogItem[] = [...fallbackCatalogCakes];
         if (Array.isArray(productsData) && productsData.length > 0) {
           const dbCakes = productsData
             .filter((p: Product) => p.category && /g[aâ]teau/i.test(p.category.trim()))
@@ -148,11 +157,37 @@ export function CustomOrder() {
             });
 
           if (dbCakes.length > 0) {
-            setAllCakes(dbCakes);
+            combinedCakes = dbCakes;
           }
         }
 
+        // Ajouter les modèles de sous-catégorie dotés d'un thème et d'une image chargée par le gérant
+        if (Array.isArray(subcatsData)) {
+          for (const s of subcatsData) {
+            if (s.image && s.name) {
+              const modelName = s.theme ? `${s.name} — ${s.theme}` : `Modèle ${s.name}`;
+              const alreadyInCatalog = combinedCakes.some(
+                (c) => c.subcategory.toLowerCase() === s.name.toLowerCase() && c.image === s.image
+              );
+              if (!alreadyInCatalog) {
+                combinedCakes.unshift({
+                  id: `subcat-model-${s.id}`,
+                  name: modelName,
+                  image: s.image,
+                  subcategory: s.name,
+                  description: s.theme || ''
+                });
+              }
+            }
+          }
+        }
+
+        setAllCakes(combinedCakes);
+        setCakeSubcatThemes(themesMap);
         setCakeCategories(mergedSubcats);
+        if (mergedSubcats.length > 0 && !mergedSubcats.includes(selectedCakeCategory)) {
+          setSelectedCakeCategory(mergedSubcats[0]);
+        }
       } catch (err) {
         console.warn('Utilisation des gâteaux par défaut:', err);
       }
@@ -340,6 +375,7 @@ export function CustomOrder() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
               {cakeCategories.map((catName) => {
                 const isSelected = selectedCakeCategory === catName;
+                const subMeta = cakeSubcatThemes[catName];
                 return (
                   <button
                     key={catName}
@@ -348,12 +384,19 @@ export function CustomOrder() {
                       setSelectedCakeCategory(catName);
                       setModelType('catalog');
                     }}
-                    className={`py-4 px-5 rounded-2xl border-2 font-extrabold text-sm transition-all cursor-pointer flex items-center justify-between ${isSelected
-                        ? 'border-[#581C87] bg-[#581C87] text-white shadow-lg shadow-purple-900/25 scale-[1.01]'
-                        : 'border-gray-200 bg-white text-gray-800 hover:border-purple-300 hover:bg-purple-50/40'
+                    className={`py-4 px-5 rounded-2xl border-2 font-extrabold text-sm transition-all cursor-pointer flex items-center justify-between text-left ${isSelected
+                      ? 'border-[#581C87] bg-[#581C87] text-white shadow-lg shadow-purple-900/25 scale-[1.01]'
+                      : 'border-gray-200 bg-white text-gray-800 hover:border-purple-300 hover:bg-purple-50/40'
                       }`}
                   >
-                    <span>{catName}</span>
+                    <div className="min-w-0 pr-2">
+                      <span className="block">{catName}</span>
+                      {subMeta?.theme && (
+                        <span className={`block text-[11px] font-medium truncate mt-0.5 ${isSelected ? 'text-purple-200' : 'text-gray-500'}`}>
+                          {subMeta.theme}
+                        </span>
+                      )}
+                    </div>
                     {isSelected && (
                       <div className="w-5 h-5 rounded-full bg-white text-[#581C87] flex items-center justify-center shrink-0">
                         <Check size={12} strokeWidth={3} />
@@ -408,8 +451,8 @@ export function CustomOrder() {
                 type="button"
                 onClick={() => setModelType('catalog')}
                 className={`py-3 px-4 rounded-xl border-2 text-xs sm:text-sm font-bold transition cursor-pointer flex items-center justify-center gap-2 ${modelType === 'catalog'
-                    ? 'bg-[#581C87] border-[#581C87] text-white shadow-md'
-                    : 'bg-purple-50/70 border-purple-200 text-gray-700 hover:bg-purple-100/60'
+                  ? 'bg-[#581C87] border-[#581C87] text-white shadow-md'
+                  : 'bg-purple-50/70 border-purple-200 text-gray-700 hover:bg-purple-100/60'
                   }`}
               >
                 <Sparkles size={15} />
@@ -419,8 +462,8 @@ export function CustomOrder() {
                 type="button"
                 onClick={() => setModelType('upload')}
                 className={`py-3 px-4 rounded-xl border-2 text-xs sm:text-sm font-bold transition cursor-pointer flex items-center justify-center gap-2 ${modelType === 'upload'
-                    ? 'bg-[#581C87] border-[#581C87] text-white shadow-md'
-                    : 'bg-purple-50/70 border-purple-200 text-gray-700 hover:bg-purple-100/60'
+                  ? 'bg-[#581C87] border-[#581C87] text-white shadow-md'
+                  : 'bg-purple-50/70 border-purple-200 text-gray-700 hover:bg-purple-100/60'
                   }`}
               >
                 <Upload size={15} />
@@ -439,8 +482,8 @@ export function CustomOrder() {
                           key={cake.id}
                           onClick={() => setSelectedCatalogCake(cake.name)}
                           className={`group relative rounded-none overflow-hidden border-2 cursor-pointer transition-all flex flex-col justify-between bg-white ${isSelected
-                              ? 'border-[#581C87] shadow-lg ring-2 ring-[#581C87]/20 scale-[1.02]'
-                              : 'border-gray-200 hover:border-purple-200'
+                            ? 'border-[#581C87] shadow-lg ring-2 ring-[#581C87]/20 scale-[1.02]'
+                            : 'border-gray-200 hover:border-purple-200'
                             }`}
                         >
                           <div className="aspect-square w-full overflow-hidden bg-gray-100">
@@ -551,11 +594,10 @@ export function CustomOrder() {
                     <label
                       key={opt.id}
                       onClick={() => setSelectedPortionId(opt.id)}
-                      className={`p-3.5 px-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                        isSelected
-                          ? 'border-[#581C87] bg-purple-50/60 shadow-xs'
-                          : 'border-gray-200 hover:border-purple-200 bg-white'
-                      }`}
+                      className={`p-3.5 px-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${isSelected
+                        ? 'border-[#581C87] bg-purple-50/60 shadow-xs'
+                        : 'border-gray-200 hover:border-purple-200 bg-white'
+                        }`}
                     >
                       <div className="flex items-center gap-3">
                         <input
@@ -604,8 +646,8 @@ export function CustomOrder() {
                         clearFieldError('customFlavorText');
                       }}
                       className={`p-3.5 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center justify-between text-xs sm:text-sm font-semibold ${isSelected
-                          ? 'border-[#581C87] bg-purple-50 text-[#581C87] shadow-sm ring-2 ring-[#581C87]/20 font-bold'
-                          : 'border-gray-200 hover:border-purple-200 text-gray-700 bg-white'
+                        ? 'border-[#581C87] bg-purple-50 text-[#581C87] shadow-sm ring-2 ring-[#581C87]/20 font-bold'
+                        : 'border-gray-200 hover:border-purple-200 text-gray-700 bg-white'
                         }`}
                     >
                       <span>{flavor}</span>
@@ -638,8 +680,8 @@ export function CustomOrder() {
                     }}
                     placeholder="Ex: Chocolat blanc & fruits de la passion, Noisette gianduja..."
                     className={`w-full px-4 py-3 rounded-2xl border outline-none text-sm transition ${fieldErrors.customFlavorText
-                        ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200'
-                        : 'border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
+                      ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200'
+                      : 'border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
                       }`}
                   />
                   {fieldErrors.customFlavorText && (
@@ -680,36 +722,19 @@ export function CustomOrder() {
           {/* ========================================================================= */}
           {/* BARRE D'ACTION ET AJOUT AU PANIER */}
           {/* ========================================================================= */}
-          <div className="bg-gradient-to-r from-[#581C87] to-[#3B0764] rounded-3xl p-6 sm:p-8 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="space-y-1 text-center md:text-left">
-              <span className="text-xs text-purple-200 uppercase tracking-widest font-bold">
-                ✦ Récapitulatif • {selectedCakeCategory}
-              </span>
-              <h4 className="text-xl sm:text-2xl font-black">
-                {currentPortion.label} &bull;{' '}
-                {selectedFlavor === 'Autre saveur personnalisée' && customFlavorText
-                  ? customFlavorText
-                  : selectedFlavor}
-              </h4>
-              <p className="text-xs text-purple-200 font-light">
-                Tarif indicatif :{' '}
-                <span className="font-extrabold text-amber-300 text-sm sm:text-base">
-                  {estimatedPrice > 0 ? `${estimatedPrice.toLocaleString('fr-FR')} FCFA` : 'Sur devis'}
-                </span>
-              </p>
-            </div>
 
-            <button
-              type="button"
-              onClick={handleAddToCartAndProceed}
-              disabled={isSubmitting}
-              className="w-full md:w-auto px-8 py-4 rounded-full bg-white text-[#581C87] hover:bg-purple-50 font-black text-sm shadow-2xl transition cursor-pointer flex items-center justify-center gap-3 transform hover:scale-105 active:scale-95 shrink-0 disabled:opacity-50"
-            >
-              <ShoppingBag size={18} className="text-[#581C87]" />
-              <span>Ajouter au panier & Finaliser ma commande</span>
-              <ArrowRight size={18} className="text-[#581C87]" />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleAddToCartAndProceed}
+            disabled={isSubmitting}
+            className="w-full md:w-auto px-8 py-4 rounded-full bg-white text-[#581C87] hover:bg-purple-50 font-black text-sm shadow-2xl transition cursor-pointer flex items-center justify-center gap-3 transform hover:scale-105 active:scale-95 shrink-0 disabled:opacity-50"
+          >
+            <ShoppingBag size={18} className="text-[#581C87]" />
+            <span>Ajouter au panier</span>
+            <ArrowRight size={18} className="text-[#581C87]" />
+          </button>
+
+
         </div>
       </div>
     </div>

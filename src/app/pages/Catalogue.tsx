@@ -316,7 +316,7 @@ export function Catalogue() {
 
   return (
     <div className="min-h-screen py-12 bg-[#FAF8F5]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl lg:max-w-5xl xl:max-w-6xl mx-auto px-4 sm:px-6 lg:px-14 xl:px-20">
         {/* En-tête */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -324,8 +324,8 @@ export function Catalogue() {
           className="text-center mb-12"
         >
           
-          <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 mt-2 mb-4">Nos produits</h1>
-          <p className="text-sm text-gray-500 max-w-2xl mx-auto mb-2 font-light">
+          <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 mt-2 mb-4">Nos Douceurs</h1>
+          <p className="font-barcelony text-2xl sm:text-3xl text-gray-600 max-w-2xl mx-auto mb-2">
             La croisée entre la santé consciente, le plaisir gourmand et la fierté locale.
           </p>
           <p className="text-xs text-gray-600 max-w-2xl mx-auto">

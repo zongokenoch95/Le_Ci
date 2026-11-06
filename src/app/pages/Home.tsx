@@ -278,10 +278,10 @@ export function Home() {
         >
 
           <h2 className="text-3xl sm:text-5xl font-extrabold text-gray-900 tracking-tight">
-            Nos produits
+            Nos Douceurs
           </h2>
-          <p className="text-sm sm:text-base text-gray-600 max-w-2xl mx-auto font-light mt-3 leading-relaxed">
-            Explorez nos 4 familles de douceurs artisanales confectionnées à la commande avec des ingrédients frais, sains et locaux.
+          <p className="font-barcelony text-2xl sm:text-3xl text-gray-600 max-w-2xl mx-auto mt-3 leading-relaxed">
+            Explorez toutes nos créations confectionnées avec des ingrédients frais et locaux.
           </p>
         </motion.div>
 
@@ -322,7 +322,7 @@ export function Home() {
                     <div
                       className="w-full py-3 px-5 rounded-lg bg-purple-50 group-hover:bg-[#581C87] text-[#581C87] group-hover:text-white font-bold text-xs transition-all duration-300 flex items-center justify-center gap-2 shadow-sm border border-purple-200 group-hover:border-[#581C87]"
                     >
-                      <span>{cat.id === 'gateaux' ? 'Personnaliser mon gâteau' : 'Découvrir'}</span>
+                      <span>{cat.id === 'gateaux' ? 'Découvrir' : 'Découvrir'}</span>
                       <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
                     </div>
                   </div>
@@ -330,25 +330,6 @@ export function Home() {
               </motion.div>
             );
           })}
-        </div>
-
-        {/* Boutons d'action centraux sous les catégories */}
-        <div className="mt-14 flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Link
-            to="/catalogue"
-            className="w-full sm:w-auto px-8 py-3.5 rounded-lg bg-[#581C87] hover:bg-[#6B21A8] text-white font-extrabold text-sm shadow-xl shadow-purple-950/20 transition-all flex items-center justify-center gap-2 transform hover:-translate-y-0.5 cursor-pointer"
-          >
-            <span>Voir notre catalogue</span>
-            <ArrowRight size={16} />
-          </Link>
-
-          <Link
-            to="/sur-commande"
-            className="w-full sm:w-auto px-8 py-3.5 rounded-lg bg-white hover:bg-purple-50 text-[#581C87] font-extrabold text-sm border-2 border-[#581C87] transition-all flex items-center justify-center gap-2 transform hover:-translate-y-0.5 cursor-pointer"
-          >
-            <Cake size={16} />
-            <span>Commander un gâteau</span>
-          </Link>
         </div>
       </section>
 
@@ -369,14 +350,12 @@ export function Home() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-black bg-gradient-to-r from-[#D4AF37] to-amber-300 text-purple-950 uppercase tracking-widest mb-3 shadow-lg shadow-amber-900/30">
-              <Crown size={14} className="text-purple-950" /> Créations Phares
-            </span>
+
             <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
               Signature de la maison
             </h2>
-            <p className="text-sm sm:text-base text-purple-200/90 max-w-2xl mx-auto font-light mt-3 leading-relaxed">
-              Découvrez les créations emblématiques de la pâtisserie Lê Ci : des recettes d'exception préparées avec passion pour sublimer vos moments inoubliables.
+            <p className="font-barcelony text-2xl sm:text-3xl text-purple-200/90 max-w-2xl mx-auto mt-3 leading-relaxed">
+              Découvrez les créations emblématiques de la pâtisserie Lê Ci
             </p>
           </motion.div>
 
@@ -471,7 +450,7 @@ export function Home() {
               className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-white/10 hover:bg-white/20 text-white font-extrabold text-xs border border-white/20 transition backdrop-blur-md cursor-pointer hover:scale-105"
             >
               <Crown size={15} className="text-[#D4AF37]" />
-              <span>Voir toutes nos créations signatures dans le catalogue</span>
+              <span>Découvrir plus </span>
               <ArrowRight size={14} />
             </Link>
           </div>
@@ -492,14 +471,11 @@ export function Home() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold bg-[#581C87] text-white uppercase tracking-wider mb-3 shadow-md shadow-purple-900/20">
-              <Gift size={13} /> Offres & Privilèges
-            </span>
             <h2 className="text-3xl sm:text-5xl font-extrabold text-gray-900 tracking-tight">
               Promotions et Événements
             </h2>
-            <p className="text-sm sm:text-base text-gray-600 max-w-2xl mx-auto font-light mt-3 leading-relaxed">
-              Profitez de nos offres exclusives, remises de fidélité et moments gourmands organisés par la maison Lê Ci.
+            <p className="font-barcelony text-2xl sm:text-3xl text-gray-600 max-w-2xl mx-auto mt-3 leading-relaxed">
+              Soyez au courant de nos offres et évènements d'exception.
             </p>
           </motion.div>
 

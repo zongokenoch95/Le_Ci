@@ -1,26 +1,26 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  ShoppingBag, 
-  Trash2, 
-  Plus, 
-  Minus, 
-  ArrowRight, 
+import {
+  ShoppingBag,
+  Trash2,
+  Plus,
+  Minus,
+  ArrowRight,
   ArrowLeft,
-  Truck, 
-  Store, 
-  Calendar, 
-  Clock, 
-  Phone, 
-  User, 
-  MapPin, 
-  Navigation, 
-  MessageSquare, 
-  CheckCircle2, 
-  AlertCircle, 
-  Crown, 
-  Gift, 
+  Truck,
+  Store,
+  Calendar,
+  Clock,
+  Phone,
+  User,
+  MapPin,
+  Navigation,
+  MessageSquare,
+  CheckCircle2,
+  AlertCircle,
+  Crown,
+  Gift,
   Sparkles,
   CreditCard,
   Loader2,
@@ -29,10 +29,10 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
-import { 
-  createOrder, 
-  getLoyaltyMember, 
-  redeemLoyaltyPoints, 
+import {
+  createOrder,
+  getLoyaltyMember,
+  redeemLoyaltyPoints,
   LoyaltyMember
 } from '../services/api';
 import { validateBurkinaPhone } from '../utils/phoneValidation';
@@ -164,8 +164,8 @@ export const Cart: React.FC = () => {
   // Calcul réductions (frais de livraison supprimés : discutés après entre le client et le livreur)
   const pointValue = memberInfo?.settings?.point_value_fcfa || 1;
   const loyaltyDiscount = useLoyaltyPoints ? pointsToUse * pointValue : 0;
-  const tierDiscountPercent = memberInfo?.tier === 'GOLD' 
-    ? (memberInfo.settings?.gold_discount_percent || 10) 
+  const tierDiscountPercent = memberInfo?.tier === 'GOLD'
+    ? (memberInfo.settings?.gold_discount_percent || 10)
     : (memberInfo?.tier === 'SILVER' ? (memberInfo.settings?.silver_discount_percent || 5) : 0);
   const tierDiscountAmount = Math.round((totalAmount * tierDiscountPercent) / 100);
   const cardSupplement = hasGreetingCard ? 200 : 0;
@@ -301,7 +301,7 @@ export const Cart: React.FC = () => {
   return (
     <div className="min-h-screen py-10 sm:py-16 bg-[#FAF8F5]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+
         {/* Fil d'Ariane & Titre */}
         <div className="mb-8">
           <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 mb-3">
@@ -335,9 +335,9 @@ export const Cart: React.FC = () => {
 
         {/* Message d'erreur global si applicable */}
         {errorMsg && (
-          <motion.div 
-            initial={{ opacity: 0, y: -10 }} 
-            animate={{ opacity: 1, y: 0 }} 
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
             className="mb-8 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs sm:text-sm font-semibold flex items-center gap-3 shadow-sm"
           >
             <AlertCircle size={20} className="shrink-0 text-rose-600" />
@@ -372,10 +372,10 @@ export const Cart: React.FC = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            
+
             {/* COLONNE GAUCHE (7 cols) : Liste des articles & Formulaire complet */}
             <div className="lg:col-span-7 space-y-8">
-              
+
               {/* 1. LISTE DES ARTICLES SÉLECTIONNÉS */}
               <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
@@ -508,40 +508,36 @@ export const Cart: React.FC = () => {
                   <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">2</span>
                   Mode de réception
                 </h2>
-                <p className="text-xs text-gray-500 mb-4 font-light">
-                  Choisissez si vous souhaitez vous faire livrer à l'adresse de votre choix ou retirer directement à notre atelier.
-                </p>
+
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <button
                     type="button"
                     onClick={() => setDeliveryType('livraison')}
-                    className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center gap-3 ${
-                      deliveryType === 'livraison'
-                        ? 'border-[#581C87] bg-purple-50/70 shadow-sm ring-2 ring-[#581C87]/20 text-[#581C87]'
-                        : 'border-gray-200 hover:border-purple-200 text-gray-700 bg-white'
-                    }`}
+                    className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center gap-3 ${deliveryType === 'livraison'
+                      ? 'border-[#581C87] bg-purple-50/70 shadow-sm ring-2 ring-[#581C87]/20 text-[#581C87]'
+                      : 'border-gray-200 hover:border-purple-200 text-gray-700 bg-white'
+                      }`}
                   >
                     <Truck size={22} className="shrink-0 text-[#581C87]" />
                     <div>
-                      <div className="font-extrabold text-xs sm:text-sm">Livraison à domicile</div>
-                      <div className="text-[11px] text-gray-500 font-light mt-0.5">Frais de livraison discutés avec le livreur</div>
+                      <div className="font-extrabold text-xs sm:text-sm">Avec livraison</div>
+                      <div className="text-[11px] text-gray-500 font-light mt-0.5">A discuter avec le livreur</div>
                     </div>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setDeliveryType('sur_place')}
-                    className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center gap-3 ${
-                      deliveryType === 'sur_place'
-                        ? 'border-[#581C87] bg-purple-50/70 shadow-sm ring-2 ring-[#581C87]/20 text-[#581C87]'
-                        : 'border-gray-200 hover:border-purple-200 text-gray-700 bg-white'
-                    }`}
+                    className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center gap-3 ${deliveryType === 'sur_place'
+                      ? 'border-[#581C87] bg-purple-50/70 shadow-sm ring-2 ring-[#581C87]/20 text-[#581C87]'
+                      : 'border-gray-200 hover:border-purple-200 text-gray-700 bg-white'
+                      }`}
                   >
                     <Store size={22} className="shrink-0 text-[#581C87]" />
                     <div>
-                      <div className="font-extrabold text-xs sm:text-sm">Retrait à l'atelier</div>
-                      <div className="text-[11px] text-gray-500 font-light mt-0.5">Emballage soigné & prêt à l'heure</div>
+                      <div className="font-extrabold text-xs sm:text-sm">Sans livraison</div>
+                      <div className="text-[11px] text-gray-500 font-light mt-0.5">Passer retirer à la boutique</div>
                     </div>
                   </button>
                 </div>
@@ -551,19 +547,12 @@ export const Cart: React.FC = () => {
               <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
                 <h2 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">3</span>
-                  Date & Heure souhaitées
+                  Date & Heure
                 </h2>
-                <p className="text-xs text-gray-500 mb-6 font-light">
-                  Nos créations sont préparées le jour même de votre événement pour garantir une fraîcheur absolue.
-                </p>
-
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Bouton de sélection calendrier (Notion point 83) */}
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
-                      <Calendar size={14} className="text-[#581C87]" />
-                      Date de réception *
-                    </label>
+
                     <div className="relative">
                       <button
                         type="button"
@@ -578,18 +567,17 @@ export const Cart: React.FC = () => {
                             }
                           }
                         }}
-                        className={`w-full py-3.5 px-4 rounded-2xl flex items-center justify-between text-xs sm:text-sm font-bold transition cursor-pointer shadow-sm ${
-                          fieldErrors.deliveryDate 
-                            ? 'border-2 border-red-500 bg-red-50/20 text-red-700 ring-2 ring-red-200' 
-                            : deliveryDate
-                              ? 'border-2 border-[#581C87] bg-purple-50/80 text-[#581C87]'
-                              : 'border border-gray-200 bg-white text-gray-700 hover:border-purple-300 hover:bg-purple-50/40'
-                        }`}
+                        className={`w-full py-3.5 px-4 rounded-2xl flex items-center justify-between text-xs sm:text-sm font-bold transition cursor-pointer shadow-sm ${fieldErrors.deliveryDate
+                          ? 'border-2 border-red-500 bg-red-50/20 text-red-700 ring-2 ring-red-200'
+                          : deliveryDate
+                            ? 'border-2 border-[#581C87] bg-purple-50/80 text-[#581C87]'
+                            : 'border border-gray-200 bg-white text-gray-700 hover:border-purple-300 hover:bg-purple-50/40'
+                          }`}
                       >
                         <div className="flex items-center gap-2.5 truncate">
                           <Calendar size={18} className={deliveryDate ? 'text-[#581C87]' : 'text-gray-400'} />
                           <span className="truncate">
-                            {deliveryDate 
+                            {deliveryDate
                               ? `Date : ${new Date(deliveryDate + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })}`
                               : 'Sélectionner votre date de réception'}
                           </span>
@@ -605,9 +593,9 @@ export const Cart: React.FC = () => {
                         type="date"
                         min={minDate}
                         value={deliveryDate}
-                        onChange={(e) => { 
-                          setDeliveryDate(e.target.value); 
-                          clearFieldError('deliveryDate'); 
+                        onChange={(e) => {
+                          setDeliveryDate(e.target.value);
+                          clearFieldError('deliveryDate');
                         }}
                         className="absolute bottom-0 left-0 w-0 h-0 opacity-0 pointer-events-none"
                       />
@@ -634,11 +622,10 @@ export const Cart: React.FC = () => {
                       value={deliveryTimeSlot}
                       onChange={(e) => { setDeliveryTimeSlot(e.target.value); clearFieldError('deliveryTimeSlot'); }}
                       placeholder="Ex: 15h30, début d'après-midi, 18h..."
-                      className={`w-full px-4 py-3.5 rounded-2xl outline-none text-sm bg-white transition ${
-                        fieldErrors.deliveryTimeSlot
-                          ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200'
-                          : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
-                      }`}
+                      className={`w-full px-4 py-3.5 rounded-2xl outline-none text-sm bg-white transition ${fieldErrors.deliveryTimeSlot
+                        ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200'
+                        : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
+                        }`}
                     />
                     {fieldErrors.deliveryTimeSlot && (
                       <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
@@ -655,17 +642,17 @@ export const Cart: React.FC = () => {
               <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
                 <h2 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">4</span>
-                  Coordonnées de la personne qui va recevoir le colis
+                  La personne qui va recevoir le colis
                 </h2>
                 <p className="text-xs text-gray-500 mb-6 font-light">
-                  Le livreur contactera ce numéro pour la remise en main propre. Vous pouvez ajouter un second numéro de secours.
+                  Le livreur contactera ce numéro pour la remise en main propre.
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
                       <Phone size={14} className="text-[#581C87]" />
-                      Numéro WhatsApp / Téléphone de réception *
+                      WhatsApp / Téléphone *
                     </label>
                     <input
                       id="field-cart-phone"
@@ -673,11 +660,10 @@ export const Cart: React.FC = () => {
                       value={recipientPhone}
                       onChange={(e) => { setRecipientPhone(e.target.value); clearFieldError('recipientPhone'); }}
                       placeholder="Ex: 70 00 00 00 ou +226 70 12 34 56"
-                      className={`w-full px-4 py-3.5 rounded-2xl outline-none text-sm transition ${
-                        fieldErrors.recipientPhone 
-                          ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200' 
-                          : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
-                      }`}
+                      className={`w-full px-4 py-3.5 rounded-2xl outline-none text-sm transition ${fieldErrors.recipientPhone
+                        ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200'
+                        : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
+                        }`}
                     />
                     {fieldErrors.recipientPhone && (
                       <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
@@ -699,11 +685,10 @@ export const Cart: React.FC = () => {
                       value={backupPhone}
                       onChange={(e) => { setBackupPhone(e.target.value); clearFieldError('backupPhone'); }}
                       placeholder="Ex: 76 00 00 00 (famille, conjoint...)"
-                      className={`w-full px-4 py-3.5 rounded-2xl border outline-none text-sm bg-white transition ${
-                        fieldErrors.backupPhone
-                          ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200'
-                          : 'border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
-                      }`}
+                      className={`w-full px-4 py-3.5 rounded-2xl border outline-none text-sm bg-white transition ${fieldErrors.backupPhone
+                        ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200'
+                        : 'border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
+                        }`}
                     />
                     {fieldErrors.backupPhone && (
                       <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
@@ -722,9 +707,7 @@ export const Cart: React.FC = () => {
                     <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">5</span>
                     Lieu de livraison
                   </h2>
-                  <p className="text-xs text-gray-500 mb-5 font-light">
-                    Indiquez votre quartier (facultatif) ou collez le lien Google Maps du lieu de livraison. Les frais de livraison seront discutés après entre vous et le livreur.
-                  </p>
+
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
@@ -770,25 +753,49 @@ export const Cart: React.FC = () => {
                   Glissez une délicate attention manuscrite dans le coffret pour sublimer votre cadeau.
                 </p>
 
-                <div className="flex gap-3 mb-3">
-                  <button
-                    type="button"
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                  <label
                     onClick={() => setHasGreetingCard(false)}
-                    className={`flex-1 py-3 px-4 rounded-full text-xs font-bold transition cursor-pointer ${
-                      !hasGreetingCard ? 'bg-[#581C87] text-white shadow-sm' : 'bg-purple-50 text-gray-700 hover:bg-purple-100/60'
+                    className={`p-3.5 px-4 rounded-xl border transition-all cursor-pointer flex items-center gap-3 ${
+                      !hasGreetingCard
+                        ? 'border-[#581C87] bg-purple-50/60 shadow-xs'
+                        : 'border-gray-200 hover:border-purple-200 bg-white'
                     }`}
                   >
-                    Sans carte de vœux
-                  </button>
-                  <button
-                    type="button"
+                    <input
+                      type="radio"
+                      name="greetingCardOption"
+                      checked={!hasGreetingCard}
+                      onChange={() => setHasGreetingCard(false)}
+                      className="w-4 h-4 accent-[#581C87] cursor-pointer"
+                    />
+                    <span className="text-xs sm:text-sm font-bold text-gray-900">
+                      Sans carte de vœux
+                    </span>
+                  </label>
+
+                  <label
                     onClick={() => setHasGreetingCard(true)}
-                    className={`flex-1 py-3 px-4 rounded-full text-xs font-bold transition cursor-pointer ${
-                      hasGreetingCard ? 'bg-[#581C87] text-white shadow-sm' : 'bg-purple-50 text-gray-700 hover:bg-purple-100/60'
+                    className={`p-3.5 px-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                      hasGreetingCard
+                        ? 'border-[#581C87] bg-purple-50/60 shadow-xs'
+                        : 'border-gray-200 hover:border-purple-200 bg-white'
                     }`}
                   >
-                    ✦ Ajouter une carte (+200 FCFA)
-                  </button>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="radio"
+                        name="greetingCardOption"
+                        checked={hasGreetingCard}
+                        onChange={() => setHasGreetingCard(true)}
+                        className="w-4 h-4 accent-[#581C87] cursor-pointer"
+                      />
+                      <span className="text-xs sm:text-sm font-bold text-gray-900">
+                        Ajouter une carte de vœux
+                      </span>
+                    </div>
+                    <span className="text-xs font-extrabold text-[#581C87] shrink-0">+200 FCFA</span>
+                  </label>
                 </div>
 
                 {hasGreetingCard && (
@@ -806,11 +813,10 @@ export const Cart: React.FC = () => {
                       value={cardMessage}
                       onChange={(e) => { setCardMessage(e.target.value); clearFieldError('cardMessage'); }}
                       placeholder="Ex: Joyeux anniversaire mon amour ! De la part de toute la famille..."
-                      className={`w-full p-3.5 rounded-2xl outline-none text-sm transition ${
-                        fieldErrors.cardMessage 
-                          ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200' 
-                          : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
-                      }`}
+                      className={`w-full p-3.5 rounded-2xl outline-none text-sm transition ${fieldErrors.cardMessage
+                        ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200'
+                        : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
+                        }`}
                     />
                     {fieldErrors.cardMessage && (
                       <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
@@ -826,7 +832,7 @@ export const Cart: React.FC = () => {
 
             {/* COLONNE DROITE (5 cols) : Carte Récapitulative Sticky */}
             <div className="lg:col-span-5 sticky top-24 space-y-6">
-              
+
               {/* Carte Récapitulatif Total */}
               <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-xl">
                 <h3 className="text-lg font-extrabold text-gray-900 mb-4 pb-4 border-b border-gray-100 flex items-center justify-between">

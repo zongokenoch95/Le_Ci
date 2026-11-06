@@ -939,6 +939,17 @@ app.post('/api/product-categories', authenticateJwt, requireRole(['gerant']), as
   }
 });
 
+// Modifier une catégorie de plats
+app.put('/api/product-categories/:id', authenticateJwt, requireRole(['gerant']), async (req, res) => {
+  try {
+    const { name } = req.body || {};
+    const categories = await db.updateProductCategory(req.params.id, name);
+    res.json({ success: true, categories, message: 'Catégorie modifiée avec succès !' });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // Supprimer une catégorie de plats
 app.delete('/api/product-categories/:id', authenticateJwt, requireRole(['gerant']), async (req, res) => {
   try {
@@ -963,9 +974,20 @@ app.get('/api/product-subcategories', async (req, res) => {
 // Ajouter une nouvelle sous-catégorie pour une catégorie de plats
 app.post('/api/product-subcategories', authenticateJwt, requireRole(['gerant']), async (req, res) => {
   try {
-    const { category_name, name } = req.body || {};
-    const subcategories = await db.addProductSubcategory(category_name, name);
+    const { category_name, name, theme, image } = req.body || {};
+    const subcategories = await db.addProductSubcategory(category_name, name, theme, image);
     res.status(201).json({ success: true, subcategories, message: 'Sous-catégorie ajoutée avec succès !' });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Modifier une sous-catégorie de plats
+app.put('/api/product-subcategories/:id', authenticateJwt, requireRole(['gerant']), async (req, res) => {
+  try {
+    const { category_name, name, theme, image } = req.body || {};
+    const subcategories = await db.updateProductSubcategory(req.params.id, { category_name, name, theme, image });
+    res.json({ success: true, subcategories, message: 'Sous-catégorie modifiée avec succès !' });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

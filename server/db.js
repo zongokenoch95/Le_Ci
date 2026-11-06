@@ -300,11 +300,11 @@ export async function initDb() {
   `);
 
   const defaultCategories = [
-    'Signature de la maison',
     'Douceurs salées',
     'Douceurs sucrées',
-    'Gâteaux',
-    'Paquets'
+    'Signature de la maison',
+    'Paquets',
+    'Gâteaux'
   ];
   for (const catName of defaultCategories) {
     try {
@@ -317,19 +317,35 @@ export async function initDb() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       category_name TEXT NOT NULL,
       name TEXT NOT NULL,
+      theme TEXT DEFAULT '',
+      image TEXT DEFAULT '',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       UNIQUE(category_name, name)
     )
   `);
 
+  try {
+    await run(`ALTER TABLE product_subcategories ADD COLUMN theme TEXT DEFAULT ''`);
+  } catch (e) {}
+  try {
+    await run(`ALTER TABLE product_subcategories ADD COLUMN image TEXT DEFAULT ''`);
+  } catch (e) {}
+
   const defaultCakeSubcategories = [
-    ['Gâteaux', 'Anniversaire'],
-    ['Gâteaux', 'Mariage'],
-    ['Gâteaux', 'Autre évènement']
+    ['Gâteaux', 'Anniversaire', 'Thème Anniversaire Festif & Personnalisé', '/products/gateau_1.jpeg'],
+    ['Gâteaux', 'Mariage', 'Thème Mariage Prestige & Pièce Montée', '/products/gateau_8.jpeg'],
+    ['Gâteaux', 'Autre évènement', 'Thème Autres Événements & Célébrations', '/products/gateau_5.jpeg']
   ];
-  for (const [catName, subName] of defaultCakeSubcategories) {
+  for (const [catName, subName, themeVal, imageVal] of defaultCakeSubcategories) {
     try {
-      await run(`INSERT OR IGNORE INTO product_subcategories (category_name, name) VALUES (?, ?)`, [catName, subName]);
+      await run(
+        `INSERT OR IGNORE INTO product_subcategories (category_name, name, theme, image) VALUES (?, ?, ?, ?)`,
+        [catName, subName, themeVal, imageVal]
+      );
+      await run(
+        `UPDATE product_subcategories SET theme = COALESCE(NULLIF(theme, ''), ?), image = COALESCE(NULLIF(image, ''), ?) WHERE category_name = ? AND name = ?`,
+        [themeVal, imageVal, catName, subName]
+      );
     } catch (e) {}
   }
 
@@ -1743,6 +1759,19 @@ export async function addProductCategory(name) {
   return getProductCategories();
 }
 
+export async function updateProductCategory(id, name) {
+  const cleanName = (name || '').trim();
+  if (!cleanName) throw new Error('Le nom de la catégorie est obligatoire');
+  const existing = await get('SELECT * FROM product_categories WHERE id = ?', [id]);
+  if (!existing) throw new Error('Catégorie introuvable');
+  await run('UPDATE product_categories SET name = ? WHERE id = ?', [cleanName, id]);
+  if (existing.name !== cleanName) {
+    await run('UPDATE products SET category = ? WHERE category = ?', [cleanName, existing.name]);
+    await run('UPDATE product_subcategories SET category_name = ? WHERE category_name = ?', [cleanName, existing.name]);
+  }
+  return getProductCategories();
+}
+
 export async function deleteProductCategory(id) {
   await run('DELETE FROM product_categories WHERE id = ?', [id]);
   return getProductCategories();
@@ -1751,25 +1780,56 @@ export async function deleteProductCategory(id) {
 export async function getProductSubcategories(categoryName = null) {
   if (categoryName) {
     const rows = await all(
-      'SELECT id, category_name, name, created_at FROM product_subcategories WHERE category_name = ? ORDER BY id ASC',
+      'SELECT id, category_name, name, COALESCE(theme, "") as theme, COALESCE(image, "") as image, created_at FROM product_subcategories WHERE category_name = ? ORDER BY id ASC',
       [categoryName.trim()]
     );
     return rows || [];
   }
-  const rows = await all('SELECT id, category_name, name, created_at FROM product_subcategories ORDER BY id ASC');
+  const rows = await all('SELECT id, category_name, name, COALESCE(theme, "") as theme, COALESCE(image, "") as image, created_at FROM product_subcategories ORDER BY id ASC');
   return rows || [];
 }
 
-export async function addProductSubcategory(categoryName, name) {
+export async function addProductSubcategory(categoryName, name, theme = '', image = '') {
   const cleanCat = (categoryName || '').trim();
   const cleanName = (name || '').trim();
+  const cleanTheme = (theme || '').trim();
+  const cleanImage = (image || '').trim();
   if (!cleanCat || !cleanName) {
     throw new Error('La catégorie parente et le nom de la sous-catégorie sont obligatoires');
   }
   await run(
-    'INSERT OR IGNORE INTO product_subcategories (category_name, name) VALUES (?, ?)',
-    [cleanCat, cleanName]
+    'INSERT OR IGNORE INTO product_subcategories (category_name, name, theme, image) VALUES (?, ?, ?, ?)',
+    [cleanCat, cleanName, cleanTheme, cleanImage]
   );
+  if (cleanTheme || cleanImage) {
+    await run(
+      'UPDATE product_subcategories SET theme = CASE WHEN ? != "" THEN ? ELSE theme END, image = CASE WHEN ? != "" THEN ? ELSE image END WHERE category_name = ? AND name = ?',
+      [cleanTheme, cleanTheme, cleanImage, cleanImage, cleanCat, cleanName]
+    );
+  }
+  return getProductSubcategories();
+}
+
+export async function updateProductSubcategory(id, { category_name, name, theme, image } = {}) {
+  const existing = await get('SELECT * FROM product_subcategories WHERE id = ?', [id]);
+  if (!existing) throw new Error('Sous-catégorie introuvable');
+  const nextCat = category_name !== undefined ? String(category_name).trim() : existing.category_name;
+  const nextName = name !== undefined ? String(name).trim() : existing.name;
+  const nextTheme = theme !== undefined ? String(theme).trim() : (existing.theme || '');
+  const nextImage = image !== undefined ? String(image).trim() : (existing.image || '');
+  if (!nextCat || !nextName) {
+    throw new Error('La catégorie parente et le nom de la sous-catégorie sont obligatoires');
+  }
+  await run(
+    'UPDATE product_subcategories SET category_name = ?, name = ?, theme = ?, image = ? WHERE id = ?',
+    [nextCat, nextName, nextTheme, nextImage, id]
+  );
+  if (existing.name !== nextName || existing.category_name !== nextCat) {
+    await run(
+      'UPDATE products SET category = ?, subcategory = ? WHERE category = ? AND subcategory = ?',
+      [nextCat, nextName, existing.category_name, existing.name]
+    );
+  }
   return getProductSubcategories();
 }
 
@@ -2050,7 +2110,12 @@ export default {
   deleteProduct,
   getProductCategories,
   addProductCategory,
+  updateProductCategory,
   deleteProductCategory,
+  getProductSubcategories,
+  addProductSubcategory,
+  updateProductSubcategory,
+  deleteProductSubcategory,
   getAdminDetailedStats,
   getAnnouncementBanner,
   updateAnnouncementBanner,

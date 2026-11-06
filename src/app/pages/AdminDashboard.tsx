@@ -52,7 +52,8 @@ import {
   Loader2,
   Phone,
   User,
-  CreditCard
+  CreditCard,
+  Upload
 } from 'lucide-react';
 import { 
   getAdminOrders, 
@@ -84,10 +85,12 @@ import {
   deleteProduct,
   getProductCategories,
   addProductCategory,
+  updateProductCategory,
   deleteProductCategory,
   ProductCategory,
   getProductSubcategories,
   addProductSubcategory,
+  updateProductSubcategory,
   deleteProductSubcategory,
   ProductSubcategory,
   getAdminDetailedStats,
@@ -181,22 +184,26 @@ export function AdminDashboard() {
   // État Gestion des Plats & Catégories
   const [products, setProducts] = useState<Product[]>([]);
   const [productCategories, setProductCategories] = useState<ProductCategory[]>([
-    { id: 1, name: 'Signature de la maison' },
-    { id: 2, name: 'Douceurs salées' },
-    { id: 3, name: 'Douceurs sucrées' },
-    { id: 4, name: 'Gâteaux' },
-    { id: 5, name: 'Paquets' }
+    { id: 1, name: 'Douceurs salées' },
+    { id: 2, name: 'Douceurs sucrées' },
+    { id: 3, name: 'Signature de la maison' },
+    { id: 4, name: 'Paquets' },
+    { id: 5, name: 'Gâteaux' }
   ]);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [editingCategory, setEditingCategory] = useState<ProductCategory | null>(null);
   const [addingCategory, setAddingCategory] = useState(false);
   const [categorySuccessMsg, setCategorySuccessMsg] = useState('');
   const [productSubcategories, setProductSubcategories] = useState<ProductSubcategory[]>([
-    { id: 1, category_name: 'Gâteaux', name: 'Anniversaire' },
-    { id: 2, category_name: 'Gâteaux', name: 'Mariage' },
-    { id: 3, category_name: 'Gâteaux', name: 'Autre évènement' }
+    { id: 1, category_name: 'Gâteaux', name: 'Anniversaire', theme: 'Thème Anniversaire Festif & Personnalisé', image: '/products/gateau_1.jpeg' },
+    { id: 2, category_name: 'Gâteaux', name: 'Mariage', theme: 'Thème Mariage Prestige & Pièce Montée', image: '/products/gateau_8.jpeg' },
+    { id: 3, category_name: 'Gâteaux', name: 'Autre évènement', theme: 'Thème Autres Événements & Célébrations', image: '/products/gateau_5.jpeg' }
   ]);
   const [subParentCategory, setSubParentCategory] = useState('Gâteaux');
   const [newSubcategoryName, setNewSubcategoryName] = useState('');
+  const [newSubcategoryTheme, setNewSubcategoryTheme] = useState('');
+  const [newSubcategoryImage, setNewSubcategoryImage] = useState('');
+  const [editingSubcategory, setEditingSubcategory] = useState<ProductSubcategory | null>(null);
   const [addingSubcategory, setAddingSubcategory] = useState(false);
   const [subcategorySuccessMsg, setSubcategorySuccessMsg] = useState('');
   const [loadingProducts, setLoadingProducts] = useState(false);
@@ -346,16 +353,35 @@ export function AdminDashboard() {
     setAddingCategory(true);
     setCategorySuccessMsg('');
     try {
-      const updated = await addProductCategory(clean);
-      setProductCategories(updated);
-      setNewCategoryName('');
-      setCategorySuccessMsg(`Catégorie « ${clean} » ajoutée avec succès !`);
+      if (editingCategory) {
+        const updated = await updateProductCategory(editingCategory.id, clean);
+        setProductCategories(updated);
+        setEditingCategory(null);
+        setNewCategoryName('');
+        setCategorySuccessMsg(`Catégorie modifiée en « ${clean} » avec succès !`);
+        await loadProducts();
+      } else {
+        const updated = await addProductCategory(clean);
+        setProductCategories(updated);
+        setNewCategoryName('');
+        setCategorySuccessMsg(`Catégorie « ${clean} » ajoutée avec succès !`);
+      }
       setTimeout(() => setCategorySuccessMsg(''), 3500);
     } catch (err: any) {
-      alert(err.message || 'Erreur lors de l\'ajout de la catégorie');
+      alert(err.message || 'Erreur lors de l\'enregistrement de la catégorie');
     } finally {
       setAddingCategory(false);
     }
+  };
+
+  const handleStartEditCategory = (cat: ProductCategory) => {
+    setEditingCategory(cat);
+    setNewCategoryName(cat.name);
+  };
+
+  const handleCancelEditCategory = () => {
+    setEditingCategory(null);
+    setNewCategoryName('');
   };
 
   const handleDeleteCategory = async (cat: ProductCategory) => {
@@ -363,12 +389,44 @@ export function AdminDashboard() {
     try {
       const updated = await deleteProductCategory(cat.id);
       setProductCategories(updated);
+      if (editingCategory?.id === cat.id) {
+        setEditingCategory(null);
+        setNewCategoryName('');
+      }
       if (productCategoryFilter === cat.name) {
         setProductCategoryFilter('Tous');
       }
     } catch (err: any) {
       alert(err.message || 'Erreur lors de la suppression de la catégorie');
     }
+  };
+
+  const handleSubcategoryImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert("L'image est trop lourde (maximum 5 Mo)");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setNewSubcategoryImage(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleProductImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert("L'image est trop lourde (maximum 5 Mo)");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setProductFormData(prev => ({ ...prev, image: reader.result as string }));
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleAddSubcategory = async (e: React.FormEvent) => {
@@ -378,16 +436,53 @@ export function AdminDashboard() {
     setAddingSubcategory(true);
     setSubcategorySuccessMsg('');
     try {
-      const updated = await addProductSubcategory(subParentCategory, cleanSub);
-      setProductSubcategories(updated);
-      setNewSubcategoryName('');
-      setSubcategorySuccessMsg(`Sous-catégorie « ${cleanSub} » ajoutée dans « ${subParentCategory} » !`);
+      const isCakeParent = /g[aâ]teau/i.test(subParentCategory);
+      const themePayload = isCakeParent ? newSubcategoryTheme.trim() : '';
+      const imagePayload = isCakeParent ? newSubcategoryImage.trim() : '';
+
+      if (editingSubcategory) {
+        const updated = await updateProductSubcategory(editingSubcategory.id, {
+          category_name: subParentCategory,
+          name: cleanSub,
+          theme: themePayload,
+          image: imagePayload
+        });
+        setProductSubcategories(updated);
+        setEditingSubcategory(null);
+        setNewSubcategoryName('');
+        setNewSubcategoryTheme('');
+        setNewSubcategoryImage('');
+        setSubcategorySuccessMsg(`Sous-catégorie « ${cleanSub} » modifiée avec succès !`);
+        await loadProducts();
+      } else {
+        const updated = await addProductSubcategory(subParentCategory, cleanSub, themePayload, imagePayload);
+        setProductSubcategories(updated);
+        setNewSubcategoryName('');
+        setNewSubcategoryTheme('');
+        setNewSubcategoryImage('');
+        setSubcategorySuccessMsg(`Sous-catégorie « ${cleanSub} » ajoutée dans « ${subParentCategory} » !`);
+      }
       setTimeout(() => setSubcategorySuccessMsg(''), 3500);
     } catch (err: any) {
-      alert(err.message || 'Erreur lors de l\'ajout de la sous-catégorie');
+      alert(err.message || 'Erreur lors de l\'enregistrement de la sous-catégorie');
     } finally {
       setAddingSubcategory(false);
     }
+  };
+
+  const handleStartEditSubcategory = (sub: ProductSubcategory) => {
+    setEditingSubcategory(sub);
+    setSubParentCategory(sub.category_name);
+    setNewSubcategoryName(sub.name);
+    setNewSubcategoryTheme(sub.theme || '');
+    setNewSubcategoryImage(sub.image || '');
+  };
+
+  const handleCancelEditSubcategory = () => {
+    setEditingSubcategory(null);
+    setNewSubcategoryName('');
+    setNewSubcategoryTheme('');
+    setNewSubcategoryImage('');
   };
 
   const handleDeleteSubcategory = async (sub: ProductSubcategory) => {
@@ -395,6 +490,9 @@ export function AdminDashboard() {
     try {
       const updated = await deleteProductSubcategory(sub.id);
       setProductSubcategories(updated);
+      if (editingSubcategory?.id === sub.id) {
+        handleCancelEditSubcategory();
+      }
     } catch (err: any) {
       alert(err.message || 'Erreur lors de la suppression de la sous-catégorie');
     }
@@ -1546,19 +1644,19 @@ export function AdminDashboard() {
                 <div>
                   <h3 className="text-xs font-extrabold text-white uppercase tracking-wider flex items-center gap-2">
                     <Layers size={15} className="text-[#D4AF37]" />
-                    <span>Catégories de plats ({productCategories.length})</span>
+                    <span>Catégories de produits ({productCategories.length})</span>
                   </h3>
                   <p className="text-[11px] text-gray-400">
-                    Ajoutez de nouvelles catégories pour classer vos pâtisseries dans le catalogue et le menu.
+                    Ajoutez, modifiez ou supprimez les catégories (Douceurs salées, Douceurs sucrées, Signature de la maison, Paquets, Gâteaux...).
                   </p>
                 </div>
 
-                <form onSubmit={handleAddCategory} className="flex items-center gap-2">
+                <form onSubmit={handleAddCategory} className="flex flex-wrap items-center gap-2">
                   <input
                     type="text"
                     value={newCategoryName}
                     onChange={(e) => setNewCategoryName(e.target.value)}
-                    placeholder="Nouvelle catégorie (ex: Viennoiseries)..."
+                    placeholder={editingCategory ? `Renommer « ${editingCategory.name} »...` : 'Nouvelle catégorie (ex: Viennoiseries)...'}
                     className="px-3.5 py-2 bg-[#0F172A] border border-gray-700 rounded-xl text-white text-xs focus:ring-2 focus:ring-[#D4AF37] focus:outline-none min-w-[210px]"
                   />
                   <button
@@ -1566,9 +1664,24 @@ export function AdminDashboard() {
                     disabled={addingCategory || !newCategoryName.trim()}
                     className="px-4 py-2 rounded-xl bg-[#D4AF37] hover:bg-[#c29d2b] text-black font-extrabold text-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
                   >
-                    <Plus size={14} />
-                    <span>{addingCategory ? 'Ajout...' : 'Ajouter la catégorie'}</span>
+                    {editingCategory ? <Save size={14} /> : <Plus size={14} />}
+                    <span>
+                      {addingCategory
+                        ? 'Enregistrement...'
+                        : editingCategory
+                          ? 'Modifier la catégorie'
+                          : 'Ajouter la catégorie'}
+                    </span>
                   </button>
+                  {editingCategory && (
+                    <button
+                      type="button"
+                      onClick={handleCancelEditCategory}
+                      className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-gray-300 font-bold text-xs transition cursor-pointer"
+                    >
+                      Annuler
+                    </button>
+                  )}
                 </form>
               </div>
 
@@ -1583,14 +1696,26 @@ export function AdminDashboard() {
                 {productCategories.map(cat => (
                   <div
                     key={cat.id}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-white/5 border border-white/10 text-xs text-gray-200 font-semibold"
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition ${
+                      editingCategory?.id === cat.id
+                        ? 'bg-[#D4AF37]/20 border-[#D4AF37] text-[#D4AF37]'
+                        : 'bg-white/5 border-white/10 text-gray-200'
+                    }`}
                   >
                     <span>{cat.name}</span>
                     <button
                       type="button"
+                      onClick={() => handleStartEditCategory(cat)}
+                      title={`Modifier la catégorie ${cat.name}`}
+                      className="text-gray-400 hover:text-[#D4AF37] transition cursor-pointer ml-1"
+                    >
+                      <Edit3 size={12} />
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => handleDeleteCategory(cat)}
                       title={`Supprimer la catégorie ${cat.name}`}
-                      className="text-gray-500 hover:text-rose-400 transition cursor-pointer ml-1"
+                      className="text-gray-500 hover:text-rose-400 transition cursor-pointer"
                     >
                       <X size={13} />
                     </button>
@@ -1599,45 +1724,131 @@ export function AdminDashboard() {
               </div>
 
               {/* Gestion des sous-catégories par catégorie de plats (ex: Gâteaux -> Anniversaire, Mariage, Autre évènement...) */}
-              <div className="pt-4 mt-3 border-t border-white/10 space-y-3">
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-                  <div>
-                    <h4 className="text-xs font-extrabold text-[#D4AF37] uppercase tracking-wider flex items-center gap-2">
-                      <Sparkles size={14} className="text-[#D4AF37]" />
-                      <span>Sous-catégories par catégorie de plats ({productSubcategories.length})</span>
-                    </h4>
-                    <p className="text-[11px] text-gray-400">
-                      Créez des sous-catégories pour chaque catégorie de plats (ex : pour <strong>Gâteaux</strong> : Anniversaire, Mariage, Baptême, Autre évènement...).
-                    </p>
+              <div className="pt-4 mt-3 border-t border-white/10 space-y-4">
+                <div>
+                  <h4 className="text-xs font-extrabold text-[#D4AF37] uppercase tracking-wider flex items-center gap-2">
+                    <Sparkles size={14} className="text-[#D4AF37]" />
+                    <span>Sous-catégories par catégorie ({productSubcategories.length})</span>
+                  </h4>
+                  <p className="text-[11px] text-gray-400 mt-0.5">
+                    Ajoutez, modifiez ou supprimez des sous-catégories. Pour la catégorie <strong>Gâteaux</strong> (ex : Anniversaire, Mariage, Autres), associez un <strong>thème</strong> et une <strong>image chargée depuis votre appareil</strong>.
+                  </p>
+                </div>
+
+                <form onSubmit={handleAddSubcategory} className="bg-[#0F172A]/80 p-3.5 rounded-2xl border border-white/10 space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                        Catégorie parente
+                      </label>
+                      <select
+                        value={subParentCategory}
+                        onChange={(e) => setSubParentCategory(e.target.value)}
+                        className="w-full px-3 py-2 bg-[#1E293B] border border-gray-700 rounded-xl text-white text-xs focus:ring-2 focus:ring-[#D4AF37] focus:outline-none"
+                      >
+                        {productCategories.map(c => (
+                          <option key={c.id} value={c.name}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                        Nom de la sous-catégorie
+                      </label>
+                      <input
+                        type="text"
+                        value={newSubcategoryName}
+                        onChange={(e) => setNewSubcategoryName(e.target.value)}
+                        placeholder="Ex: Anniversaire, Mariage, Autres..."
+                        className="w-full px-3.5 py-2 bg-[#1E293B] border border-gray-700 rounded-xl text-white text-xs focus:ring-2 focus:ring-[#D4AF37] focus:outline-none"
+                      />
+                    </div>
+
+                    {/g[aâ]teau/i.test(subParentCategory) && (
+                      <div>
+                        <label className="block text-[10px] font-bold text-purple-300 uppercase tracking-wider mb-1">
+                          Thème du gâteau (Sous-catégorie)
+                        </label>
+                        <input
+                          type="text"
+                          value={newSubcategoryTheme}
+                          onChange={(e) => setNewSubcategoryTheme(e.target.value)}
+                          placeholder="Ex: Thème Royal, Thème Floral, Enfants..."
+                          className="w-full px-3.5 py-2 bg-[#1E293B] border border-purple-500/40 rounded-xl text-white text-xs focus:ring-2 focus:ring-purple-400 focus:outline-none"
+                        />
+                      </div>
+                    )}
                   </div>
 
-                  <form onSubmit={handleAddSubcategory} className="flex flex-wrap items-center gap-2">
-                    <select
-                      value={subParentCategory}
-                      onChange={(e) => setSubParentCategory(e.target.value)}
-                      className="px-3 py-2 bg-[#0F172A] border border-gray-700 rounded-xl text-white text-xs focus:ring-2 focus:ring-[#D4AF37] focus:outline-none"
-                    >
-                      {productCategories.map(c => (
-                        <option key={c.id} value={c.name}>{c.name}</option>
-                      ))}
-                    </select>
-                    <input
-                      type="text"
-                      value={newSubcategoryName}
-                      onChange={(e) => setNewSubcategoryName(e.target.value)}
-                      placeholder="Nouvelle sous-catégorie (ex: Baptême)..."
-                      className="px-3.5 py-2 bg-[#0F172A] border border-gray-700 rounded-xl text-white text-xs focus:ring-2 focus:ring-[#D4AF37] focus:outline-none min-w-[210px]"
-                    />
+                  {/g[aâ]teau/i.test(subParentCategory) && (
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-white/5">
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <label className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-purple-600/25 hover:bg-purple-600/40 border border-purple-400/40 text-purple-200 text-xs font-bold cursor-pointer transition">
+                          <Upload size={14} />
+                          <span>Charger une image depuis l'appareil</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleSubcategoryImageUpload}
+                            className="hidden"
+                          />
+                        </label>
+                        <input
+                          type="text"
+                          value={newSubcategoryImage.startsWith('data:') ? '' : newSubcategoryImage}
+                          onChange={(e) => setNewSubcategoryImage(e.target.value)}
+                          placeholder="Ou coller une URL d'image..."
+                          className="px-3 py-1.5 bg-[#1E293B] border border-gray-700 rounded-xl text-white text-xs focus:outline-none min-w-[200px]"
+                        />
+                        {newSubcategoryImage && (
+                          <div className="flex items-center gap-2 bg-white/5 px-2.5 py-1 rounded-xl border border-white/10">
+                            <img
+                              src={newSubcategoryImage}
+                              alt="Aperçu sous-catégorie"
+                              className="w-8 h-8 rounded-lg object-cover border border-purple-400/40"
+                            />
+                            <span className="text-[10px] text-emerald-300 font-bold">Image prête</span>
+                            <button
+                              type="button"
+                              onClick={() => setNewSubcategoryImage('')}
+                              className="text-gray-400 hover:text-rose-400"
+                              title="Retirer l'image"
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-end gap-2 pt-1">
+                    {editingSubcategory && (
+                      <button
+                        type="button"
+                        onClick={handleCancelEditSubcategory}
+                        className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-gray-300 font-bold text-xs transition cursor-pointer"
+                      >
+                        Annuler
+                      </button>
+                    )}
                     <button
                       type="submit"
                       disabled={addingSubcategory || !newSubcategoryName.trim()}
                       className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
                     >
-                      <Plus size={14} />
-                      <span>{addingSubcategory ? 'Ajout...' : 'Ajouter la sous-catégorie'}</span>
+                      {editingSubcategory ? <Save size={14} /> : <Plus size={14} />}
+                      <span>
+                        {addingSubcategory
+                          ? 'Enregistrement...'
+                          : editingSubcategory
+                            ? 'Enregistrer les modifications'
+                            : 'Ajouter la sous-catégorie'}
+                      </span>
                     </button>
-                  </form>
-                </div>
+                  </div>
+                </form>
 
                 {subcategorySuccessMsg && (
                   <div className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
@@ -1646,22 +1857,59 @@ export function AdminDashboard() {
                   </div>
                 )}
 
-                <div className="flex flex-wrap gap-2 pt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1">
                   {productSubcategories.map(sub => (
                     <div
                       key={sub.id}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-purple-500/15 border border-purple-400/30 text-xs text-purple-200 font-semibold"
+                      className={`flex items-center justify-between gap-2 p-2.5 rounded-2xl border text-xs transition ${
+                        editingSubcategory?.id === sub.id
+                          ? 'bg-purple-500/30 border-purple-300 text-white'
+                          : 'bg-purple-500/10 border-purple-400/25 text-purple-200'
+                      }`}
                     >
-                      <span className="text-[10px] text-purple-300/80 uppercase font-bold">{sub.category_name} ›</span>
-                      <span className="text-white font-bold">{sub.name}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteSubcategory(sub)}
-                        title={`Supprimer la sous-catégorie ${sub.name}`}
-                        className="text-purple-300 hover:text-rose-400 transition cursor-pointer ml-1"
-                      >
-                        <X size={13} />
-                      </button>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {sub.image ? (
+                          <img
+                            src={sub.image}
+                            alt={sub.name}
+                            className="w-10 h-10 rounded-xl object-cover border border-purple-400/40 shrink-0"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-xl bg-purple-900/50 border border-purple-500/30 flex items-center justify-center text-purple-300 shrink-0 font-black text-xs">
+                            {sub.name.slice(0, 2).toUpperCase()}
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <span className="text-[10px] text-purple-300/80 uppercase font-bold">{sub.category_name} ›</span>
+                            <span className="text-white font-extrabold truncate">{sub.name}</span>
+                          </div>
+                          {sub.theme && (
+                            <p className="text-[10px] text-[#D4AF37] font-semibold truncate mt-0.5">
+                              Thème : {sub.theme}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleStartEditSubcategory(sub)}
+                          title={`Modifier la sous-catégorie ${sub.name}`}
+                          className="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-purple-200 hover:text-[#D4AF37] transition cursor-pointer"
+                        >
+                          <Edit3 size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteSubcategory(sub)}
+                          title={`Supprimer la sous-catégorie ${sub.name}`}
+                          className="p-1.5 rounded-lg bg-white/5 hover:bg-rose-500/20 text-purple-300 hover:text-rose-400 transition cursor-pointer"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -2592,16 +2840,45 @@ export function AdminDashboard() {
                 />
               </div>
 
-              <div>
-                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
-                  URL de l'image
+              <div className="space-y-2">
+                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                  Image du produit (appareil ou URL)
                 </label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <label className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-purple-600/25 hover:bg-purple-600/40 border border-purple-400/40 text-purple-200 text-xs font-bold cursor-pointer transition">
+                    <Upload size={14} />
+                    <span>Charger depuis l'appareil</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleProductImageUpload}
+                      className="hidden"
+                    />
+                  </label>
+                  {productFormData.image && (
+                    <div className="flex items-center gap-2 bg-white/5 px-2.5 py-1 rounded-xl border border-white/10">
+                      <img
+                        src={productFormData.image}
+                        alt="Aperçu"
+                        className="w-8 h-8 rounded-lg object-cover border border-white/20"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setProductFormData({ ...productFormData, image: '' })}
+                        className="text-gray-400 hover:text-rose-400 text-xs"
+                        title="Supprimer l'image"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <input
-                  type="url"
-                  value={productFormData.image}
+                  type="text"
+                  value={productFormData.image.startsWith('data:') ? '' : productFormData.image}
                   onChange={(e) => setProductFormData({ ...productFormData, image: e.target.value })}
-                  placeholder="https://..."
-                  className="w-full px-4 py-2.5 bg-[#0F172A] border border-gray-700 rounded-xl text-white text-xs"
+                  placeholder="Ou coller une URL d'image (https://... ou /products/...)"
+                  className="w-full px-4 py-2 bg-[#0F172A] border border-gray-700 rounded-xl text-white text-xs"
                 />
               </div>
 

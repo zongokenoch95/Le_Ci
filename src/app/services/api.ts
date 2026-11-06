@@ -683,6 +683,20 @@ export async function addProductCategory(name: string): Promise<ProductCategory[
   return data.categories || [];
 }
 
+export async function updateProductCategory(id: number, name: string): Promise<ProductCategory[]> {
+  const res = await fetch(`${API_BASE}/product-categories/${id}`, {
+    method: 'PUT',
+    headers: authHeaders(),
+    body: JSON.stringify({ name })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Erreur lors de la modification de la catégorie');
+  }
+  const data = await res.json();
+  return data.categories || [];
+}
+
 export async function deleteProductCategory(id: number): Promise<ProductCategory[]> {
   const res = await fetch(`${API_BASE}/product-categories/${id}`, {
     method: 'DELETE',
@@ -700,6 +714,8 @@ export interface ProductSubcategory {
   id: number;
   category_name: string;
   name: string;
+  theme?: string;
+  image?: string;
   created_at?: string;
 }
 
@@ -713,15 +729,37 @@ export async function getProductSubcategories(category?: string): Promise<Produc
   return data.subcategories || [];
 }
 
-export async function addProductSubcategory(category_name: string, name: string): Promise<ProductSubcategory[]> {
+export async function addProductSubcategory(
+  category_name: string,
+  name: string,
+  theme?: string,
+  image?: string
+): Promise<ProductSubcategory[]> {
   const res = await fetch(`${API_BASE}/product-subcategories`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ category_name, name })
+    body: JSON.stringify({ category_name, name, theme: theme || '', image: image || '' })
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || 'Erreur lors de l\'ajout de la sous-catégorie');
+  }
+  const data = await res.json();
+  return data.subcategories || [];
+}
+
+export async function updateProductSubcategory(
+  id: number,
+  payload: { category_name?: string; name?: string; theme?: string; image?: string }
+): Promise<ProductSubcategory[]> {
+  const res = await fetch(`${API_BASE}/product-subcategories/${id}`, {
+    method: 'PUT',
+    headers: authHeaders(),
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Erreur lors de la modification de la sous-catégorie');
   }
   const data = await res.json();
   return data.subcategories || [];
