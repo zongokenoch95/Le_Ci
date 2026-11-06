@@ -130,7 +130,7 @@ export function CustomOrder() {
               } else if (p.portions_json) {
                 try {
                   portions = JSON.parse(p.portions_json);
-                } catch (e) {}
+                } catch (e) { }
               }
               const sub = inferCakeSubcategory(p.name, p.subcategory);
               if (sub && !mergedSubcats.includes(sub)) {
@@ -200,11 +200,11 @@ export function CustomOrder() {
   const activePortionsOptions =
     modelType === 'catalog' && selectedCakeObj?.portions && selectedCakeObj.portions.length > 0
       ? selectedCakeObj.portions.map((p, idx) => ({
-          id: `custom-p-${idx}-${p.label}`,
-          label: p.label,
-          price: Number(p.price) || 15000,
-          desc: `Format proposé pour ${selectedCakeObj.name}`
-        }))
+        id: `custom-p-${idx}-${p.label}`,
+        label: p.label,
+        price: Number(p.price) || 15000,
+        desc: `Format proposé pour ${selectedCakeObj.name}`
+      }))
       : defaultPortionsOptions;
 
   const currentPortion =
@@ -348,11 +348,10 @@ export function CustomOrder() {
                       setSelectedCakeCategory(catName);
                       setModelType('catalog');
                     }}
-                    className={`py-4 px-5 rounded-2xl border-2 font-extrabold text-sm transition-all cursor-pointer flex items-center justify-between ${
-                      isSelected
+                    className={`py-4 px-5 rounded-2xl border-2 font-extrabold text-sm transition-all cursor-pointer flex items-center justify-between ${isSelected
                         ? 'border-[#581C87] bg-[#581C87] text-white shadow-lg shadow-purple-900/25 scale-[1.01]'
                         : 'border-gray-200 bg-white text-gray-800 hover:border-purple-300 hover:bg-purple-50/40'
-                    }`}
+                      }`}
                   >
                     <span>{catName}</span>
                     {isSelected && (
@@ -408,11 +407,10 @@ export function CustomOrder() {
               <button
                 type="button"
                 onClick={() => setModelType('catalog')}
-                className={`py-3 px-4 rounded-xl border-2 text-xs sm:text-sm font-bold transition cursor-pointer flex items-center justify-center gap-2 ${
-                  modelType === 'catalog'
+                className={`py-3 px-4 rounded-xl border-2 text-xs sm:text-sm font-bold transition cursor-pointer flex items-center justify-center gap-2 ${modelType === 'catalog'
                     ? 'bg-[#581C87] border-[#581C87] text-white shadow-md'
                     : 'bg-purple-50/70 border-purple-200 text-gray-700 hover:bg-purple-100/60'
-                }`}
+                  }`}
               >
                 <Sparkles size={15} />
                 <span>Catalogue « {selectedCakeCategory} »</span>
@@ -420,11 +418,10 @@ export function CustomOrder() {
               <button
                 type="button"
                 onClick={() => setModelType('upload')}
-                className={`py-3 px-4 rounded-xl border-2 text-xs sm:text-sm font-bold transition cursor-pointer flex items-center justify-center gap-2 ${
-                  modelType === 'upload'
+                className={`py-3 px-4 rounded-xl border-2 text-xs sm:text-sm font-bold transition cursor-pointer flex items-center justify-center gap-2 ${modelType === 'upload'
                     ? 'bg-[#581C87] border-[#581C87] text-white shadow-md'
                     : 'bg-purple-50/70 border-purple-200 text-gray-700 hover:bg-purple-100/60'
-                }`}
+                  }`}
               >
                 <Upload size={15} />
                 <span>Importer ma propre photo</span>
@@ -441,11 +438,10 @@ export function CustomOrder() {
                         <div
                           key={cake.id}
                           onClick={() => setSelectedCatalogCake(cake.name)}
-                          className={`group relative rounded-2xl overflow-hidden border-2 cursor-pointer transition-all flex flex-col justify-between bg-white ${
-                            isSelected
+                          className={`group relative rounded-2xl overflow-hidden border-2 cursor-pointer transition-all flex flex-col justify-between bg-white ${isSelected
                               ? 'border-[#581C87] shadow-lg ring-2 ring-[#581C87]/20 scale-[1.02]'
                               : 'border-gray-200 hover:border-purple-200'
-                          }`}
+                            }`}
                         >
                           <div className="aspect-square w-full overflow-hidden bg-gray-100">
                             <ImageWithFallback
@@ -556,11 +552,10 @@ export function CustomOrder() {
                       key={opt.id}
                       type="button"
                       onClick={() => setSelectedPortionId(opt.id)}
-                      className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
-                        isSelected
+                      className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${isSelected
                           ? 'border-[#581C87] bg-purple-50/60 shadow-md ring-2 ring-[#581C87]/20'
                           : 'border-gray-200 hover:border-purple-200 bg-white'
-                      }`}
+                        }`}
                     >
                       <div>
                         <div className="flex items-center justify-between">
@@ -605,11 +600,10 @@ export function CustomOrder() {
                         setSelectedFlavor(flavor);
                         clearFieldError('customFlavorText');
                       }}
-                      className={`p-3.5 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center justify-between text-xs sm:text-sm font-semibold ${
-                        isSelected
+                      className={`p-3.5 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center justify-between text-xs sm:text-sm font-semibold ${isSelected
                           ? 'border-[#581C87] bg-purple-50 text-[#581C87] shadow-sm ring-2 ring-[#581C87]/20 font-bold'
                           : 'border-gray-200 hover:border-purple-200 text-gray-700 bg-white'
-                      }`}
+                        }`}
                     >
                       <span>{flavor}</span>
                       {isSelected && (
@@ -640,11 +634,10 @@ export function CustomOrder() {
                       clearFieldError('customFlavorText');
                     }}
                     placeholder="Ex: Chocolat blanc & fruits de la passion, Noisette gianduja..."
-                    className={`w-full px-4 py-3 rounded-2xl border outline-none text-sm transition ${
-                      fieldErrors.customFlavorText
+                    className={`w-full px-4 py-3 rounded-2xl border outline-none text-sm transition ${fieldErrors.customFlavorText
                         ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200'
                         : 'border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
-                    }`}
+                      }`}
                   />
                   {fieldErrors.customFlavorText && (
                     <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-2 animate-pulse">

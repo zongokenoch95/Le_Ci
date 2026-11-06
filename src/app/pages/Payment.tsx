@@ -826,71 +826,59 @@ export function Payment() {
                       Choisissez votre moyen de paiement mobile *
                     </label>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-3 gap-3 sm:gap-4">
                       {/* Orange Money */}
                       <button
                         type="button"
                         onClick={() => setSelectedOperator('orange')}
-                        className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
+                        aria-label="Orange Money"
+                        className={`h-24 sm:h-28 p-3 rounded-2xl border-2 bg-white transition-all cursor-pointer flex items-center justify-center ${
                           selectedOperator === 'orange'
-                            ? 'border-[#FF6600] bg-orange-50/40 text-gray-900 shadow-md ring-2 ring-orange-400/20'
-                            : 'border-gray-200 hover:border-orange-200 text-gray-600 hover:bg-gray-50/50'
+                            ? 'border-[#FF6600] shadow-md ring-2 ring-orange-400/30 scale-[1.02]'
+                            : 'border-gray-200 hover:border-orange-200'
                         }`}
                       >
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="w-12 h-12 rounded-2xl bg-white border border-gray-100 flex items-center justify-center shadow-sm p-1 overflow-hidden">
-                            <img src="/img/Orange.jpg" alt="Orange Money" className="w-full h-full object-contain" />
-                          </div>
-                          {selectedOperator === 'orange' && <CheckCircle2 size={18} className="text-[#FF6600]" />}
-                        </div>
-                        <div>
-                          <span className="font-extrabold text-sm block text-gray-900">Orange Money</span>
-                          <span className="text-[11px] text-gray-500 font-light">Burkina Faso (Code *144#)</span>
-                        </div>
+                        <img
+                          src="/img/Orange.jpg"
+                          alt="Orange Money"
+                          className="max-h-14 sm:max-h-16 w-auto max-w-full object-contain"
+                        />
                       </button>
 
                       {/* Moov Money */}
                       <button
                         type="button"
                         onClick={() => setSelectedOperator('moov')}
-                        className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
+                        aria-label="Moov Money"
+                        className={`h-24 sm:h-28 p-3 rounded-2xl border-2 bg-white transition-all cursor-pointer flex items-center justify-center ${
                           selectedOperator === 'moov'
-                            ? 'border-[#0055A5] bg-blue-50/40 text-gray-900 shadow-md ring-2 ring-blue-400/20'
-                            : 'border-gray-200 hover:border-blue-200 text-gray-600 hover:bg-gray-50/50'
+                            ? 'border-[#0055A5] shadow-md ring-2 ring-blue-400/30 scale-[1.02]'
+                            : 'border-gray-200 hover:border-blue-200'
                         }`}
                       >
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="w-12 h-12 rounded-2xl bg-white border border-gray-100 flex items-center justify-center shadow-sm p-1 overflow-hidden">
-                            <img src="/img/moov.jpg" alt="Moov Money" className="w-full h-full object-contain" />
-                          </div>
-                          {selectedOperator === 'moov' && <CheckCircle2 size={18} className="text-[#0055A5]" />}
-                        </div>
-                        <div>
-                          <span className="font-extrabold text-sm block text-gray-900">Moov Money</span>
-                          <span className="text-[11px] text-gray-500 font-light">Burkina Faso (Code *555#)</span>
-                        </div>
+                        <img
+                          src="/img/moov.jpg"
+                          alt="Moov Money"
+                          className="max-h-14 sm:max-h-16 w-auto max-w-full object-contain"
+                        />
                       </button>
 
                       {/* Wave */}
                       <button
                         type="button"
                         onClick={() => setSelectedOperator('wave')}
-                        className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
+                        aria-label="Wave"
+                        className={`h-24 sm:h-28 p-3 rounded-2xl border-2 bg-white transition-all cursor-pointer flex items-center justify-center ${
                           selectedOperator === 'wave'
-                            ? 'border-[#1DA1F2] bg-sky-50/40 text-gray-900 shadow-md ring-2 ring-sky-400/20'
-                            : 'border-gray-200 hover:border-sky-200 text-gray-600 hover:bg-gray-50/50'
+                            ? 'border-[#1DA1F2] shadow-md ring-2 ring-sky-400/30 scale-[1.02]'
+                            : 'border-gray-200 hover:border-sky-200'
                         }`}
                       >
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="w-12 h-12 rounded-2xl bg-white border border-gray-100 flex items-center justify-center shadow-sm p-1 overflow-hidden">
-                            <img src="/img/wave.png" alt="Wave" className="w-full h-full object-contain" />
-                          </div>
-                          {selectedOperator === 'wave' && <CheckCircle2 size={18} className="text-[#1DA1F2]" />}
-                        </div>
-                        <div>
-                          <span className="font-extrabold text-sm block text-gray-900">Wave</span>
-                          <span className="text-[11px] text-gray-500 font-light">Paiement direct Wave</span>
-                        </div>
+                        <img
+                          src="/img/wave.png"
+                          alt="Wave"
+                          className="max-h-14 sm:max-h-16 w-auto max-w-full object-contain"
+                        />
                       </button>
                     </div>
                   </div>

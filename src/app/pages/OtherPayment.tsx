@@ -501,17 +501,14 @@ export function OtherPayment() {
                     </div>
 
                     {/* Opérateur opérationnel (§10.8) */}
-                    <div className="p-4 rounded-2xl border-2 border-[#FF6600] bg-orange-50/40 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-2xl bg-white border border-gray-100 flex items-center justify-center shadow-sm p-1 overflow-hidden">
-                          <img src="/img/Orange.jpg" alt="Orange Money" className="w-full h-full object-contain" />
-                        </div>
-                        <div>
-                          <span className="font-extrabold text-sm block text-gray-900">Orange Money Burkina Faso</span>
-                          <span className="text-[11px] text-gray-500">Validation automatique instantanée par SMS</span>
-                        </div>
+                    <div className="flex justify-center">
+                      <div className="h-24 w-36 p-3 rounded-2xl border-2 border-[#FF6600] bg-white shadow-md ring-2 ring-orange-400/30 flex items-center justify-center">
+                        <img
+                          src="/img/Orange.jpg"
+                          alt="Orange Money"
+                          className="max-h-14 w-auto max-w-full object-contain"
+                        />
                       </div>
-                      <CheckCircle2 size={20} className="text-[#FF6600]" />
                     </div>
 
                     {/* Syntaxe USSD générée avec bouton Copier et bouton Composer */}
