@@ -314,14 +314,9 @@ export function Home() {
 
                   {/* Corps de la carte */}
                   <div className="p-6 flex-1 flex flex-col justify-between">
-                    <div>
-                      <h3 className="text-lg font-extrabold text-gray-900 group-hover:text-[#581C87] transition mb-2">
-                        {cat.title}
-                      </h3>
-                      <p className="text-xs sm:text-sm text-gray-600 font-light leading-relaxed mb-6">
-                        {cat.description}
-                      </p>
-                    </div>
+                    <h3 className="text-lg font-extrabold text-gray-900 group-hover:text-[#581C87] transition mb-4">
+                      {cat.title}
+                    </h3>
 
                     {/* Bouton Pill visuel pour explorer la catégorie */}
                     <div
