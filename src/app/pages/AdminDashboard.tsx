@@ -730,15 +730,104 @@ export function AdminDashboard() {
   };
 
   // Actions Gestion des Plats
-  const getDefaultCakePortions = (basePrice = 12000) => [
-    { label: '6 parts', price: Math.max(500, basePrice) },
-    { label: '8 parts', price: Math.max(500, Math.round(basePrice * 1.25)) },
-    { label: '10 parts', price: Math.max(500, Math.round(basePrice * 1.65)) },
-    { label: '12 parts', price: Math.max(500, Math.round(basePrice * 2)) },
-    { label: '15 parts', price: Math.max(500, Math.round(basePrice * 2.5)) },
-    { label: '20 parts', price: Math.max(500, Math.round(basePrice * 3.3)) },
-    { label: '+ de 20 parts', price: Math.max(500, Math.round(basePrice * 4.1)) }
-  ];
+  const getDefaultCakePortions = (basePrice = 10500) => {
+    if (basePrice === 10500 || basePrice === 12000) {
+      return [
+        { label: '6 parts', price: 10500 },
+        { label: '8 parts', price: 13500 },
+        { label: '10 parts', price: 17500 },
+        { label: '12 parts', price: 20500 },
+        { label: '15 parts', price: 25000 },
+        { label: '20 parts', price: 33000 },
+        { label: 'Et plus...', price: 41000 }
+      ];
+    }
+    return [
+      { label: '6 parts', price: Math.max(500, basePrice) },
+      { label: '8 parts', price: Math.max(500, Math.round(basePrice * 1.25)) },
+      { label: '10 parts', price: Math.max(500, Math.round(basePrice * 1.65)) },
+      { label: '12 parts', price: Math.max(500, Math.round(basePrice * 2)) },
+      { label: '15 parts', price: Math.max(500, Math.round(basePrice * 2.5)) },
+      { label: '20 parts', price: Math.max(500, Math.round(basePrice * 3.3)) },
+      { label: 'Et plus...', price: Math.max(500, Math.round(basePrice * 4.1)) }
+    ];
+  };
+
+  const applyOfficialCakePreset = (presetKey: string) => {
+    const presets: Record<string, { label: string; price: number }[]> = {
+      arzanier_orsia: [
+        { label: '6 parts', price: 10500 },
+        { label: '8 parts', price: 13500 },
+        { label: '10 parts', price: 17500 },
+        { label: '12 parts', price: 20500 },
+        { label: '15 parts', price: 25000 },
+        { label: '20 parts', price: 33000 },
+        { label: 'Et plus...', price: 41000 }
+      ],
+      moka_chocolat: [
+        { label: '6 parts', price: 8500 },
+        { label: '8 parts', price: 10500 },
+        { label: '10 parts', price: 13500 },
+        { label: '12 parts', price: 15500 },
+        { label: '15 parts', price: 21000 },
+        { label: '20 parts', price: 26000 },
+        { label: 'Et plus...', price: 32500 }
+      ],
+      moka_fraise: [
+        { label: '6 parts', price: 9000 },
+        { label: '8 parts', price: 11000 },
+        { label: '10 parts', price: 14500 },
+        { label: '12 parts', price: 16500 },
+        { label: '15 parts', price: 22000 },
+        { label: '20 parts', price: 27000 },
+        { label: 'Et plus...', price: 33500 }
+      ],
+      foret: [
+        { label: '6 parts', price: 10500 },
+        { label: '8 parts', price: 13500 },
+        { label: '10 parts', price: 16500 },
+        { label: '12 parts', price: 20000 },
+        { label: '15 parts', price: 25500 },
+        { label: '20 parts', price: 32000 },
+        { label: 'Et plus...', price: 40000 }
+      ],
+      infini_fraisier: [
+        { label: '6 parts', price: 10500 },
+        { label: '8 parts', price: 13500 },
+        { label: '10 parts', price: 18500 },
+        { label: '12 parts', price: 21000 },
+        { label: '15 parts', price: 25000 },
+        { label: '20 parts', price: 36000 },
+        { label: 'Et plus...', price: 45000 }
+      ],
+      gateau_glace: [
+        { label: '6 parts', price: 11000 },
+        { label: '8 parts', price: 14000 },
+        { label: '10 parts', price: 17000 },
+        { label: '12 parts', price: 20500 },
+        { label: '15 parts', price: 25500 },
+        { label: '20 parts', price: 34000 },
+        { label: 'Et plus...', price: 42500 }
+      ],
+      mariage_pieces_montees: [
+        { label: '2 étages — Option 1', price: 30000 },
+        { label: '2 étages — Option 2', price: 50000 },
+        { label: '3 étages — Option 1', price: 60000 },
+        { label: '3 étages — Option 2', price: 80000 },
+        { label: '3 étages — Option 3', price: 100000 },
+        { label: '4 étages — Option 1', price: 100000 },
+        { label: '4 étages — Option 2', price: 125000 },
+        { label: '4 étages — Option 3', price: 150000 },
+        { label: '5 étages — Option 1', price: 150000 },
+        { label: '5 étages — Option 2', price: 200000 }
+      ]
+    };
+    const chosen = presets[presetKey];
+    if (chosen) {
+      setPortionsList(chosen);
+      setProductFormData((prev) => ({ ...prev, price: chosen[0].price }));
+    }
+  };
 
   const handleAddPortionRow = () => {
     setPortionsList([...portionsList, { label: `${portionsList.length * 2 + 6} parts`, price: 20000 }]);
@@ -3046,7 +3135,7 @@ export function AdminDashboard() {
                         Parts du gâteau et prix selon les parts
                       </label>
                       <p className="text-[10px] text-gray-400">
-                        Par défaut : 6, 8, 10, 12, 15, 20 et + de 20 parts. Le prix varie selon le gâteau.
+                        Par défaut : 6, 8, 10, 12, 15, 20 et Et plus... Le prix varie selon le gâteau.
                       </p>
                     </div>
                     <button
@@ -3056,6 +3145,27 @@ export function AdminDashboard() {
                     >
                       + Ajouter une part
                     </button>
+                  </div>
+
+                  <div>
+                    <select
+                      defaultValue=""
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          applyOfficialCakePreset(e.target.value);
+                        }
+                      }}
+                      className="w-full px-3 py-1.5 bg-[#0F172A] border border-purple-500/40 rounded-lg text-purple-200 text-xs font-semibold"
+                    >
+                      <option value="">— Pré-remplir avec une grille tarifaire officielle —</option>
+                      <option value="arzanier_orsia">Anniversaire : Arzanier (moringa-bissap) ou Orsia (riz-teedo) (10.500F → 33.000F)</option>
+                      <option value="moka_chocolat">Anniversaire : Les mokas Vanille chocolat (8.500F → 26.000F)</option>
+                      <option value="moka_fraise">Anniversaire : Les mokas Vanille fraise / fruits rouges (9.000F → 27.000F)</option>
+                      <option value="foret">Anniversaire : Forêt noire, forêt blanche (10.500F → 32.000F)</option>
+                      <option value="infini_fraisier">Anniversaire : Infini chocolat ou fraisiers (10.500F → 36.000F)</option>
+                      <option value="gateau_glace">Anniversaire : Gâteau glacé (11.000F → 34.000F)</option>
+                      <option value="mariage_pieces_montees">Mariage : Pièces montées 2 à 5 étages (30.000F → 200.000F)</option>
+                    </select>
                   </div>
 
                   <div className="space-y-2 max-h-48 overflow-y-auto pr-1">

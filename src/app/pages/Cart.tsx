@@ -73,15 +73,35 @@ export const Cart: React.FC = () => {
   // 1. Type de commande
   const [deliveryType, setDeliveryType] = useState<'livraison' | 'sur_place'>(savedPref?.deliveryType || 'livraison');
 
-  // 2. Date et heure
-  const minDate = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    return d.toISOString().split('T')[0];
+  // 2. Date et heure (Délai minimum de préparation : 1h à 1h30 -> minimum +1h30)
+  const formatLocalDate = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const formatLocalTime = (d: Date) =>
+    `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+
+  const { minDate, minTimeForMinDate, todayDateStr } = useMemo(() => {
+    const now = new Date();
+    const earliest = new Date(now.getTime() + 90 * 60 * 1000); // +1h30 (90 minutes)
+    return {
+      todayDateStr: formatLocalDate(now),
+      minDate: formatLocalDate(earliest),
+      minTimeForMinDate: formatLocalTime(earliest)
+    };
   }, []);
 
-  const [deliveryDate, setDeliveryDate] = useState<string>(savedPref?.deliveryDate || minDate);
-  const [deliveryTimeSlot, setDeliveryTimeSlot] = useState<string>(savedPref?.deliveryTimeSlot || '14h00 - 17h00');
+  const [deliveryDate, setDeliveryDate] = useState<string>(() => {
+    if (savedPref?.deliveryDate && savedPref.deliveryDate >= minDate) {
+      return savedPref.deliveryDate;
+    }
+    return minDate;
+  });
+
+  const [deliveryTimeSlot, setDeliveryTimeSlot] = useState<string>(() => {
+    if (savedPref?.deliveryTimeSlot && /^\d{2}:\d{2}$/.test(savedPref.deliveryTimeSlot)) {
+      return savedPref.deliveryTimeSlot;
+    }
+    return minTimeForMinDate;
+  });
 
   // 3. Coordonnées de réception (Point 21 : coordonnées de la personne qui va recevoir + secours)
   const [recipientPhone, setRecipientPhone] = useState<string>(savedPref?.customerPhone || '');
@@ -96,8 +116,8 @@ export const Cart: React.FC = () => {
   const [cakeOptions, setCakeOptions] = useState<{ [itemId: string | number]: { portion: string; flavor: string } }>({});
 
   // 6. Carte de petit mot manuscrite (+200 FCFA)
-  const [hasGreetingCard, setHasGreetingCard] = useState<boolean>(false);
-  const [cardMessage, setCardMessage] = useState<string>('');
+  const [hasGreetingCard, setHasGreetingCard] = useState<boolean>(Boolean(savedPref?.hasGreetingCard));
+  const [cardMessage, setCardMessage] = useState<string>(savedPref?.cardMessage || '');
 
   // 7. Fidélité
   const [memberInfo, setMemberInfo] = useState<LoyaltyMember | null>(null);
@@ -182,6 +202,40 @@ export const Cart: React.FC = () => {
     }
     if (!deliveryTimeSlot.trim()) {
       setSingleError('deliveryTimeSlot', 'Veuillez indiquer l\'heure souhaitée pour la réception.', 'field-cart-time');
+      return false;
+    }
+
+    // Vérification du délai minimum de préparation (1h à 1h30 -> au moins +1h30 à partir de l'heure actuelle)
+    const now = new Date();
+    const currentTodayStr = formatLocalDate(now);
+    if (deliveryDate < currentTodayStr) {
+      setSingleError('deliveryDate', 'La date choisie ne peut pas être dans le passé.', 'field-cart-date');
+      return false;
+    }
+
+    // Extraction de l'heure choisie (format HH:MM ou HHhMM)
+    const timeMatch = deliveryTimeSlot.trim().match(/^(\d{1,2})\s*[:hH]\s*(\d{1,2})?$/);
+    if (!timeMatch) {
+      setSingleError('deliveryTimeSlot', 'Veuillez sélectionner une heure valide (ex: 14:30).', 'field-cart-time');
+      return false;
+    }
+    const chosenHours = parseInt(timeMatch[1], 10);
+    const chosenMinutes = timeMatch[2] ? parseInt(timeMatch[2], 10) : 0;
+    const [year, month, day] = deliveryDate.split('-').map(Number);
+    const chosenDateTime = new Date(year, month - 1, day, chosenHours, chosenMinutes, 0, 0);
+
+    // On tolère la minute en cours (now + 89 minutes) pour éviter un rejet à quelques secondes près
+    const minAllowedDateTime = new Date(now.getTime() + 89 * 60 * 1000);
+    const displayMinDateTime = new Date(now.getTime() + 90 * 60 * 1000);
+    const nowFormatted = `${String(now.getHours()).padStart(2, '0')}h${String(now.getMinutes()).padStart(2, '0')}`;
+    const minFormatted = `${String(displayMinDateTime.getHours()).padStart(2, '0')}h${String(displayMinDateTime.getMinutes()).padStart(2, '0')}`;
+
+    if (chosenDateTime.getTime() < minAllowedDateTime.getTime()) {
+      setSingleError(
+        'deliveryTimeSlot',
+        `La préparation d'une commande prend 1h à 1h30. En commandant à ${nowFormatted}, vous ne pouvez pas choisir une heure avant ${minFormatted} (minimum +1h30).`,
+        'field-cart-time'
+      );
       return false;
     }
 
@@ -611,24 +665,30 @@ export const Cart: React.FC = () => {
                         <span>{fieldErrors.deliveryDate}</span>
                       </p>
                     )}
-                    <span className="block text-[11px] text-gray-400 mt-1">Délai minimum de préparation : dès le {minDate}</span>
+                    <span className="block text-[11px] text-gray-400 mt-1">
+                      La préparation prend 1h à 1h30 (disponible dès le {minDate}).
+                    </span>
                   </div>
 
-                  {/* Heure en texte libre uniquement (Notion point 83) */}
+                  {/* Heure souhaitée avec contrainte minimum +1h30 */}
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
                       <Clock size={14} className="text-[#581C87]" />
-                      Créneau ou heure souhaitée *
+                      Heure souhaitée (min. +1h30 de préparation) *
                     </label>
                     <input
                       id="field-cart-time"
-                      type="text"
+                      type="time"
+                      min={deliveryDate === minDate ? minTimeForMinDate : undefined}
                       value={deliveryTimeSlot}
-                      onChange={(e) => { setDeliveryTimeSlot(e.target.value); clearFieldError('deliveryTimeSlot'); }}
-                      placeholder="Ex: 15h30, début d'après-midi, 18h..."
-                      className={`w-full px-4 py-3.5 rounded-2xl outline-none text-sm bg-white transition ${fieldErrors.deliveryTimeSlot
-                        ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200'
-                        : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setDeliveryTimeSlot(val);
+                        clearFieldError('deliveryTimeSlot');
+                      }}
+                      className={`w-full px-4 py-3.5 rounded-2xl outline-none text-sm font-bold bg-white transition ${fieldErrors.deliveryTimeSlot
+                        ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200 text-red-700'
+                        : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 text-gray-900'
                         }`}
                     />
                     {fieldErrors.deliveryTimeSlot && (
@@ -637,7 +697,11 @@ export const Cart: React.FC = () => {
                         <span>{fieldErrors.deliveryTimeSlot}</span>
                       </p>
                     )}
-                    <span className="block text-[11px] text-gray-400 mt-1">Texte libre : précisez l'heure ou un créneau (ex : vers 16h).</span>
+                    <span className="block text-[11px] text-gray-500 mt-1">
+                      {deliveryDate === todayDateStr
+                        ? `⏱️ Pour aujourd'hui, heure minimum autorisée : ${minTimeForMinDate.replace(':', 'h')} (+1h30 de préparation).`
+                        : '⏱️ La préparation d’une commande prend 1h à 1h30 de temps.'}
+                    </span>
                   </div>
                 </div>
               </div>
