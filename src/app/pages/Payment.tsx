@@ -263,23 +263,20 @@ export function Payment() {
       return;
     }
 
-    if (!payerName.trim()) {
-      setPaymentError('Veuillez renseigner votre nom pour identifier le transfert.');
-      return;
-    }
+    const effectivePayerName = payerName.trim() || order?.customerName || 'Client';
 
     setConfirmingPayment(true);
     setPaymentError('');
 
     try {
       if (orderId) {
-        localStorage.setItem(`le_ci_payer_name_${orderId}`, payerName.trim());
+        localStorage.setItem(`le_ci_payer_name_${orderId}`, effectivePayerName);
         localStorage.setItem(`le_ci_payer_phone_${orderId}`, payerPhone.trim());
         localStorage.setItem(`le_ci_payment_confirmed_${orderId}`, 'true');
 
         try {
           const res = await updateOrderPaymentInfo(orderId, {
-            payerName: payerName.trim(),
+            payerName: effectivePayerName,
             payerPhone: payerPhone.trim(),
             paymentMethod: selectedOperator
           });
@@ -696,7 +693,7 @@ export function Payment() {
           )}
 
           {/* ========================================================================= */}
-          {/* ÉTAPE 1 : PAGE DE PAIEMENT - CHOIX DU MOYEN DE PAIEMENT & SAISIE NOM + TÉL */}
+          {/* ÉTAPE 1 : PAGE DE PAIEMENT - CHOIX DIRECT DU MOYEN DE PAIEMENT MOBILE      */}
           {/* ========================================================================= */}
           {!isPaid && !isCancelled && !isPaymentConfirmed && (
             <motion.div
@@ -706,125 +703,22 @@ export function Payment() {
               exit={{ opacity: 0, y: -15 }}
               className="bg-white rounded-3xl shadow-2xl border border-purple-100 overflow-hidden"
             >
-              {/* En-tête Violet Brand */}
-              <div className="bg-gradient-to-r from-purple-950 via-[#581C87] to-purple-900 text-white p-6 sm:p-8">
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-bold bg-white/15 text-purple-200">
-                    <CreditCard size={13} /> Étape 1/2 : Choix du règlement
-                  </span>
-                  <span className="text-xs font-mono font-bold text-amber-300 bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/30">
-                    Réf : {codeRef}
-                  </span>
-                </div>
-                <h1 className="text-2xl sm:text-3xl font-black tracking-tight">Règlement de votre commande</h1>
-                <p className="text-xs sm:text-sm text-purple-200/90 font-light mt-1">
-                  Choisissez votre moyen de paiement mobile puis renseignez vos coordonnées pour initier le transfert.
-                </p>
-
-                <div className="mt-6 pt-4 border-t border-purple-800/80 flex flex-wrap items-baseline justify-between gap-3">
-                  <div className="text-xs sm:text-sm text-purple-200">
-                    Commande <span className="font-mono font-bold text-white">{order.id}</span>
-                  </div>
-                  <div className="text-2xl sm:text-3xl font-black text-white">
-                    {amount.toLocaleString('fr-FR')} FCFA
-                  </div>
-                </div>
-              </div>
-
-              {/* Corps du formulaire de paiement */}
+              {/* Corps du formulaire de paiement (directement au choix du moyen de paiement mobile) */}
               <div className="p-6 sm:p-8 space-y-8">
-                
-                {/* Détails de la facture en 3 sections distinctes */}
-                <div className="bg-purple-50/50 p-5 sm:p-6 rounded-2xl border border-purple-100 text-xs sm:text-sm text-gray-700 space-y-5">
-                  <div className="font-extrabold text-gray-900 flex items-center gap-2 border-b border-purple-200/70 pb-2.5">
-                    <Sparkles size={16} className="text-[#581C87]" />
-                    <span>Détails de la facture</span>
-                  </div>
-
-                  {/* SECTION 1 : Désignation du produit, Saveur, Modèle du catalogue, Quantité, Nombre de parts (si gâteau) */}
-                  <div className="space-y-3">
-                    <div className="text-[11px] font-black uppercase tracking-wider text-[#581C87]">
-                      1. Produit(s) commandé(s)
-                    </div>
-                    {order.items && order.items.map((item, idx) => {
-                      const info = parseItemInvoiceInfo(item);
-                      return (
-                        <div key={idx} className="p-3.5 rounded-xl bg-white border border-purple-100 space-y-1.5 shadow-2xs">
-                          <div className="flex justify-between items-start gap-2">
-                            <span className="font-extrabold text-gray-900 text-sm">{info.designation}</span>
-                            <span className="font-black text-[#581C87] shrink-0">
-                              {(item.price * item.quantity).toLocaleString('fr-FR')} FCFA
-                            </span>
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs text-gray-600 pt-1">
-                            <div><span className="font-bold text-gray-800">Saveur :</span> {info.flavor}</div>
-                            <div><span className="font-bold text-gray-800">Modèle du catalogue :</span> {info.catalogModel}</div>
-                            <div><span className="font-bold text-gray-800">Quantité :</span> {info.quantity}</div>
-                            {info.isCake && info.portion && (
-                              <div><span className="font-bold text-[#581C87]">Nombre de parts :</span> <span className="font-bold text-[#581C87]">{info.portion}</span></div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* SECTION 2 : Prix des pâtisseries, Carte de vœux, Montant total */}
-                  <div className="pt-3 border-t border-purple-200/70 space-y-2">
-                    <div className="text-[11px] font-black uppercase tracking-wider text-[#581C87]">
-                      2. Montants
-                    </div>
-                    <div className="flex justify-between items-center text-xs sm:text-sm text-gray-700">
-                      <span>Prix des pâtisseries :</span>
-                      <span className="font-bold text-gray-900">{itemsSubtotal.toLocaleString('fr-FR')} FCFA</span>
-                    </div>
-
-                    {hasCard && (
-                      <div className="flex justify-between items-center text-xs sm:text-sm text-gray-700">
-                        <span>Carte de vœux :</span>
-                        <span className="font-bold text-[#581C87]">+200 FCFA</span>
-                      </div>
-                    )}
-
-                    <div className="flex justify-between items-center pt-2 border-t border-purple-200/70 font-extrabold text-sm sm:text-base">
-                      <span className="text-gray-900">Montant total :</span>
-                      <span className="text-[#581C87] text-base sm:text-lg font-black">{amount.toLocaleString('fr-FR')} FCFA</span>
-                    </div>
-                  </div>
-
-                  {/* SECTION 3 : Coordonnées de la personne qui reçoit */}
-                  <div className="pt-3 border-t border-purple-200/70 space-y-1.5 text-xs">
-                    <div className="text-[11px] font-black uppercase tracking-wider text-[#581C87]">
-                      3. Coordonnées de la personne qui reçoit
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-gray-700">
-                      <div>
-                        <span className="font-bold text-gray-900">Téléphone de réception :</span> {recipientDetails.phone}
-                      </div>
-                      {recipientDetails.backupPhone && (
-                        <div>
-                          <span className="font-bold text-gray-900">Numéro de secours :</span> {recipientDetails.backupPhone}
-                        </div>
-                      )}
-                      <div className="sm:col-span-2">
-                        <span className="font-bold text-gray-900">Lieu de réception :</span> {recipientDetails.address}
-                      </div>
-                      {recipientDetails.dateSlot && (
-                        <div className="sm:col-span-2">
-                          <span className="font-bold text-gray-900">Date & Créneau :</span> {recipientDetails.dateSlot}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
                 <form onSubmit={handleConfirmPaymentDetails} className="space-y-8">
                   {/* 1. Choix du moyen de paiement mobile */}
                   <div>
-                    <label className="block text-xs font-extrabold uppercase tracking-wider text-gray-600 mb-3 flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-full bg-purple-100 text-[#581C87] text-[11px] font-black flex items-center justify-center">1</span>
-                      Choisissez votre moyen de paiement mobile *
-                    </label>
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                      <label className="text-xs font-extrabold uppercase tracking-wider text-gray-600 flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-purple-100 text-[#581C87] text-[11px] font-black flex items-center justify-center">
+                          1
+                        </span>
+                        Choisissez votre moyen de paiement mobile *
+                      </label>
+                      <span className="text-sm sm:text-base font-black text-[#581C87] bg-purple-50 px-3 py-1 rounded-lg border border-purple-100">
+                        {amount.toLocaleString('fr-FR')} FCFA
+                      </span>
+                    </div>
 
                     <div className="grid grid-cols-3 gap-3 sm:gap-4">
                       {/* Orange Money */}
@@ -832,7 +726,7 @@ export function Payment() {
                         type="button"
                         onClick={() => setSelectedOperator('orange')}
                         aria-label="Orange Money"
-                        className={`h-24 sm:h-28 p-3 rounded-2xl border-2 bg-white transition-all cursor-pointer flex items-center justify-center ${
+                        className={`h-24 sm:h-28 p-3 rounded-lg border-2 bg-white transition-all cursor-pointer flex items-center justify-center ${
                           selectedOperator === 'orange'
                             ? 'border-[#FF6600] shadow-md ring-2 ring-orange-400/30 scale-[1.02]'
                             : 'border-gray-200 hover:border-orange-200'
@@ -850,7 +744,7 @@ export function Payment() {
                         type="button"
                         onClick={() => setSelectedOperator('moov')}
                         aria-label="Moov Money"
-                        className={`h-24 sm:h-28 p-3 rounded-2xl border-2 bg-white transition-all cursor-pointer flex items-center justify-center ${
+                        className={`h-24 sm:h-28 p-3 rounded-lg border-2 bg-white transition-all cursor-pointer flex items-center justify-center ${
                           selectedOperator === 'moov'
                             ? 'border-[#0055A5] shadow-md ring-2 ring-blue-400/30 scale-[1.02]'
                             : 'border-gray-200 hover:border-blue-200'
@@ -868,7 +762,7 @@ export function Payment() {
                         type="button"
                         onClick={() => setSelectedOperator('wave')}
                         aria-label="Wave"
-                        className={`h-24 sm:h-28 p-3 rounded-2xl border-2 bg-white transition-all cursor-pointer flex items-center justify-center ${
+                        className={`h-24 sm:h-28 p-3 rounded-lg border-2 bg-white transition-all cursor-pointer flex items-center justify-center ${
                           selectedOperator === 'wave'
                             ? 'border-[#1DA1F2] shadow-md ring-2 ring-sky-400/30 scale-[1.02]'
                             : 'border-gray-200 hover:border-sky-200'
@@ -883,60 +777,40 @@ export function Payment() {
                     </div>
                   </div>
 
-                  {/* 2. Saisie du numéro de transfert et du nom du payeur */}
-                  <div className="bg-gray-50/80 p-6 rounded-3xl border border-gray-200 space-y-4">
-                    <label className="block text-xs font-extrabold uppercase tracking-wider text-gray-600 mb-1 flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-full bg-purple-100 text-[#581C87] text-[11px] font-black flex items-center justify-center">2</span>
-                      Coordonnées de l'émetteur du transfert mobile
+                  {/* 2. Saisie du numéro de transfert (sans le champ Nom et prénom) */}
+                  <div className="bg-gray-50/80 p-6 rounded-2xl border border-gray-200 space-y-3">
+                    <label className="block text-xs font-extrabold uppercase tracking-wider text-gray-600 flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-purple-100 text-[#581C87] text-[11px] font-black flex items-center justify-center">
+                        2
+                      </span>
+                      Votre Numéro Mobile Money de transfert *
                     </label>
-                    <p className="text-xs text-gray-500 font-light">
-                      Indiquez le numéro et le nom depuis lesquels vous allez envoyer les fonds pour la validation immédiate de votre commande.
-                    </p>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                      <div>
-                        <label className="block text-xs font-bold text-gray-700 mb-2">
-                          Votre Nom & Prénom *
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={payerName}
-                          onChange={(e) => { setPayerName(e.target.value); setPaymentError(''); }}
-                          placeholder="Ex: Alassane Ouédraogo"
-                          className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 bg-white focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm font-semibold"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-gray-700 mb-2">
-                          Votre Numéro Mobile Money de transfert *
-                        </label>
-                        <input
-                          type="tel"
-                          required
-                          value={payerPhone}
-                          onChange={(e) => { setPayerPhone(e.target.value); setPaymentError(''); }}
-                          placeholder="Ex: 70 00 00 00 ou 76 00 00 00"
-                          className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 bg-white focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm font-semibold"
-                        />
-                      </div>
-                    </div>
+                    <input
+                      type="tel"
+                      required
+                      value={payerPhone}
+                      onChange={(e) => {
+                        setPayerPhone(e.target.value);
+                        setPaymentError('');
+                      }}
+                      placeholder="Ex: 70 00 00 00 ou 76 00 00 00"
+                      className="w-full px-4 py-3.5 rounded-lg border border-gray-200 bg-white focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm font-semibold"
+                    />
                   </div>
 
                   {paymentError && (
-                    <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-2">
+                    <div className="p-4 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-2">
                       <AlertTriangle size={16} className="text-rose-600 shrink-0" />
                       <span>{paymentError}</span>
                     </div>
                   )}
 
-                  {/* Bouton de confirmation vers la page d'attente */}
+                  {/* Boutons en rectangle avec coins légèrement arrondis */}
                   <div className="pt-2 space-y-3">
                     <button
                       type="submit"
                       disabled={confirmingPayment}
-                      className="w-full py-4 px-8 rounded-full bg-[#581C87] hover:bg-[#6B21A8] text-white font-black text-sm sm:text-base shadow-xl shadow-purple-900/30 transition-all flex items-center justify-center gap-2.5 cursor-pointer transform hover:-translate-y-0.5 disabled:opacity-50"
+                      className="w-full py-4 px-8 rounded-lg bg-[#581C87] hover:bg-[#6B21A8] text-white font-black text-sm sm:text-base shadow-xl shadow-purple-900/30 transition-all flex items-center justify-center gap-2.5 cursor-pointer transform hover:-translate-y-0.5 disabled:opacity-50"
                     >
                       {confirmingPayment ? (
                         <>
@@ -951,12 +825,11 @@ export function Payment() {
                       )}
                     </button>
 
-                    {/* Bouton Payer avec un autre numéro visible dès l'affichage (§10.6.1) */}
                     <button
                       type="button"
                       onClick={handleOpenOtherPayment}
                       disabled={openingOtherPay}
-                      className="w-full py-3.5 px-6 rounded-full border-2 border-purple-200 bg-purple-50/70 hover:bg-purple-100 text-[#581C87] font-extrabold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                      className="w-full py-3.5 px-6 rounded-lg border-2 border-purple-200 bg-purple-50/70 hover:bg-purple-100 text-[#581C87] font-extrabold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                     >
                       <Share2 size={16} />
                       <span>
@@ -965,10 +838,6 @@ export function Payment() {
                           : 'Payer avec un autre numéro / Faire payer par un proche'}
                       </span>
                     </button>
-
-                    <p className="text-[11px] text-center text-gray-400 mt-2 font-light">
-                      À l'étape suivante, vous accéderez à la page d'attente avec le code USSD direct ou le lien de paiement.
-                    </p>
                   </div>
                 </form>
               </div>
@@ -976,7 +845,7 @@ export function Payment() {
           )}
 
           {/* ========================================================================= */}
-          {/* ÉTAPE 2 : PAGE D'ATTENTE DE PAIEMENT ACTIVE (AVEC MINUTEUR & CODE RÉF) */}
+          {/* ÉTAPE 2 : PAGE D'ATTENTE DE VALIDATION (SANS TITRE, SANS MINUTEUR, SANS RÉF) */}
           {/* ========================================================================= */}
           {!isPaid && !isCancelled && isPaymentConfirmed && (
             <motion.div
@@ -986,27 +855,9 @@ export function Payment() {
               exit={{ opacity: 0, y: -15 }}
               className="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden"
             >
-              {/* En-tête avec minuteur */}
+              {/* En-tête épuré (sans "Finalisez votre règlement" et sans "Temps restant") */}
               <div className="bg-gradient-to-r from-purple-950 via-[#581C87] to-purple-900 text-white p-6 sm:p-8">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div>
-                    <span className="text-xs uppercase tracking-wider text-purple-200 font-semibold flex items-center gap-1.5 mb-1">
-                      <Clock size={14} className="text-amber-400" /> Étape 2/2 : Attente de confirmation
-                    </span>
-                    <h1 className="text-2xl sm:text-3xl font-extrabold">Finalisez votre règlement</h1>
-                  </div>
-
-                  {/* Minuteur TTL 10 min */}
-                  <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/15">
-                    <Clock size={20} className="text-amber-300 animate-pulse" />
-                    <div>
-                      <div className="text-[10px] uppercase text-purple-200 font-semibold tracking-wider">Temps restant</div>
-                      <div className="text-lg font-mono font-bold text-white">{formatTimer(remainingSeconds)}</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-6 flex flex-wrap items-baseline justify-between gap-2 border-t border-purple-800/80 pt-4">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <div className="text-xs sm:text-sm text-purple-200">
                     Commande <span className="font-mono font-bold text-white">{order.id}</span>
                   </div>
@@ -1018,12 +869,11 @@ export function Payment() {
 
               {/* Corps de la page d'attente */}
               <div className="p-6 sm:p-8 space-y-8">
-                
-                {/* Rappel des coordonnées de transfert saisies + Bouton Payer avec un autre numéro (§10.6.1) */}
+                {/* Rappel des coordonnées de transfert saisies + Bouton Payer avec un autre numéro */}
                 <div className="bg-purple-50/70 p-4 rounded-2xl border border-purple-100 flex flex-col gap-3 text-xs sm:text-sm">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 p-1 rounded-xl bg-white border border-purple-100 flex items-center justify-center shadow-xs shrink-0 overflow-hidden">
+                      <div className="w-10 h-10 p-1 rounded-lg bg-white border border-purple-100 flex items-center justify-center shadow-xs shrink-0 overflow-hidden">
                         {selectedOperator === 'orange' && (
                           <img src="/img/Orange.jpg" alt="Orange Money" className="w-full h-full object-contain" />
                         )}
@@ -1037,7 +887,12 @@ export function Payment() {
                       <div>
                         <span className="text-gray-500 block text-xs">Paiement attendu depuis :</span>
                         <span className="font-extrabold text-gray-900">
-                          {payerName || 'Client'} ({payerPhone}) • via {selectedOperator === 'orange' ? 'Orange Money' : (selectedOperator === 'moov' ? 'Moov Money' : 'Wave')}
+                          {payerPhone} • via{' '}
+                          {selectedOperator === 'orange'
+                            ? 'Orange Money'
+                            : selectedOperator === 'moov'
+                              ? 'Moov Money'
+                              : 'Wave'}
                         </span>
                       </div>
                     </div>
@@ -1059,7 +914,7 @@ export function Payment() {
                       type="button"
                       onClick={handleOpenOtherPayment}
                       disabled={openingOtherPay}
-                      className="px-4 py-2 rounded-xl bg-[#581C87] hover:bg-[#6B21A8] text-white font-bold text-xs inline-flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer disabled:opacity-50"
+                      className="px-4 py-2 rounded-lg bg-[#581C87] hover:bg-[#6B21A8] text-white font-bold text-xs inline-flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer disabled:opacity-50"
                     >
                       <Share2 size={13} />
                       <span>{openingOtherPay ? 'Ouverture...' : 'Payer avec un autre numéro'}</span>
@@ -1073,7 +928,9 @@ export function Payment() {
                     <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                     <div className="text-xs text-amber-800 space-y-1">
                       <p className="font-bold">Vous êtes dans un navigateur de réseau social</p>
-                      <p>Les appels USSD directs peuvent être restreints. Copiez le code ci-dessous et collez-le dans votre téléphone.</p>
+                      <p>
+                        Les appels USSD directs peuvent être restreints. Copiez le code ci-dessous et collez-le dans votre téléphone.
+                      </p>
                       {isAndroid && (
                         <a
                           href={chromeIntentUrl}
@@ -1086,34 +943,14 @@ export function Payment() {
                   </div>
                 )}
 
-                {/* Bloc d'action paiement USSD / Wave */}
+                {/* Bloc d'action paiement USSD / Wave (sans le Code Référence Unique) */}
                 <div className="bg-[#FAF8F5] border border-gray-200 rounded-3xl p-6 sm:p-8 text-center space-y-6">
-                  {/* Code Référence Unique */}
-                  <div className="inline-block bg-white px-5 py-3 rounded-2xl border border-gray-200 shadow-sm">
-                    <div className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold mb-1">
-                      Votre Code Référence Unique
-                    </div>
-                    <div className="flex items-center justify-center gap-3">
-                      <span className="font-mono text-3xl font-black text-[#581C87] tracking-widest">
-                        {order.codeReference}
-                      </span>
-                      <button
-                        onClick={() => copyCode(order.codeReference || '')}
-                        className="p-1.5 text-gray-400 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition cursor-pointer"
-                        title="Copier le code"
-                      >
-                        <Copy size={18} />
-                      </button>
-                    </div>
-                    {copied && <span className="text-[11px] font-semibold text-emerald-600">Copié dans le presse-papier !</span>}
-                  </div>
-
-                  {/* Actions Mobile (Bouton USSD ou Wave Direct) */}
+                  {/* Actions Mobile (Boutons rectangulaires à coins légèrement arrondis) */}
                   <div className="space-y-3 max-w-md mx-auto">
                     {selectedOperator === 'orange' && (
                       <a
                         href={omTelUrl}
-                        className="w-full py-4 px-6 bg-[#FF6600] hover:bg-[#e65c00] text-white font-bold rounded-full shadow-xl shadow-orange-500/25 flex items-center justify-center gap-3 transition transform active:scale-[0.98]"
+                        className="w-full py-4 px-6 bg-[#FF6600] hover:bg-[#e65c00] text-white font-bold rounded-lg shadow-xl shadow-orange-500/25 flex items-center justify-center gap-3 transition transform active:scale-[0.98]"
                       >
                         <PhoneCall size={22} />
                         Lancer le paiement USSD Orange (*144#)
@@ -1123,7 +960,7 @@ export function Payment() {
                     {selectedOperator === 'moov' && (
                       <a
                         href={moovTelUrl}
-                        className="w-full py-4 px-6 bg-[#0055A5] hover:bg-[#004485] text-white font-bold rounded-full shadow-xl shadow-blue-500/25 flex items-center justify-center gap-3 transition transform active:scale-[0.98]"
+                        className="w-full py-4 px-6 bg-[#0055A5] hover:bg-[#004485] text-white font-bold rounded-lg shadow-xl shadow-blue-500/25 flex items-center justify-center gap-3 transition transform active:scale-[0.98]"
                       >
                         <PhoneCall size={22} />
                         Lancer le paiement USSD Moov (*555#)
@@ -1135,7 +972,7 @@ export function Payment() {
                         href={merchantConfig.waveUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="w-full py-4 px-6 bg-[#1DA1F2] hover:bg-[#1890d9] text-white font-bold rounded-full shadow-xl shadow-sky-500/25 flex items-center justify-center gap-3 transition transform active:scale-[0.98]"
+                        className="w-full py-4 px-6 bg-[#1DA1F2] hover:bg-[#1890d9] text-white font-bold rounded-lg shadow-xl shadow-sky-500/25 flex items-center justify-center gap-3 transition transform active:scale-[0.98]"
                       >
                         <Smartphone size={22} />
                         Payer directement via Wave
@@ -1145,7 +982,11 @@ export function Payment() {
                     {/* Syntaxe USSD brute copiable */}
                     <div className="text-xs text-gray-500 flex items-center justify-center gap-2">
                       <span className="font-mono bg-white px-2.5 py-1 rounded-lg border border-gray-200">
-                        {selectedOperator === 'orange' ? omUssdMarchand : (selectedOperator === 'moov' ? moovUssd : 'Paiement Wave')}
+                        {selectedOperator === 'orange'
+                          ? omUssdMarchand
+                          : selectedOperator === 'moov'
+                            ? moovUssd
+                            : 'Paiement Wave'}
                       </span>
                       <button
                         onClick={() => copyCode(selectedOperator === 'orange' ? omUssdMarchand : moovUssd)}
@@ -1178,13 +1019,13 @@ export function Payment() {
                   <span>En attente de détection automatique de votre transfert...</span>
                 </div>
 
-                {/* Bouton Annulation très visible au format Pill (Point 1 UPDATE) */}
+                {/* Bouton Annulation en rectangle avec coins légèrement arrondis */}
                 <div className="pt-6 pb-2 text-center border-t border-purple-100/60 mt-4">
                   <button
                     type="button"
                     onClick={handleCancel}
                     disabled={cancelling}
-                    className="px-8 py-3.5 rounded-full border-2 border-red-200 bg-red-50 hover:bg-red-100 text-red-700 hover:text-red-800 font-extrabold text-xs shadow-sm hover:shadow-md transition-all inline-flex items-center gap-2 cursor-pointer disabled:opacity-50 transform hover:-translate-y-0.5"
+                    className="px-8 py-3.5 rounded-lg border-2 border-red-200 bg-red-50 hover:bg-red-100 text-red-700 hover:text-red-800 font-extrabold text-xs shadow-sm hover:shadow-md transition-all inline-flex items-center gap-2 cursor-pointer disabled:opacity-50 transform hover:-translate-y-0.5"
                   >
                     <XCircle size={17} className="text-red-500" />
                     <span>{cancelling ? 'Annulation en cours...' : 'Annuler cette commande'}</span>

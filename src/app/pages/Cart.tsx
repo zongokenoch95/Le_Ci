@@ -1,11 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import {
   ShoppingBag,
   Trash2,
-  Plus,
-  Minus,
   ArrowRight,
   ArrowLeft,
   Truck,
@@ -13,19 +11,13 @@ import {
   Calendar,
   Clock,
   Phone,
-  User,
   MapPin,
-  Navigation,
-  MessageSquare,
-  CheckCircle2,
   AlertCircle,
   Crown,
   Gift,
   Sparkles,
   CreditCard,
   Loader2,
-  Cake,
-  Heart,
   ChevronRight
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
@@ -37,30 +29,11 @@ import {
 } from '../services/api';
 import { validateBurkinaPhone } from '../utils/phoneValidation';
 
-// Options de parts et saveurs standards pour les gâteaux catalogue
-const cakePortions = [
-  { id: '6-8', label: '6 à 8 parts' },
-  { id: '10-12', label: '10 à 12 parts' },
-  { id: '15-20', label: '15 à 20 parts' },
-  { id: '25-30', label: '25 à 30 parts' }
-];
-
-const cakeFlavors = [
-  'Vanille Bourbon pure',
-  'Chocolat noir Grand Cru',
-  'Fraisier / Fruits rouges',
-  'Caramel au beurre salé',
-  'Mangue & Passion locale',
-  'Pistache & Framboise',
-  'Red Velvet & Cream cheese',
-  'Citron meringué'
-];
-
 export const Cart: React.FC = () => {
-  const { items, removeFromCart, updateQuantity, clearCart, totalItems, totalAmount } = useCart();
+  const { items, removeFromCart, clearCart, totalItems, totalAmount } = useCart();
   const navigate = useNavigate();
 
-  // Chargement des préférences de commande pré-remplies (depuis la personnalisation de gâteau par ex.)
+  // Chargement des préférences de commande pré-remplies
   const savedPref = useMemo(() => {
     try {
       const p = localStorage.getItem('le_ci_checkout_pref');
@@ -70,8 +43,21 @@ export const Cart: React.FC = () => {
     }
   }, []);
 
-  // 1. Type de commande
-  const [deliveryType, setDeliveryType] = useState<'livraison' | 'sur_place'>(savedPref?.deliveryType || 'livraison');
+  // Détection si le panier contient au moins un gâteau (pour afficher la carte de vœux manuscrite)
+  const hasCakeInCart = useMemo(() => {
+    return items.some((item) =>
+      Boolean(
+        item.isCake ||
+          item.category === 'Gâteaux' ||
+          /g[aâ]teau|layer|fraisier|moka|for[eê]t|arzanier|orsia|pi[eè]ce mont[eé]e/i.test(item.name || '')
+      )
+    );
+  }, [items]);
+
+  // 1. Mode de réception
+  const [deliveryType, setDeliveryType] = useState<'livraison' | 'sur_place'>(
+    savedPref?.deliveryType || 'livraison'
+  );
 
   // 2. Date et heure (Délai minimum de préparation : 1h à 1h30 -> minimum +1h30)
   const formatLocalDate = (d: Date) =>
@@ -103,29 +89,25 @@ export const Cart: React.FC = () => {
     return minTimeForMinDate;
   });
 
-  // 3. Coordonnées de réception (Point 21 : coordonnées de la personne qui va recevoir + secours)
+  // 3. Coordonnées de la personne qui reçoit le colis
   const [recipientPhone, setRecipientPhone] = useState<string>(savedPref?.customerPhone || '');
   const [recipientName, setRecipientName] = useState<string>(savedPref?.customerName || '');
   const [backupPhone, setBackupPhone] = useState<string>(savedPref?.backupPhone || '');
 
-  // 4. Lieu de livraison : 2 champs uniquement (Quartier facultatif ou Lien Google Maps)
+  // 4. Lieu de livraison (Quartier uniquement, champ géolocalisation supprimé)
   const [deliveryQuarter, setDeliveryQuarter] = useState<string>(savedPref?.deliveryQuarter || '');
-  const [deliveryMapLink, setDeliveryMapLink] = useState<string>(savedPref?.deliveryMapLink || '');
 
-  // 5. Options pour gâteaux standards du catalogue
-  const [cakeOptions, setCakeOptions] = useState<{ [itemId: string | number]: { portion: string; flavor: string } }>({});
-
-  // 6. Carte de petit mot manuscrite (+200 FCFA)
+  // Carte de vœux manuscrite (+200 FCFA) — uniquement quand il s'agit d'un gâteau
   const [hasGreetingCard, setHasGreetingCard] = useState<boolean>(Boolean(savedPref?.hasGreetingCard));
   const [cardMessage, setCardMessage] = useState<string>(savedPref?.cardMessage || '');
 
-  // 7. Fidélité
+  // Fidélité
   const [memberInfo, setMemberInfo] = useState<LoyaltyMember | null>(null);
   const [useLoyaltyPoints, setUseLoyaltyPoints] = useState(false);
   const [pointsToUse, setPointsToUse] = useState(0);
 
   // Notes additionnelles
-  const [orderNotes, setOrderNotes] = useState<string>(savedPref?.notes || '');
+  const [orderNotes] = useState<string>(savedPref?.notes || '');
 
   // États de soumission et erreurs de validation
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -134,7 +116,7 @@ export const Cart: React.FC = () => {
 
   const setSingleError = (key: string, msg: string, elementId: string) => {
     setFieldErrors({ [key]: msg });
-    setErrorMsg(''); // Notion 28/10/26 : Ne pas signaler au niveau du récapitulatif, uniquement près du champ erroné
+    setErrorMsg('');
     setTimeout(() => {
       const el = document.getElementById(elementId);
       if (el) {
@@ -146,7 +128,7 @@ export const Cart: React.FC = () => {
 
   const clearFieldError = (key: string) => {
     if (fieldErrors[key]) {
-      setFieldErrors(prev => {
+      setFieldErrors((prev) => {
         const copy = { ...prev };
         delete copy[key];
         return copy;
@@ -181,42 +163,62 @@ export const Cart: React.FC = () => {
     }
   }, [recipientPhone, totalAmount]);
 
-  // Calcul réductions (frais de livraison supprimés : discutés après entre le client et le livreur)
+  // Calcul réductions et suppléments
   const pointValue = memberInfo?.settings?.point_value_fcfa || 1;
   const loyaltyDiscount = useLoyaltyPoints ? pointsToUse * pointValue : 0;
-  const tierDiscountPercent = memberInfo?.tier === 'GOLD'
-    ? (memberInfo.settings?.gold_discount_percent || 10)
-    : (memberInfo?.tier === 'SILVER' ? (memberInfo.settings?.silver_discount_percent || 5) : 0);
+  const tierDiscountPercent =
+    memberInfo?.tier === 'GOLD'
+      ? memberInfo.settings?.gold_discount_percent || 10
+      : memberInfo?.tier === 'SILVER'
+        ? memberInfo.settings?.silver_discount_percent || 5
+        : 0;
   const tierDiscountAmount = Math.round((totalAmount * tierDiscountPercent) / 100);
-  const cardSupplement = hasGreetingCard ? 200 : 0;
+  const effectiveGreetingCard = hasCakeInCart && hasGreetingCard;
+  const cardSupplement = effectiveGreetingCard ? 200 : 0;
 
-  // Montant Net Total (sans frais de livraison)
-  const finalAmountToPay = Math.max(0, totalAmount + cardSupplement - loyaltyDiscount - tierDiscountAmount);
+  // Montant à payer
+  const finalAmountToPay = Math.max(
+    0,
+    totalAmount + cardSupplement - loyaltyDiscount - tierDiscountAmount
+  );
 
   // Validation du formulaire de panier
   const validateCartCheckout = () => {
-    // Vérification de la date et heure de réception
     if (!deliveryDate) {
-      setSingleError('deliveryDate', 'Veuillez sélectionner la date souhaitée pour votre commande.', 'field-cart-date');
+      setSingleError(
+        'deliveryDate',
+        'Veuillez sélectionner la date souhaitée pour votre commande.',
+        'field-cart-date'
+      );
       return false;
     }
     if (!deliveryTimeSlot.trim()) {
-      setSingleError('deliveryTimeSlot', 'Veuillez indiquer l\'heure souhaitée pour la réception.', 'field-cart-time');
+      setSingleError(
+        'deliveryTimeSlot',
+        "Veuillez indiquer l'heure souhaitée pour la réception.",
+        'field-cart-time'
+      );
       return false;
     }
 
-    // Vérification du délai minimum de préparation (1h à 1h30 -> au moins +1h30 à partir de l'heure actuelle)
     const now = new Date();
     const currentTodayStr = formatLocalDate(now);
     if (deliveryDate < currentTodayStr) {
-      setSingleError('deliveryDate', 'La date choisie ne peut pas être dans le passé.', 'field-cart-date');
+      setSingleError(
+        'deliveryDate',
+        'La date choisie ne peut pas être dans le passé.',
+        'field-cart-date'
+      );
       return false;
     }
 
-    // Extraction de l'heure choisie (format HH:MM ou HHhMM)
     const timeMatch = deliveryTimeSlot.trim().match(/^(\d{1,2})\s*[:hH]\s*(\d{1,2})?$/);
     if (!timeMatch) {
-      setSingleError('deliveryTimeSlot', 'Veuillez sélectionner une heure valide (ex: 14:30).', 'field-cart-time');
+      setSingleError(
+        'deliveryTimeSlot',
+        'Veuillez sélectionner une heure valide (ex: 14:30).',
+        'field-cart-time'
+      );
       return false;
     }
     const chosenHours = parseInt(timeMatch[1], 10);
@@ -224,7 +226,6 @@ export const Cart: React.FC = () => {
     const [year, month, day] = deliveryDate.split('-').map(Number);
     const chosenDateTime = new Date(year, month - 1, day, chosenHours, chosenMinutes, 0, 0);
 
-    // On tolère la minute en cours (now + 89 minutes) pour éviter un rejet à quelques secondes près
     const minAllowedDateTime = new Date(now.getTime() + 89 * 60 * 1000);
     const displayMinDateTime = new Date(now.getTime() + 90 * 60 * 1000);
     const nowFormatted = `${String(now.getHours()).padStart(2, '0')}h${String(now.getMinutes()).padStart(2, '0')}`;
@@ -239,25 +240,36 @@ export const Cart: React.FC = () => {
       return false;
     }
 
-    // Vérification des coordonnées du réceptionnaire uniquement en cas de livraison
     if (deliveryType === 'livraison') {
       const phoneVal = validateBurkinaPhone(recipientPhone);
       if (!phoneVal.isValid) {
-        setSingleError('recipientPhone', phoneVal.error || 'Veuillez saisir un numéro valide du Burkina Faso (8 chiffres).', 'field-cart-phone');
+        setSingleError(
+          'recipientPhone',
+          phoneVal.error || 'Veuillez saisir un numéro valide du Burkina Faso (8 chiffres).',
+          'field-cart-phone'
+        );
         return false;
       }
 
       if (backupPhone.trim()) {
         const backupVal = validateBurkinaPhone(backupPhone, true);
         if (!backupVal.isValid) {
-          setSingleError('backupPhone', backupVal.error || 'Numéro de secours invalide (8 chiffres requis).', 'field-cart-backupPhone');
+          setSingleError(
+            'backupPhone',
+            backupVal.error || 'Numéro de secours invalide (8 chiffres requis).',
+            'field-cart-backupPhone'
+          );
           return false;
         }
       }
     }
 
-    if (hasGreetingCard && !cardMessage.trim()) {
-      setSingleError('cardMessage', 'Veuillez rédiger le mot à inscrire sur la carte de vœux.', 'field-cart-cardMessage');
+    if (effectiveGreetingCard && !cardMessage.trim()) {
+      setSingleError(
+        'cardMessage',
+        'Veuillez rédiger le mot à inscrire sur la carte de vœux.',
+        'field-cart-cardMessage'
+      );
       return false;
     }
     setFieldErrors({});
@@ -265,7 +277,7 @@ export const Cart: React.FC = () => {
     return true;
   };
 
-  // Soumission et redirection vers le paiement Orange Money
+  // Soumission et redirection vers le paiement
   const handleProceedToPayment = async () => {
     if (items.length === 0) {
       setErrorMsg('Votre panier est vide.');
@@ -279,25 +291,27 @@ export const Cart: React.FC = () => {
     setErrorMsg('');
 
     try {
-      const deliveryParts = [
-        deliveryQuarter.trim() ? `Quartier: ${deliveryQuarter.trim()}` : '',
-        deliveryMapLink.trim() ? `Lien Maps: ${deliveryMapLink.trim()}` : ''
-      ].filter(Boolean);
-      const fullDeliveryAddress = deliveryParts.length > 0
-        ? deliveryParts.join(' — ')
+      const fullDeliveryAddress = deliveryQuarter.trim()
+        ? `Quartier: ${deliveryQuarter.trim()}`
         : 'Livraison à domicile (à convenir avec le livreur)';
 
       const finalNotes = [
         `Mode: ${deliveryType === 'livraison' ? 'Livraison à domicile' : 'Sans livraison (Retrait boutique)'}`,
         `Date souhaitée: ${deliveryDate} (${deliveryTimeSlot})`,
-        deliveryType === 'livraison' && recipientPhone.trim() ? `Réceptionnaire: ${recipientPhone.trim()}` : '',
-        deliveryType === 'livraison' && backupPhone.trim() ? `Tél secours: ${backupPhone.trim()}` : '',
+        deliveryType === 'livraison' && recipientPhone.trim()
+          ? `Réceptionnaire: ${recipientPhone.trim()}`
+          : '',
+        deliveryType === 'livraison' && backupPhone.trim()
+          ? `Tél secours: ${backupPhone.trim()}`
+          : '',
         deliveryType === 'livraison' ? `Adresse: ${fullDeliveryAddress}` : 'Retrait boutique',
-        hasGreetingCard ? `Carte de vœux (+200F): « ${cardMessage.trim()} »` : 'Sans carte',
+        effectiveGreetingCard ? `Carte de vœux (+200F): « ${cardMessage.trim()} »` : 'Sans carte',
         useLoyaltyPoints ? `Fidélité: -${loyaltyDiscount} FCFA (${pointsToUse} pts)` : '',
         tierDiscountPercent > 0 ? `Remise VIP ${memberInfo?.tier}: -${tierDiscountAmount} FCFA` : '',
         orderNotes.trim() ? `Notes spéciales: ${orderNotes.trim()}` : ''
-      ].filter(Boolean).join(' | ');
+      ]
+        .filter(Boolean)
+        .join(' | ');
 
       const order = await createOrder({
         customerName:
@@ -306,9 +320,12 @@ export const Cart: React.FC = () => {
             : memberInfo?.name || 'Client (Retrait boutique)',
         customerPhone: deliveryType === 'livraison' ? recipientPhone.trim() : '',
         items: items.map((item) => {
-          const isCakeItem = Boolean(item.isCake || item.category === 'Gâteaux' || item.name.toLowerCase().includes('gâteau') || item.name.toLowerCase().includes('layer') || item.name.toLowerCase().includes('fraisier'));
+          const isCakeItem = Boolean(
+            item.isCake ||
+              item.category === 'Gâteaux' ||
+              /g[aâ]teau|layer|fraisier/i.test(item.name || '')
+          );
           const isCustomCakeItem = String(item.id).startsWith('custom-cake') || !!item.description;
-          const opts = cakeOptions[item.id] || (isCakeItem && !isCustomCakeItem ? { portion: item.portion || '10 à 12 parts', flavor: item.flavor || 'Vanille Bourbon pure' } : undefined);
           return {
             id: typeof item.id === 'number' ? item.id : 9999,
             name: item.name,
@@ -316,8 +333,8 @@ export const Cart: React.FC = () => {
             quantity: item.quantity,
             image: item.image || '/products/gateau_1.jpeg',
             category: item.category || (isCakeItem ? 'Gâteaux' : 'Pâtisserie'),
-            portion: item.portion || opts?.portion,
-            flavor: item.flavor || opts?.flavor,
+            portion: item.portion,
+            flavor: item.flavor,
             catalogModel: item.catalogModel || (!isCustomCakeItem ? item.name : undefined),
             isCake: isCakeItem,
             description: item.description
@@ -328,11 +345,10 @@ export const Cart: React.FC = () => {
         notes: finalNotes,
         deliveryType,
         deliveryFee: 0,
-        hasGreetingCard,
+        hasGreetingCard: effectiveGreetingCard,
         discountAmount: loyaltyDiscount + tierDiscountAmount
       });
 
-      // Déduction des points fidélité si activé
       if (useLoyaltyPoints && pointsToUse > 0) {
         try {
           await redeemLoyaltyPoints({
@@ -345,7 +361,6 @@ export const Cart: React.FC = () => {
         }
       }
 
-      // Nettoyage et redirection vers la page de vérification de paiement
       clearCart();
       localStorage.removeItem('le_ci_checkout_pref');
       navigate(`/paiement/${order.id}`);
@@ -359,11 +374,12 @@ export const Cart: React.FC = () => {
   return (
     <div className="min-h-screen py-10 sm:py-16 bg-[#FAF8F5]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-
         {/* Fil d'Ariane & Titre */}
         <div className="mb-8">
           <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 mb-3">
-            <Link to="/" className="hover:text-[#581C87] transition">Accueil</Link>
+            <Link to="/" className="hover:text-[#581C87] transition">
+              Accueil
+            </Link>
             <ChevronRight size={14} />
             <span className="text-[#581C87] font-bold">Mon Panier Gourmand</span>
           </div>
@@ -409,20 +425,22 @@ export const Cart: React.FC = () => {
             <div className="w-20 h-20 rounded-full bg-purple-50 text-purple-400 flex items-center justify-center mx-auto mb-5">
               <ShoppingBag size={36} />
             </div>
-            <h2 className="text-xl sm:text-2xl font-extrabold text-gray-900 mb-2">Votre panier est vide</h2>
+            <h2 className="text-xl sm:text-2xl font-extrabold text-gray-900 mb-2">
+              Votre panier est vide
+            </h2>
             <p className="text-xs sm:text-sm text-gray-500 font-light mb-8 max-w-sm mx-auto leading-relaxed">
               Laissez-vous tenter par nos douceurs artisanales fraîches ou concevez un gâteau d'exception sur-mesure.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link
                 to="/catalogue"
-                className="w-full sm:w-auto px-6 py-3 rounded-full bg-[#581C87] text-white text-xs font-bold shadow-md hover:bg-[#6B21A8] transition text-center"
+                className="w-full sm:w-auto px-6 py-3 rounded-lg bg-[#581C87] text-white text-xs font-bold shadow-md hover:bg-[#6B21A8] transition text-center"
               >
                 Explorer nos douceurs
               </Link>
               <Link
                 to="/sur-commande"
-                className="w-full sm:w-auto px-6 py-3 rounded-full bg-purple-50 text-[#581C87] text-xs font-bold hover:bg-purple-100 transition text-center border border-purple-200"
+                className="w-full sm:w-auto px-6 py-3 rounded-lg bg-purple-50 text-[#581C87] text-xs font-bold hover:bg-purple-100 transition text-center border border-purple-200"
               >
                 Créer un gâteau sur-mesure
               </Link>
@@ -430,193 +448,74 @@ export const Cart: React.FC = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-
-            {/* COLONNE GAUCHE (7 cols) : Liste des articles & Formulaire complet */}
+            {/* COLONNE GAUCHE (7 cols) : Formulaire de commande */}
             <div className="lg:col-span-7 space-y-8">
-
-              {/* 1. LISTE DES ARTICLES SÉLECTIONNÉS */}
-              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-base sm:text-lg font-extrabold text-gray-900 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">1</span>
-                    Articles sélectionnés ({totalItems})
-                  </h2>
-                </div>
-
-                <div className="divide-y divide-gray-100 space-y-4">
-                  {items.map((item) => {
-                    const isCake = item.category === 'Gâteaux' || item.name.toLowerCase().includes('gâteau') || item.name.toLowerCase().includes('layer') || item.name.toLowerCase().includes('fraisier');
-                    const isCustomCake = String(item.id).startsWith('custom-cake') || !!item.description;
-                    const currentOpts = cakeOptions[item.id] || { portion: '10 à 12 parts', flavor: 'Vanille Bourbon pure' };
-
-                    return (
-                      <div key={item.id} className="pt-4 first:pt-0">
-                        <div className="flex items-start gap-4">
-                          <img
-                            src={item.image || '/products/gateau_1.jpeg'}
-                            alt={item.name}
-                            className="w-20 h-20 rounded-2xl object-cover shrink-0 border border-gray-200 shadow-sm"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2">
-                              <div>
-                                <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-50 text-[#581C87] mb-1">
-                                  {item.category || 'Pâtisserie'}
-                                </span>
-                                <h3 className="font-extrabold text-sm text-gray-900 leading-snug">
-                                  {item.name}
-                                </h3>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => removeFromCart(item.id)}
-                                className="p-1.5 text-gray-400 hover:text-red-600 rounded-full hover:bg-red-50 transition cursor-pointer"
-                                title="Supprimer cet article"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-
-                            {/* Détails personnalisés pour gâteau sur-mesure */}
-                            {item.description && (
-                              <p className="text-[11px] text-purple-900/80 bg-purple-50/60 p-2.5 rounded-xl border border-purple-100 font-medium mt-2 leading-relaxed">
-                                {item.description}
-                              </p>
-                            )}
-
-                            {/* Options portions & saveurs si gâteau catalogue standard */}
-                            {isCake && !isCustomCake && (
-                              <div className="mt-2.5 grid grid-cols-2 gap-2 text-xs">
-                                <div>
-                                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-0.5">Parts :</label>
-                                  <select
-                                    value={currentOpts.portion}
-                                    onChange={(e) => setCakeOptions({
-                                      ...cakeOptions,
-                                      [item.id]: { ...currentOpts, portion: e.target.value }
-                                    })}
-                                    className="w-full p-1.5 rounded-lg border border-gray-200 bg-white font-semibold text-gray-800 text-xs"
-                                  >
-                                    {cakePortions.map(p => (
-                                      <option key={p.id} value={p.label}>{p.label}</option>
-                                    ))}
-                                  </select>
-                                </div>
-                                <div>
-                                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-0.5">Saveur :</label>
-                                  <select
-                                    value={currentOpts.flavor}
-                                    onChange={(e) => setCakeOptions({
-                                      ...cakeOptions,
-                                      [item.id]: { ...currentOpts, flavor: e.target.value }
-                                    })}
-                                    className="w-full p-1.5 rounded-lg border border-gray-200 bg-white font-semibold text-gray-800 text-xs"
-                                  >
-                                    {cakeFlavors.map(f => (
-                                      <option key={f} value={f}>{f}</option>
-                                    ))}
-                                  </select>
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Quantité & Prix */}
-                            <div className="flex items-center justify-between mt-3 pt-2">
-                              <div className="flex items-center border border-gray-200 rounded-full bg-white px-2 py-1 shadow-sm">
-                                <button
-                                  type="button"
-                                  onClick={() => updateQuantity(item.id, -1)}
-                                  className="p-1 text-gray-400 hover:text-gray-700 cursor-pointer"
-                                  title="Diminuer la quantité"
-                                >
-                                  <Minus size={13} />
-                                </button>
-                                <span className="w-8 text-center text-xs font-extrabold text-gray-900">{item.quantity}</span>
-                                <button
-                                  type="button"
-                                  onClick={() => updateQuantity(item.id, 1)}
-                                  className="p-1 text-gray-400 hover:text-gray-700 cursor-pointer"
-                                  title="Augmenter la quantité"
-                                >
-                                  <Plus size={13} />
-                                </button>
-                              </div>
-
-                              <div className="text-right">
-                                <div className="text-xs text-gray-400">
-                                  {item.numericPrice.toLocaleString('fr-FR')} F / unité
-                                </div>
-                                <div className="text-sm sm:text-base font-black text-[#581C87]">
-                                  {(item.numericPrice * item.quantity).toLocaleString('fr-FR')} FCFA
-                                </div>
-                              </div>
-                            </div>
-
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 2. MODE DE RÉCEPTION */}
+              {/* POINT 1 : MODE DE RÉCEPTION */}
               <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
                 <h2 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">2</span>
+                  <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">
+                    1
+                  </span>
                   Mode de réception
                 </h2>
-
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <button
                     type="button"
                     onClick={() => setDeliveryType('livraison')}
-                    className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center gap-3 ${deliveryType === 'livraison'
-                      ? 'border-[#581C87] bg-purple-50/70 shadow-sm ring-2 ring-[#581C87]/20 text-[#581C87]'
-                      : 'border-gray-200 hover:border-purple-200 text-gray-700 bg-white'
-                      }`}
+                    className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center gap-3 ${
+                      deliveryType === 'livraison'
+                        ? 'border-[#581C87] bg-purple-50/70 shadow-sm ring-2 ring-[#581C87]/20 text-[#581C87]'
+                        : 'border-gray-200 hover:border-purple-200 text-gray-700 bg-white'
+                    }`}
                   >
                     <Truck size={22} className="shrink-0 text-[#581C87]" />
                     <div>
                       <div className="font-extrabold text-xs sm:text-sm">Avec livraison</div>
-                      <div className="text-[11px] text-gray-500 font-light mt-0.5">A discuter avec le livreur</div>
+                      <div className="text-[11px] text-gray-500 font-light mt-0.5">
+                        A discuter avec le livreur
+                      </div>
                     </div>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setDeliveryType('sur_place')}
-                    className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center gap-3 ${deliveryType === 'sur_place'
-                      ? 'border-[#581C87] bg-purple-50/70 shadow-sm ring-2 ring-[#581C87]/20 text-[#581C87]'
-                      : 'border-gray-200 hover:border-purple-200 text-gray-700 bg-white'
-                      }`}
+                    className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center gap-3 ${
+                      deliveryType === 'sur_place'
+                        ? 'border-[#581C87] bg-purple-50/70 shadow-sm ring-2 ring-[#581C87]/20 text-[#581C87]'
+                        : 'border-gray-200 hover:border-purple-200 text-gray-700 bg-white'
+                    }`}
                   >
                     <Store size={22} className="shrink-0 text-[#581C87]" />
                     <div>
                       <div className="font-extrabold text-xs sm:text-sm">Sans livraison</div>
-                      <div className="text-[11px] text-gray-500 font-light mt-0.5">Passer retirer à la boutique</div>
+                      <div className="text-[11px] text-gray-500 font-light mt-0.5">
+                        Passer retirer à la boutique
+                      </div>
                     </div>
                   </button>
                 </div>
               </div>
 
-              {/* 3. DATE & HEURE DE RÉCEPTION (Notion point 83) */}
+              {/* POINT 2 : DATE & HEURE */}
               <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
                 <h2 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">3</span>
+                  <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">
+                    2
+                  </span>
                   Date & Heure
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Bouton de sélection calendrier (Notion point 83) */}
                   <div>
-
                     <div className="relative">
                       <button
                         type="button"
                         id="field-cart-date"
                         onClick={() => {
-                          const picker = document.getElementById('cart-reception-date-input') as HTMLInputElement | null;
+                          const picker = document.getElementById(
+                            'cart-reception-date-input'
+                          ) as HTMLInputElement | null;
                           if (picker) {
                             if ('showPicker' in HTMLInputElement.prototype) {
                               picker.showPicker();
@@ -625,18 +524,27 @@ export const Cart: React.FC = () => {
                             }
                           }
                         }}
-                        className={`w-full py-3.5 px-4 rounded-2xl flex items-center justify-between text-xs sm:text-sm font-bold transition cursor-pointer shadow-sm ${fieldErrors.deliveryDate
-                          ? 'border-2 border-red-500 bg-red-50/20 text-red-700 ring-2 ring-red-200'
-                          : deliveryDate
-                            ? 'border-2 border-[#581C87] bg-purple-50/80 text-[#581C87]'
-                            : 'border border-gray-200 bg-white text-gray-700 hover:border-purple-300 hover:bg-purple-50/40'
-                          }`}
+                        className={`w-full py-3.5 px-4 rounded-2xl flex items-center justify-between text-xs sm:text-sm font-bold transition cursor-pointer shadow-sm ${
+                          fieldErrors.deliveryDate
+                            ? 'border-2 border-red-500 bg-red-50/20 text-red-700 ring-2 ring-red-200'
+                            : deliveryDate
+                              ? 'border-2 border-[#581C87] bg-purple-50/80 text-[#581C87]'
+                              : 'border border-gray-200 bg-white text-gray-700 hover:border-purple-300 hover:bg-purple-50/40'
+                        }`}
                       >
                         <div className="flex items-center gap-2.5 truncate">
-                          <Calendar size={18} className={deliveryDate ? 'text-[#581C87]' : 'text-gray-400'} />
+                          <Calendar
+                            size={18}
+                            className={deliveryDate ? 'text-[#581C87]' : 'text-gray-400'}
+                          />
                           <span className="truncate">
                             {deliveryDate
-                              ? `Date : ${new Date(deliveryDate + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })}`
+                              ? `Date : ${new Date(deliveryDate + 'T00:00:00').toLocaleDateString('fr-FR', {
+                                  weekday: 'short',
+                                  day: 'numeric',
+                                  month: 'long',
+                                  year: 'numeric'
+                                })}`
                               : 'Sélectionner votre date de réception'}
                           </span>
                         </div>
@@ -645,7 +553,6 @@ export const Cart: React.FC = () => {
                         </span>
                       </button>
 
-                      {/* Input date caché activé par le bouton */}
                       <input
                         id="cart-reception-date-input"
                         type="date"
@@ -670,7 +577,6 @@ export const Cart: React.FC = () => {
                     </span>
                   </div>
 
-                  {/* Heure souhaitée avec contrainte minimum +1h30 */}
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
                       <Clock size={14} className="text-[#581C87]" />
@@ -682,14 +588,14 @@ export const Cart: React.FC = () => {
                       min={deliveryDate === minDate ? minTimeForMinDate : undefined}
                       value={deliveryTimeSlot}
                       onChange={(e) => {
-                        const val = e.target.value;
-                        setDeliveryTimeSlot(val);
+                        setDeliveryTimeSlot(e.target.value);
                         clearFieldError('deliveryTimeSlot');
                       }}
-                      className={`w-full px-4 py-3.5 rounded-2xl outline-none text-sm font-bold bg-white transition ${fieldErrors.deliveryTimeSlot
-                        ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200 text-red-700'
-                        : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 text-gray-900'
-                        }`}
+                      className={`w-full px-4 py-3.5 rounded-2xl outline-none text-sm font-bold bg-white transition ${
+                        fieldErrors.deliveryTimeSlot
+                          ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200 text-red-700'
+                          : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 text-gray-900'
+                      }`}
                     />
                     {fieldErrors.deliveryTimeSlot && (
                       <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
@@ -706,12 +612,14 @@ export const Cart: React.FC = () => {
                 </div>
               </div>
 
-              {/* 4. COORDONNÉES DE LA PERSONNE QUI VA RECEVOIR LE COLIS (Uniquement si Avec livraison) */}
+              {/* POINT 3 : PERSONNE QUI REÇOIT LE COLIS (Uniquement si Avec livraison) */}
               {deliveryType === 'livraison' && (
                 <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
                   <h2 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">4</span>
-                    La personne qui va recevoir le colis
+                    <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">
+                      3
+                    </span>
+                    Personne qui reçoit le colis
                   </h2>
                   <p className="text-xs text-gray-500 mb-6 font-light">
                     Le livreur contactera ce numéro pour la remise en main propre.
@@ -727,12 +635,16 @@ export const Cart: React.FC = () => {
                         id="field-cart-phone"
                         type="tel"
                         value={recipientPhone}
-                        onChange={(e) => { setRecipientPhone(e.target.value); clearFieldError('recipientPhone'); }}
+                        onChange={(e) => {
+                          setRecipientPhone(e.target.value);
+                          clearFieldError('recipientPhone');
+                        }}
                         placeholder="Ex: 70 00 00 00 ou +226 70 12 34 56"
-                        className={`w-full px-4 py-3.5 rounded-2xl outline-none text-sm transition ${fieldErrors.recipientPhone
-                          ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200'
-                          : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
-                          }`}
+                        className={`w-full px-4 py-3.5 rounded-2xl outline-none text-sm transition ${
+                          fieldErrors.recipientPhone
+                            ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200'
+                            : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
+                        }`}
                       />
                       {fieldErrors.recipientPhone && (
                         <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
@@ -740,24 +652,31 @@ export const Cart: React.FC = () => {
                           <span>{fieldErrors.recipientPhone}</span>
                         </p>
                       )}
-                      <span className="block text-[11px] text-gray-400 mt-1">Numéro du Burkina Faso à 8 chiffres (Orange, Moov, Telecel).</span>
+                      <span className="block text-[11px] text-gray-400 mt-1">
+                        Numéro du Burkina Faso à 8 chiffres (Orange, Moov, Telecel).
+                      </span>
                     </div>
 
                     <div>
                       <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
                         <Phone size={14} className="text-[#581C87]" />
-                        Second numéro de secours <span className="text-[11px] font-normal text-gray-400">(optionnel)</span>
+                        Second numéro de secours{' '}
+                        <span className="text-[11px] font-normal text-gray-400">(optionnel)</span>
                       </label>
                       <input
                         id="field-cart-backupPhone"
                         type="tel"
                         value={backupPhone}
-                        onChange={(e) => { setBackupPhone(e.target.value); clearFieldError('backupPhone'); }}
+                        onChange={(e) => {
+                          setBackupPhone(e.target.value);
+                          clearFieldError('backupPhone');
+                        }}
                         placeholder="Ex: 76 00 00 00 (famille, conjoint...)"
-                        className={`w-full px-4 py-3.5 rounded-2xl border outline-none text-sm bg-white transition ${fieldErrors.backupPhone
-                          ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200'
-                          : 'border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
-                          }`}
+                        className={`w-full px-4 py-3.5 rounded-2xl border outline-none text-sm bg-white transition ${
+                          fieldErrors.backupPhone
+                            ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200'
+                            : 'border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
+                        }`}
                       />
                       {fieldErrors.backupPhone && (
                         <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
@@ -770,177 +689,179 @@ export const Cart: React.FC = () => {
                 </div>
               )}
 
-              {/* 5. LIEU DE LIVRAISON (2 champs : Quartier facultatif ou Lien Google Maps du lieu) */}
+              {/* POINT 4 : LIEU DE LIVRAISON (Sans le champ coller une géolocalisation) */}
               {deliveryType === 'livraison' && (
-                <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm" id="field-cart-address">
+                <div
+                  className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm"
+                  id="field-cart-address"
+                >
                   <h2 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">5</span>
+                    <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">
+                      4
+                    </span>
                     Lieu de livraison
                   </h2>
 
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
-                        <MapPin size={14} className="text-[#581C87]" />
-                        <span>Quartier <span className="text-[11px] font-normal text-gray-400">(facultatif)</span></span>
-                      </label>
-                      <input
-                        type="text"
-                        value={deliveryQuarter}
-                        onChange={(e) => setDeliveryQuarter(e.target.value)}
-                        placeholder="Ex : Ouaga 2000, Karpala, Patte d'Oie..."
-                        className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm bg-white transition"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
-                        <Navigation size={14} className="text-[#581C87]" />
-                        <span>Coller un lien Google Maps du lieu</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={deliveryMapLink}
-                        onChange={(e) => setDeliveryMapLink(e.target.value)}
-                        placeholder="Ex : https://maps.app.goo.gl/..."
-                        className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm bg-white transition"
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
+                      <MapPin size={14} className="text-[#581C87]" />
+                      <span>
+                        Quartier <span className="text-[11px] font-normal text-gray-400">(facultatif)</span>
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      value={deliveryQuarter}
+                      onChange={(e) => setDeliveryQuarter(e.target.value)}
+                      placeholder="Ex : Ouaga 2000, Karpala, Patte d'Oie..."
+                      className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm bg-white transition"
+                    />
                   </div>
                 </div>
               )}
 
-              {/* 6. CARTE DE VŒUX PERSONNALISÉE (+200 FCFA) */}
-              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
-                <div className="flex items-center justify-between mb-2">
-                  <h2 className="text-base sm:text-lg font-extrabold text-gray-900 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">
-                      {deliveryType === 'livraison' ? '6' : '4'}
-                    </span>
-                    Carte de vœux manuscrite (+200 FCFA)
-                  </h2>
-                </div>
-                <p className="text-xs text-gray-500 mb-4 font-light">
-                  Glissez une délicate attention manuscrite dans le coffret pour sublimer votre cadeau.
-                </p>
+              {/* CARTE DE VŒUX MANUSCRITE (+200 FCFA) — Affichée uniquement quand il s'agit d'un gâteau */}
+              {hasCakeInCart && (
+                <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
+                  <div className="flex items-center justify-between mb-2">
+                    <h2 className="text-base sm:text-lg font-extrabold text-gray-900 flex items-center gap-2">
+                      <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">
+                        {deliveryType === 'livraison' ? '5' : '3'}
+                      </span>
+                      Carte de vœux manuscrite (+200 FCFA)
+                    </h2>
+                  </div>
+                  <p className="text-xs text-gray-500 mb-4 font-light">
+                    Glissez une délicate attention manuscrite dans le coffret pour sublimer votre gâteau.
+                  </p>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                  <label
-                    onClick={() => setHasGreetingCard(false)}
-                    className={`p-3.5 px-4 rounded-xl border transition-all cursor-pointer flex items-center gap-3 ${
-                      !hasGreetingCard
-                        ? 'border-[#581C87] bg-purple-50/60 shadow-xs'
-                        : 'border-gray-200 hover:border-purple-200 bg-white'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="greetingCardOption"
-                      checked={!hasGreetingCard}
-                      onChange={() => setHasGreetingCard(false)}
-                      className="w-4 h-4 accent-[#581C87] cursor-pointer"
-                    />
-                    <span className="text-xs sm:text-sm font-bold text-gray-900">
-                      Sans carte de vœux
-                    </span>
-                  </label>
-
-                  <label
-                    onClick={() => setHasGreetingCard(true)}
-                    className={`p-3.5 px-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                      hasGreetingCard
-                        ? 'border-[#581C87] bg-purple-50/60 shadow-xs'
-                        : 'border-gray-200 hover:border-purple-200 bg-white'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                    <label
+                      onClick={() => setHasGreetingCard(false)}
+                      className={`p-3.5 px-4 rounded-xl border transition-all cursor-pointer flex items-center gap-3 ${
+                        !hasGreetingCard
+                          ? 'border-[#581C87] bg-purple-50/60 shadow-xs'
+                          : 'border-gray-200 hover:border-purple-200 bg-white'
+                      }`}
+                    >
                       <input
                         type="radio"
                         name="greetingCardOption"
-                        checked={hasGreetingCard}
-                        onChange={() => setHasGreetingCard(true)}
+                        checked={!hasGreetingCard}
+                        onChange={() => setHasGreetingCard(false)}
                         className="w-4 h-4 accent-[#581C87] cursor-pointer"
                       />
                       <span className="text-xs sm:text-sm font-bold text-gray-900">
-                        Ajouter une carte de vœux
+                        Sans carte de vœux
                       </span>
-                    </div>
-                    <span className="text-xs font-extrabold text-[#581C87] shrink-0">+200 FCFA</span>
-                  </label>
-                </div>
-
-                {hasGreetingCard && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    className="mt-3 pt-3 border-t border-purple-100"
-                  >
-                    <label className="block text-xs font-bold text-gray-700 mb-2">
-                      Texte à calligraphier sur la carte :
                     </label>
-                    <textarea
-                      id="field-cart-cardMessage"
-                      rows={2}
-                      value={cardMessage}
-                      onChange={(e) => { setCardMessage(e.target.value); clearFieldError('cardMessage'); }}
-                      placeholder="Ex: Joyeux anniversaire mon amour ! De la part de toute la famille..."
-                      className={`w-full p-3.5 rounded-2xl outline-none text-sm transition ${fieldErrors.cardMessage
-                        ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200'
-                        : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
-                        }`}
-                    />
-                    {fieldErrors.cardMessage && (
-                      <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
-                        <AlertCircle size={13} className="text-red-500 shrink-0" />
-                        <span>{fieldErrors.cardMessage}</span>
-                      </p>
-                    )}
-                  </motion.div>
-                )}
-              </div>
 
+                    <label
+                      onClick={() => setHasGreetingCard(true)}
+                      className={`p-3.5 px-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                        hasGreetingCard
+                          ? 'border-[#581C87] bg-purple-50/60 shadow-xs'
+                          : 'border-gray-200 hover:border-purple-200 bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="radio"
+                          name="greetingCardOption"
+                          checked={hasGreetingCard}
+                          onChange={() => setHasGreetingCard(true)}
+                          className="w-4 h-4 accent-[#581C87] cursor-pointer"
+                        />
+                        <span className="text-xs sm:text-sm font-bold text-gray-900">
+                          Ajouter une carte de vœux
+                        </span>
+                      </div>
+                      <span className="text-xs font-extrabold text-[#581C87] shrink-0">+200 FCFA</span>
+                    </label>
+                  </div>
+
+                  {hasGreetingCard && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      className="mt-3 pt-3 border-t border-purple-100"
+                    >
+                      <label className="block text-xs font-bold text-gray-700 mb-2">
+                        Texte à calligraphier sur la carte :
+                      </label>
+                      <textarea
+                        id="field-cart-cardMessage"
+                        rows={2}
+                        value={cardMessage}
+                        onChange={(e) => {
+                          setCardMessage(e.target.value);
+                          clearFieldError('cardMessage');
+                        }}
+                        placeholder="Ex: Joyeux anniversaire mon amour ! De la part de toute la famille..."
+                        className={`w-full p-3.5 rounded-2xl outline-none text-sm transition ${
+                          fieldErrors.cardMessage
+                            ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200'
+                            : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
+                        }`}
+                      />
+                      {fieldErrors.cardMessage && (
+                        <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
+                          <AlertCircle size={13} className="text-red-500 shrink-0" />
+                          <span>{fieldErrors.cardMessage}</span>
+                        </p>
+                      )}
+                    </motion.div>
+                  )}
+                </div>
+              )}
             </div>
 
-            {/* COLONNE DROITE (5 cols) : Carte Récapitulative Sticky */}
+            {/* COLONNE DROITE (5 cols) : Récapitulatif (Nom, Saveur, Montant à payer) */}
             <div className="lg:col-span-5 sticky top-24 space-y-6">
-
-              {/* Carte Récapitulatif Total */}
               <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-xl">
                 <h3 className="text-lg font-extrabold text-gray-900 mb-4 pb-4 border-b border-gray-100 flex items-center justify-between">
-                  <span>Récapitulatif de commande</span>
+                  <span>Récapitulatif</span>
                   <span className="text-xs font-bold text-purple-900 bg-purple-50 px-2.5 py-1 rounded-full">
                     {totalItems} article{totalItems > 1 ? 's' : ''}
                   </span>
                 </h3>
 
-                <div className="space-y-3 text-sm text-gray-600 pb-5 border-b border-gray-100">
-                  <div className="flex justify-between">
-                    <span>Sous-total articles :</span>
-                    <span className="font-bold text-gray-900">{totalAmount.toLocaleString('fr-FR')} FCFA</span>
-                  </div>
-
-                  {hasGreetingCard && (
-                    <div className="flex justify-between">
-                      <span>Carte de vœux manuscrite :</span>
-                      <span className="font-bold text-[#581C87]">+200 FCFA</span>
-                    </div>
-                  )}
-
-                  {/* Remises Fidélité */}
-                  {loyaltyDiscount > 0 && (
-                    <div className="flex justify-between text-emerald-700 font-bold">
-                      <span>Déduction fidélité ({pointsToUse} pts) :</span>
-                      <span>-{loyaltyDiscount.toLocaleString('fr-FR')} FCFA</span>
-                    </div>
-                  )}
-
-                  {tierDiscountAmount > 0 && (
-                    <div className="flex justify-between text-amber-700 font-bold">
-                      <span>Remise privilège {memberInfo?.tier} ({tierDiscountPercent}%) :</span>
-                      <span>-{tierDiscountAmount.toLocaleString('fr-FR')} FCFA</span>
-                    </div>
-                  )}
+                {/* Liste épurée des articles : Nom & Saveur */}
+                <div className="space-y-3 pb-5 border-b border-gray-100">
+                  {items.map((item) => {
+                    const descFlavorMatch = (item.description || '').match(/Saveur:\s*([^|\]]+)/i);
+                    const flavorLabel =
+                      item.flavor || (descFlavorMatch ? descFlavorMatch[1].trim() : '');
+                    return (
+                      <div
+                        key={item.id}
+                        className="p-3 rounded-2xl bg-purple-50/40 border border-purple-100 flex items-start justify-between gap-2 text-xs sm:text-sm"
+                      >
+                        <div className="space-y-1 min-w-0">
+                          <div className="text-gray-900 font-extrabold leading-snug">
+                            <span className="text-gray-500 font-semibold">Nom :</span> {item.name}
+                            {item.quantity > 1 && (
+                              <span className="ml-1 text-[#581C87]">(×{item.quantity})</span>
+                            )}
+                          </div>
+                          {flavorLabel && (
+                            <div className="text-xs text-gray-700">
+                              <span className="font-semibold text-gray-500">Saveur :</span>{' '}
+                              <span className="font-bold text-[#581C87]">{flavorLabel}</span>
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeFromCart(item.id)}
+                          className="p-1 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition cursor-pointer shrink-0"
+                          title="Retirer cet article"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
 
                 {/* Espace Fidélité si reconnu */}
@@ -948,7 +869,8 @@ export const Cart: React.FC = () => {
                   <div className="py-4 border-b border-gray-100">
                     <div className="flex items-center justify-between text-xs mb-2">
                       <span className="font-extrabold text-purple-900 flex items-center gap-1">
-                        <Crown size={14} className="text-amber-500" /> Membre {memberInfo.tier} ({memberInfo.points} pts)
+                        <Crown size={14} className="text-amber-500" /> Membre {memberInfo.tier} (
+                        {memberInfo.points} pts)
                       </span>
                     </div>
                     {memberInfo.points >= (memberInfo.settings?.min_points_to_redeem || 50) && (
@@ -959,29 +881,32 @@ export const Cart: React.FC = () => {
                           onChange={(e) => setUseLoyaltyPoints(e.target.checked)}
                           className="rounded text-[#581C87] focus:ring-[#581C87]"
                         />
-                        <span>Utiliser {pointsToUse} pts pour économiser {pointsToUse * pointValue} FCFA</span>
+                        <span>
+                          Utiliser {pointsToUse} pts pour économiser {pointsToUse * pointValue} FCFA
+                        </span>
                       </label>
                     )}
                   </div>
                 )}
 
-                {/* Net Total */}
+                {/* Montant à payer */}
                 <div className="py-5 flex items-baseline justify-between">
                   <div>
-                    <span className="text-xs text-gray-500 uppercase tracking-wider block font-bold">Total net à régler</span>
-                    <span className="text-[11px] text-gray-400 font-light">TVA comprise</span>
+                    <span className="text-xs text-gray-500 uppercase tracking-wider block font-bold">
+                      Montant à payer
+                    </span>
                   </div>
                   <div className="text-2xl sm:text-3xl font-black text-[#581C87]">
                     {finalAmountToPay.toLocaleString('fr-FR')} FCFA
                   </div>
                 </div>
 
-                {/* Bouton de validation Orange Money */}
+                {/* Bouton Passer au paiement */}
                 <button
                   type="button"
                   onClick={handleProceedToPayment}
                   disabled={isSubmitting}
-                  className="w-full py-4 px-6 rounded-full bg-[#581C87] hover:bg-[#6B21A8] text-white font-extrabold text-sm shadow-xl shadow-purple-900/30 transition-all flex items-center justify-center gap-2.5 cursor-pointer transform hover:-translate-y-0.5 disabled:opacity-50"
+                  className="w-full py-4 px-6 rounded-lg bg-[#581C87] hover:bg-[#6B21A8] text-white font-extrabold text-sm shadow-xl shadow-purple-900/30 transition-all flex items-center justify-center gap-2.5 cursor-pointer transform hover:-translate-y-0.5 disabled:opacity-50"
                 >
                   {isSubmitting ? (
                     <>
@@ -991,15 +916,11 @@ export const Cart: React.FC = () => {
                   ) : (
                     <>
                       <CreditCard size={18} />
-                      <span>Valider & Payer avec Orange Money</span>
+                      <span>Passer au paiement</span>
                       <ArrowRight size={18} />
                     </>
                   )}
                 </button>
-
-                <p className="text-[11px] text-center text-gray-400 mt-3 font-light">
-                  Paiement 100% sécurisé via Orange Money Burkina Faso.
-                </p>
 
                 {/* Badges de réassurance */}
                 <div className="mt-6 pt-6 border-t border-gray-100 grid grid-cols-3 gap-2 text-center text-[10px] text-gray-500 font-medium">
@@ -1016,7 +937,6 @@ export const Cart: React.FC = () => {
                     <span>Emballage festif</span>
                   </div>
                 </div>
-
               </div>
 
               {/* Bouton continuer mes achats */}
@@ -1029,12 +949,9 @@ export const Cart: React.FC = () => {
                   <span>Continuer mes achats (ajouter d'autres douceurs)</span>
                 </Link>
               </div>
-
             </div>
-
           </div>
         )}
-
       </div>
     </div>
   );

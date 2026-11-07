@@ -169,6 +169,12 @@ export function AdminDashboard() {
   const [resolvingPaymentId, setResolvingPaymentId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
+  const [nowTick, setNowTick] = useState<number>(() => Date.now());
+
+  useEffect(() => {
+    const t = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
 
   // État Gestion de l'équipe (RBAC)
   const [teamUsers, setTeamUsers] = useState<AdminUser[]>([]);
@@ -1359,13 +1365,26 @@ export function AdminDashboard() {
                       {/* Header Carte */}
                       <div className="flex justify-between items-start gap-2 pb-3 border-b border-white/10">
                         <div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-xs font-mono font-bold text-[#D4AF37]">{order.id}</span>
                             {order.codeReference && (
                               <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
                                 Réf : {order.codeReference}
                               </span>
                             )}
+                            {order.statut === 'EN_ATTENTE_DE_PAIEMENT' && (() => {
+                              const createdMs = new Date(order.createdAt).getTime();
+                              const elapsedSec = Math.max(0, Math.floor((nowTick - createdMs) / 1000));
+                              const remSec = Math.max(0, 600 - elapsedSec);
+                              const mm = String(Math.floor(remSec / 60)).padStart(2, '0');
+                              const ss = String(remSec % 60).padStart(2, '0');
+                              return (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-mono font-extrabold px-2.5 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-400/40">
+                                  <Clock size={12} className="animate-pulse" />
+                                  Temps restant : {mm}:{ss}
+                                </span>
+                              );
+                            })()}
                           </div>
                           <div className="text-[11px] text-gray-400 mt-1">
                             Créée le {new Date(order.createdAt).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}

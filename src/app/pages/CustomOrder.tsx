@@ -11,11 +11,16 @@ import {
   ShoppingBag,
   Plus,
   Minus,
-  Info
+  Info,
+  PhoneCall,
+  MessageCircle
 } from 'lucide-react';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { useCart } from '../context/CartContext';
 import { getProducts, getProductSubcategories, Product, PortionOption } from '../services/api';
+
+const ASSISTANCE_PHONE = '+22677121289';
+const ASSISTANCE_WHATSAPP = '22677121289';
 
 interface CakeCatalogItem {
   id: number | string;
@@ -37,7 +42,6 @@ const defaultCakeSubcategories = ['Anniversaire', 'Mariage', 'Autres'];
 export interface BirthdayCakeFamily {
   key: string;
   label: string;
-  shortDesc: string;
   prices: {
     '6': number;
     '8': number;
@@ -52,7 +56,6 @@ export const BIRTHDAY_CAKE_FAMILIES: BirthdayCakeFamily[] = [
   {
     key: 'arzanier_orsia',
     label: 'Arzanier (Gâteau au moringa et bissap) ou Orsia (Gâteau au riz et teedo)',
-    shortDesc: 'Création signature aux saveurs authentiques (moringa-bissap ou riz-teedo)',
     prices: {
       '6': 10500,
       '8': 13500,
@@ -65,7 +68,6 @@ export const BIRTHDAY_CAKE_FAMILIES: BirthdayCakeFamily[] = [
   {
     key: 'moka_vanille_chocolat',
     label: 'Les mokas Vanille chocolat',
-    shortDesc: 'Génoise légère et crème au beurre fine vanille & chocolat',
     prices: {
       '6': 8500,
       '8': 10500,
@@ -78,7 +80,6 @@ export const BIRTHDAY_CAKE_FAMILIES: BirthdayCakeFamily[] = [
   {
     key: 'moka_vanille_fraise',
     label: 'Les mokas Vanille fraise ou vanille fruits rouges',
-    shortDesc: 'Génoise moelleuse vanille garnie à la fraise ou aux fruits rouges',
     prices: {
       '6': 9000,
       '8': 11000,
@@ -91,7 +92,6 @@ export const BIRTHDAY_CAKE_FAMILIES: BirthdayCakeFamily[] = [
   {
     key: 'foret_noire_blanche',
     label: 'Forêt noire, forêt blanche',
-    shortDesc: 'Chantilly aérienne, copeaux de chocolat et cerises gourmandes',
     prices: {
       '6': 10500,
       '8': 13500,
@@ -104,7 +104,6 @@ export const BIRTHDAY_CAKE_FAMILIES: BirthdayCakeFamily[] = [
   {
     key: 'infini_chocolat_fraisier',
     label: 'Infini chocolat ou fraisiers',
-    shortDesc: 'Intensité chocolat grand cru ou fraisier onctueux aux fraises fraîches',
     prices: {
       '6': 10500,
       '8': 13500,
@@ -117,7 +116,6 @@ export const BIRTHDAY_CAKE_FAMILIES: BirthdayCakeFamily[] = [
   {
     key: 'gateau_glace',
     label: 'Gâteau glacé',
-    shortDesc: 'Entremet glacé rafraîchissant et fondant',
     prices: {
       '6': 11000,
       '8': 14000,
@@ -158,37 +156,26 @@ export const WEDDING_TIERED_OPTIONS: WeddingTieredOption[] = [
 // SUPPLÉMENTS OFFICIELS
 // ============================================================================
 const SUPPLEMENT_PRICES = {
-  edibleImage: 5000,      // Images comestibles : 5 000 F
-  nonEdibleImage: 1500,   // Images non comestibles : 1 500 F
-  alcohol: 1000,          // Alcool : 1 000 F
-  sugarPastePerPart: 2500,// Pâte à sucre : 2 500 F / part
-  greetingCard: 200       // Carte pour le petit mot : 200 F
+  edibleImage: 5000,       // Images comestibles : 5 000 F
+  nonEdibleImage: 1500,    // Images non comestibles : 1 500 F
+  alcohol: 1000,           // Alcool : 1 000 F
+  sugarPastePerPart: 2500  // Pâte à sucre : 2 500 F / part
 };
 
-function buildPortionsFromFamily(family: BirthdayCakeFamily, extraPartsCount = 25): {
+function buildPortionsFromFamily(family: BirthdayCakeFamily): {
   id: string;
   label: string;
   partsCount: number;
   price: number;
-  desc: string;
 }[] {
-  const safeExtraParts = Math.max(21, Number(extraPartsCount) || 25);
-  const pricePerPartAt20 = family.prices['20'] / 20;
-  const extraPrice = Math.round((pricePerPartAt20 * safeExtraParts) / 500) * 500;
   return [
-    { id: '6', label: '6 parts', partsCount: 6, price: family.prices['6'], desc: 'Petit comité (6 parts)' },
-    { id: '8', label: '8 parts', partsCount: 8, price: family.prices['8'], desc: 'Format familial (8 parts)' },
-    { id: '10', label: '10 parts', partsCount: 10, price: family.prices['10'], desc: 'Format festif (10 parts)' },
-    { id: '12', label: '12 parts', partsCount: 12, price: family.prices['12'], desc: 'Belle tablée (12 parts)' },
-    { id: '15', label: '15 parts', partsCount: 15, price: family.prices['15'], desc: 'Réception & fête (15 parts)' },
-    { id: '20', label: '20 parts', partsCount: 20, price: family.prices['20'], desc: 'Grande célébration (20 parts)' },
-    {
-      id: 'plus-20',
-      label: `Et plus... (${safeExtraParts} parts)`,
-      partsCount: safeExtraParts,
-      price: extraPrice,
-      desc: 'Grand événement (+ de 20 parts)'
-    }
+    { id: '6', label: '6 parts', partsCount: 6, price: family.prices['6'] },
+    { id: '8', label: '8 parts', partsCount: 8, price: family.prices['8'] },
+    { id: '10', label: '10 parts', partsCount: 10, price: family.prices['10'] },
+    { id: '12', label: '12 parts', partsCount: 12, price: family.prices['12'] },
+    { id: '15', label: '15 parts', partsCount: 15, price: family.prices['15'] },
+    { id: '20', label: '20 parts', partsCount: 20, price: family.prices['20'] },
+    { id: 'plus-20', label: '+ de 20 parts', partsCount: 25, price: family.prices['20'] }
   ];
 }
 
@@ -199,7 +186,6 @@ const fallbackCatalogCakes: CakeCatalogItem[] = [
     name: 'Arzanier (Moringa & Bissap) / Orsia (Riz & Teedo)',
     image: '/products/gateau_1.jpeg',
     subcategory: 'Anniversaire',
-    description: '6p: 10.500F • 8p: 13.500F • 10p: 17.500F • 12p: 20.500F • 15p: 25.000F • 20p: 33.000F',
     price: 10500,
     flavorKey: 'arzanier_orsia',
     portions: buildPortionsFromFamily(BIRTHDAY_CAKE_FAMILIES[0]).map(p => ({ label: p.label, price: p.price }))
@@ -209,7 +195,6 @@ const fallbackCatalogCakes: CakeCatalogItem[] = [
     name: 'Les mokas Vanille chocolat',
     image: '/products/gateau_2.jpeg',
     subcategory: 'Anniversaire',
-    description: '6p: 8.500F • 8p: 10.500F • 10p: 13.500F • 12p: 15.500F • 15p: 21.000F • 20p: 26.000F',
     price: 8500,
     flavorKey: 'moka_vanille_chocolat',
     portions: buildPortionsFromFamily(BIRTHDAY_CAKE_FAMILIES[1]).map(p => ({ label: p.label, price: p.price }))
@@ -219,7 +204,6 @@ const fallbackCatalogCakes: CakeCatalogItem[] = [
     name: 'Les mokas Vanille fraise ou vanille fruits rouges',
     image: '/products/gateau_4.jpeg',
     subcategory: 'Anniversaire',
-    description: '6p: 9.000F • 8p: 11.000F • 10p: 14.500F • 12p: 16.500F • 15p: 22.000F • 20p: 27.000F',
     price: 9000,
     flavorKey: 'moka_vanille_fraise',
     portions: buildPortionsFromFamily(BIRTHDAY_CAKE_FAMILIES[2]).map(p => ({ label: p.label, price: p.price }))
@@ -229,7 +213,6 @@ const fallbackCatalogCakes: CakeCatalogItem[] = [
     name: 'Forêt noire, forêt blanche',
     image: '/products/gateau_3.jpeg',
     subcategory: 'Anniversaire',
-    description: '6p: 10.500F • 8p: 13.500F • 10p: 16.500F • 12p: 20.000F • 15p: 25.500F • 20p: 32.000F',
     price: 10500,
     flavorKey: 'foret_noire_blanche',
     portions: buildPortionsFromFamily(BIRTHDAY_CAKE_FAMILIES[3]).map(p => ({ label: p.label, price: p.price }))
@@ -239,7 +222,6 @@ const fallbackCatalogCakes: CakeCatalogItem[] = [
     name: 'Infini chocolat ou fraisiers',
     image: '/products/gateau_7.jpeg',
     subcategory: 'Anniversaire',
-    description: '6p: 10.500F • 8p: 13.500F • 10p: 18.500F • 12p: 21.000F • 15p: 25.000F • 20p: 36.000F',
     price: 10500,
     flavorKey: 'infini_chocolat_fraisier',
     portions: buildPortionsFromFamily(BIRTHDAY_CAKE_FAMILIES[4]).map(p => ({ label: p.label, price: p.price }))
@@ -249,7 +231,6 @@ const fallbackCatalogCakes: CakeCatalogItem[] = [
     name: 'Gâteau glacé',
     image: '/products/gateau_5.jpeg',
     subcategory: 'Anniversaire',
-    description: '6p: 11.000F • 8p: 14.000F • 10p: 17.000F • 12p: 20.500F • 15p: 25.500F • 20p: 34.000F',
     price: 11000,
     flavorKey: 'gateau_glace',
     portions: buildPortionsFromFamily(BIRTHDAY_CAKE_FAMILIES[5]).map(p => ({ label: p.label, price: p.price }))
@@ -259,7 +240,6 @@ const fallbackCatalogCakes: CakeCatalogItem[] = [
     name: 'Pièce Montée d\'Exception & Mariage Prestige',
     image: '/products/gateau_8.jpeg',
     subcategory: 'Mariage',
-    description: 'Pièces montées de 2 à 5 étages (30.000F à 200.000F) ou gâteaux séparés (min. 3 gâteaux de 8 parts)',
     price: 30000
   },
   {
@@ -267,7 +247,6 @@ const fallbackCatalogCakes: CakeCatalogItem[] = [
     name: 'Création Célébration & Événements',
     image: '/products/gateau_6.jpeg',
     subcategory: 'Autres',
-    description: 'Baptême, communion, fête d\'entreprise et célébrations sur-mesure',
     price: 10500,
     flavorKey: 'arzanier_orsia'
   }
@@ -329,28 +308,25 @@ export function CustomOrder() {
   const [selectedCatalogCake, setSelectedCatalogCake] = useState<string>(fallbackCatalogCakes[0].name);
   const [uploadedImagePreview, setUploadedImagePreview] = useState<string | null>(null);
 
-  // Point 3A : Taille & Saveur (Anniversaire & Autres)
+  // Point 3 : Taille & Saveur
   const [selectedFlavorKey, setSelectedFlavorKey] = useState<string>(BIRTHDAY_CAKE_FAMILIES[0].key);
   const [customFlavorText, setCustomFlavorText] = useState('');
   const [selectedPortionId, setSelectedPortionId] = useState<string>('6');
-  const [customExtraPartsCount, setCustomExtraPartsCount] = useState<number>(25);
 
-  // Point 3B : Configuration spécifique Mariage (Pièce montée vs Gâteaux séparés)
+  // Configuration spécifique Mariage (Pièce montée vs Gâteaux séparés)
   const [weddingFormat, setWeddingFormat] = useState<'piece_montee' | 'gateaux_separes'>('piece_montee');
   const [selectedWeddingTierOptionId, setSelectedWeddingTierOptionId] = useState<string>(WEDDING_TIERED_OPTIONS[0].id);
   const [separateCakesCount, setSeparateCakesCount] = useState<number>(3); // Minimum 3 gâteaux
   const [separateCakePortionId, setSeparateCakePortionId] = useState<string>('8'); // À partir de 8 parts par gâteau
   const [weddingTieredPartsForSugarPaste, setWeddingTieredPartsForSugarPaste] = useState<number>(15);
 
-  // Point 3C : Suppléments (Images comestibles, Images non comestibles, Alcool, Pâte à sucre, Carte petit mot)
+  // Point 4 : Supplément (optionnel)
   const [suppEdibleImage, setSuppEdibleImage] = useState<boolean>(false);
   const [suppNonEdibleImage, setSuppNonEdibleImage] = useState<boolean>(false);
   const [suppAlcohol, setSuppAlcohol] = useState<boolean>(false);
   const [suppSugarPaste, setSuppSugarPaste] = useState<boolean>(false);
-  const [suppGreetingCard, setSuppGreetingCard] = useState<boolean>(false);
-  const [greetingCardText, setGreetingCardText] = useState<string>('');
 
-  // Point 4 : Message à écrire sur le gâteau
+  // Point 5 : Message à écrire sur le gâteau
   const [cakeInscriptionMessage, setCakeInscriptionMessage] = useState('');
 
   // Erreurs de validation
@@ -380,7 +356,6 @@ export function CustomOrder() {
           mergedSubcats.push(...defaultCakeSubcategories);
         }
 
-        // Conserver les 6 familles officielles d'anniversaire + ajouter les gâteaux personnalisés créés par le gérant
         const combinedCakes: CakeCatalogItem[] = [...fallbackCatalogCakes];
         if (Array.isArray(productsData) && productsData.length > 0) {
           const dbCakes = productsData
@@ -412,14 +387,18 @@ export function CustomOrder() {
 
           for (const dbCake of dbCakes) {
             const existsIdx = combinedCakes.findIndex(
-              (c) => c.name.toLowerCase() === dbCake.name.toLowerCase() || (c.flavorKey && c.flavorKey === dbCake.flavorKey && c.subcategory === dbCake.subcategory)
+              (c) =>
+                c.name.toLowerCase() === dbCake.name.toLowerCase() ||
+                (c.flavorKey && c.flavorKey === dbCake.flavorKey && c.subcategory === dbCake.subcategory)
             );
             if (existsIdx >= 0) {
-              // Mettre à jour l'image ou les portions si le gérant les a personnalisées
               combinedCakes[existsIdx] = {
                 ...combinedCakes[existsIdx],
                 image: dbCake.image || combinedCakes[existsIdx].image,
-                portions: dbCake.portions && dbCake.portions.length > 0 ? dbCake.portions : combinedCakes[existsIdx].portions
+                portions:
+                  dbCake.portions && dbCake.portions.length > 0
+                    ? dbCake.portions
+                    : combinedCakes[existsIdx].portions
               };
             } else {
               combinedCakes.push(dbCake);
@@ -427,7 +406,6 @@ export function CustomOrder() {
           }
         }
 
-        // Ajouter les modèles de sous-catégorie dotés d'un thème et d'une image chargée par le gérant
         if (Array.isArray(subcatsData)) {
           for (const s of subcatsData) {
             if (s.image && s.name) {
@@ -502,14 +480,14 @@ export function CustomOrder() {
     }
   };
 
-  // Famille de saveur sélectionnée (pour les tarifs par part)
+  // Famille de saveur sélectionnée
   const activeFamily =
     BIRTHDAY_CAKE_FAMILIES.find((f) => f.key === selectedFlavorKey) || BIRTHDAY_CAKE_FAMILIES[0];
 
   const selectedCakeObj = allCakes.find((c) => c.name === selectedCatalogCake);
 
-  // Options de parts pour Anniversaire / Autres (6, 8, 10, 12, 15, 20 et Et plus...)
-  const birthdayPortionsOptions = buildPortionsFromFamily(activeFamily, customExtraPartsCount);
+  // Options de parts pour Anniversaire / Autres (6, 8, 10, 12, 15, 20 et + de 20 parts)
+  const birthdayPortionsOptions = buildPortionsFromFamily(activeFamily);
   const currentBirthdayPortion =
     birthdayPortionsOptions.find((p) => p.id === selectedPortionId) || birthdayPortionsOptions[0];
 
@@ -522,13 +500,48 @@ export function CustomOrder() {
   const currentWeddingTierOption =
     WEDDING_TIERED_OPTIONS.find((o) => o.id === selectedWeddingTierOptionId) || WEDDING_TIERED_OPTIONS[0];
 
-  // Synchroniser le nombre de parts estimé quand on change d'étage de pièce montée
   useEffect(() => {
     setWeddingTieredPartsForSugarPaste(currentWeddingTierOption.defaultParts);
   }, [selectedWeddingTierOptionId]);
 
+  // Est-ce que l'option "+ de 20 parts" est sélectionnée ?
+  const isPlus20Selected = !isWeddingCategory
+    ? selectedPortionId === 'plus-20'
+    : weddingFormat === 'gateaux_separes' && separateCakePortionId === 'plus-20';
+
+  // Résumé de la commande jusqu'à la taille du gâteau (> 20 parts) pour l'assistance WhatsApp
+  const eventLabelForSummary =
+    /autre/i.test(selectedCakeCategory) && customEventPrecision.trim()
+      ? `${selectedCakeCategory} (${customEventPrecision.trim()})`
+      : selectedCakeCategory;
+
+  const modelDisplayForSummary =
+    modelType === 'catalog'
+      ? selectedCatalogCake
+      : uploadedImagePreview
+        ? 'Photo personnalisée fournie'
+        : 'Modèle personnalisé';
+
+  const flavorDisplayForSummary =
+    selectedFlavorKey === 'custom'
+      ? customFlavorText.trim() || 'Saveur personnalisée'
+      : activeFamily.label;
+
+  const assistanceMessage = [
+    'Bonjour Les Douceurs de Lê Ci ! Je souhaite commander un gâteau au-delà de 20 parts :',
+    `• Catégorie : ${eventLabelForSummary}`,
+    `• Modèle : ${modelDisplayForSummary}`,
+    `• Saveur : ${flavorDisplayForSummary}`,
+    isWeddingCategory && weddingFormat === 'gateaux_separes'
+      ? `• Taille du gâteau : ${separateCakesCount} gâteaux séparés de + de 20 parts chacun`
+      : '• Taille du gâteau : Au-delà de 20 parts (+ de 20 parts)'
+  ].join('\n');
+
+  const whatsappAssistanceUrl = `https://wa.me/${ASSISTANCE_WHATSAPP}?text=${encodeURIComponent(assistanceMessage)}`;
+  const phoneAssistanceUrl = `tel:${ASSISTANCE_PHONE}`;
+
   // ============================================================================
-  // CALCUL DU PRIX DU GÂTEAU + SUPPLÉMENTS + CARTE PETIT MOT
+  // CALCUL DU PRIX DU GÂTEAU + SUPPLÉMENTS
   // ============================================================================
   const baseCakePrice = isWeddingCategory
     ? weddingFormat === 'piece_montee'
@@ -536,7 +549,6 @@ export function CustomOrder() {
       : currentSeparateWeddingPortion.price * Math.max(3, separateCakesCount)
     : currentBirthdayPortion.price;
 
-  // Nombre total de parts servant au calcul de la pâte à sucre (2 500 F / part)
   const effectivePartsCount = isWeddingCategory
     ? weddingFormat === 'piece_montee'
       ? Math.max(6, weddingTieredPartsForSugarPaste)
@@ -547,13 +559,9 @@ export function CustomOrder() {
   const nonEdibleImageCost = suppNonEdibleImage ? SUPPLEMENT_PRICES.nonEdibleImage : 0;
   const alcoholCost = suppAlcohol ? SUPPLEMENT_PRICES.alcohol : 0;
   const sugarPasteCost = suppSugarPaste ? SUPPLEMENT_PRICES.sugarPastePerPart * effectivePartsCount : 0;
-  const greetingCardCost = suppGreetingCard ? SUPPLEMENT_PRICES.greetingCard : 0;
 
   const cakeSupplementsTotal = edibleImageCost + nonEdibleImageCost + alcoholCost + sugarPasteCost;
-  // Prix de l'article gâteau ajouté au panier (inclut le gâteau + ses suppléments pâtissiers)
   const cakeItemPriceForCart = baseCakePrice + cakeSupplementsTotal;
-  // Montant total global affiché (inclut en plus la carte pour le petit mot si cochée)
-  const grandTotalEstimated = cakeItemPriceForCart + greetingCardCost;
 
   // Gestion de l'upload d'image
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -582,39 +590,13 @@ export function CustomOrder() {
       return;
     }
 
-    if (suppGreetingCard && !greetingCardText.trim()) {
-      setSingleError(
-        'greetingCardText',
-        'Veuillez saisir le message à inscrire sur la carte pour le petit mot.',
-        'field-greetingCardText'
-      );
-      return;
-    }
-
     setFieldErrors({});
     setIsSubmitting(true);
-
-    const eventLabel =
-      /autre/i.test(selectedCakeCategory) && customEventPrecision.trim()
-        ? `${selectedCakeCategory} (${customEventPrecision.trim()})`
-        : selectedCakeCategory;
-
-    const flavorDisplay =
-      selectedFlavorKey === 'custom'
-        ? `Personnalisée : ${customFlavorText.trim()}`
-        : activeFamily.label;
-
-    const modelDisplay =
-      modelType === 'catalog'
-        ? `Modèle catalogue : ${selectedCatalogCake}`
-        : uploadedImagePreview
-          ? 'Photo personnalisée fournie'
-          : 'Modèle personnalisé';
 
     const portionLabel = isWeddingCategory
       ? weddingFormat === 'piece_montee'
         ? `Pièce montée ${currentWeddingTierOption.tierLabel} (${currentWeddingTierOption.optionLabel})`
-        : `${Math.max(3, separateCakesCount)} gâteaux séparés × ${currentSeparateWeddingPortion.label} (${effectivePartsCount} parts au total)`
+        : `${Math.max(3, separateCakesCount)} gâteaux séparés × ${currentSeparateWeddingPortion.label}`
       : currentBirthdayPortion.label;
 
     const chosenSupplementsList = [
@@ -639,30 +621,15 @@ export function CustomOrder() {
           : 'Modèle sur-mesure';
 
     const customDetailsList = [
-      `Catégorie: ${eventLabel}`,
-      `Modèle: ${modelDisplay}`,
+      `Catégorie: ${eventLabelForSummary}`,
+      `Modèle: ${modelDisplayForSummary}`,
       `Format/Taille: ${portionLabel} (${baseCakePrice.toLocaleString('fr-FR')} F)`,
-      `Saveur: ${flavorDisplay}`,
+      `Saveur: ${flavorDisplayForSummary}`,
       chosenSupplementsList.length > 0 ? `Suppléments: ${chosenSupplementsList.join(', ')}` : 'Sans supplément',
       cakeInscriptionMessage.trim() ? `Message sur gâteau: « ${cakeInscriptionMessage.trim()} »` : ''
     ]
       .filter(Boolean)
       .join(' | ');
-
-    // Synchroniser la carte pour le petit mot avec le Panier
-    if (suppGreetingCard) {
-      try {
-        const existingPref = JSON.parse(localStorage.getItem('le_ci_checkout_pref') || '{}');
-        localStorage.setItem(
-          'le_ci_checkout_pref',
-          JSON.stringify({
-            ...existingPref,
-            hasGreetingCard: true,
-            cardMessage: greetingCardText.trim()
-          })
-        );
-      } catch (e) {}
-    }
 
     addToCart(
       {
@@ -674,7 +641,7 @@ export function CustomOrder() {
         category: 'Gâteaux',
         description: customDetailsList,
         portion: portionLabel,
-        flavor: flavorDisplay,
+        flavor: flavorDisplayForSummary,
         catalogModel: catalogModelLabel,
         isCake: true
       },
@@ -700,13 +667,13 @@ export function CustomOrder() {
             Personnalisation de Gâteau
           </h1>
           <p className="text-sm sm:text-base text-gray-600 max-w-xl mx-auto font-light mt-2 leading-relaxed">
-            Configurez votre gâteau en 4 étapes simples : catégorie d'événement, modèle du catalogue, taille, saveur & suppléments, puis le message à inscrire.
+            Configurez votre gâteau étape par étape : catégorie, modèle, taille & saveur, suppléments et message à inscrire.
           </p>
         </motion.div>
 
         <div className="space-y-8">
           {/* ========================================================================= */}
-          {/* POINT 1 : CATÉGORIE DE GÂTEAU (3 BOUTONS + SOUS-CATÉGORIES DYNAMIQUES) */}
+          {/* POINT 1 : CATÉGORIE DE GÂTEAU (INCHANGÉ)                                  */}
           {/* ========================================================================= */}
           <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
             <h3 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
@@ -777,7 +744,7 @@ export function CustomOrder() {
           </div>
 
           {/* ========================================================================= */}
-          {/* POINT 2 : CATALOGUE DE GÂTEAUX EN FONCTION DE LA CATÉGORIE */}
+          {/* POINT 2 : CATALOGUE DE GÂTEAUX EN FONCTION DE LA CATÉGORIE (INCHANGÉ)     */}
           {/* ========================================================================= */}
           <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
@@ -854,11 +821,6 @@ export function CustomOrder() {
                             <h4 className="text-xs font-extrabold text-gray-900 leading-snug line-clamp-2">
                               {cake.name}
                             </h4>
-                            {cake.description && (
-                              <p className="text-[11px] text-gray-500 font-light line-clamp-2 mt-1">
-                                {cake.description}
-                              </p>
-                            )}
                           </div>
                         </div>
                       );
@@ -872,7 +834,7 @@ export function CustomOrder() {
                     <button
                       type="button"
                       onClick={() => setModelType('upload')}
-                      className="px-5 py-2.5 rounded-full bg-[#581C87] text-white text-xs font-bold hover:bg-[#6B21A8] transition cursor-pointer"
+                      className="px-5 py-2.5 rounded-lg bg-[#581C87] text-white text-xs font-bold hover:bg-[#6B21A8] transition cursor-pointer"
                     >
                       Importer une photo de modèle
                     </button>
@@ -892,7 +854,7 @@ export function CustomOrder() {
                     />
                     <label
                       htmlFor="cake-photo-upload"
-                      className="px-4 py-2 rounded-full bg-purple-100 text-[#581C87] hover:bg-purple-200 text-xs font-bold cursor-pointer transition"
+                      className="px-4 py-2 rounded-lg bg-purple-100 text-[#581C87] hover:bg-purple-200 text-xs font-bold cursor-pointer transition"
                     >
                       Changer de photo
                     </label>
@@ -922,7 +884,7 @@ export function CustomOrder() {
           </div>
 
           {/* ========================================================================= */}
-          {/* POINT 3 : TAILLE, SAVEUR ET SUPPLÉMENTS DU GÂTEAU */}
+          {/* POINT 3 : TAILLE ET SAVEUR                                                */}
           {/* ========================================================================= */}
           <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm space-y-8">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -930,74 +892,75 @@ export function CustomOrder() {
                 <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">
                   3
                 </span>
-                Taille, Saveur & Suppléments
+                Taille et saveur
               </h3>
-              <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-purple-100 text-[#581C87] text-xs font-extrabold">
-                Prix du gâteau : {baseCakePrice.toLocaleString('fr-FR')} FCFA
-              </span>
+              {!isPlus20Selected && (
+                <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-purple-100 text-[#581C87] text-xs font-extrabold">
+                  Prix du gâteau : {baseCakePrice.toLocaleString('fr-FR')} FCFA
+                </span>
+              )}
             </div>
 
             {/* --------------------------------------------------------------------- */}
-            {/* 3.1 CHOIX DE LA SAVEUR / TYPE DE GÂTEAU                               */}
+            {/* 3A. SAVEUR DU GÂTEAU (PUCES RADIO, UNIQUEMENT LE NOM SANS PARTS/PRIX) */}
             {/* --------------------------------------------------------------------- */}
             <div>
-              <h4 className="text-sm sm:text-base font-extrabold text-gray-900 mb-1">
-                Saveur / Type de gâteau *
+              <h4 className="text-sm sm:text-base font-extrabold text-gray-900 mb-3">
+                Saveur du gâteau *
               </h4>
-              <p className="text-xs text-gray-500 mb-4 font-light">
-                Le prix des parts varie selon la recette choisie :
-              </p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {BIRTHDAY_CAKE_FAMILIES.map((fam) => {
                   const isSelected = selectedFlavorKey === fam.key;
                   return (
-                    <button
+                    <label
                       key={fam.key}
-                      type="button"
                       onClick={() => {
                         setSelectedFlavorKey(fam.key);
                         clearFieldError('customFlavorText');
                       }}
-                      className={`p-3.5 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-start justify-between gap-2 ${
+                      className={`p-3.5 px-4 rounded-xl border transition-all cursor-pointer flex items-center gap-3 ${
                         isSelected
-                          ? 'border-[#581C87] bg-purple-50 text-[#581C87] shadow-sm ring-2 ring-[#581C87]/20'
-                          : 'border-gray-200 hover:border-purple-200 text-gray-800 bg-white'
+                          ? 'border-[#581C87] bg-purple-50/60 shadow-xs'
+                          : 'border-gray-200 hover:border-purple-200 bg-white'
                       }`}
                     >
-                      <div>
-                        <span className="block text-xs sm:text-sm font-extrabold leading-snug">
-                          {fam.label}
-                        </span>
-                        <span className="block text-[11px] text-gray-500 font-normal mt-0.5">
-                          Dès {fam.prices['6'].toLocaleString('fr-FR')} F (6 parts) à {fam.prices['20'].toLocaleString('fr-FR')} F (20 parts)
-                        </span>
-                      </div>
-                      {isSelected && (
-                        <div className="w-5 h-5 rounded-full bg-[#581C87] text-white flex items-center justify-center shrink-0 mt-0.5">
-                          <Check size={11} strokeWidth={3} />
-                        </div>
-                      )}
-                    </button>
+                      <input
+                        type="radio"
+                        name="cakeFlavorOption"
+                        checked={isSelected}
+                        onChange={() => {
+                          setSelectedFlavorKey(fam.key);
+                          clearFieldError('customFlavorText');
+                        }}
+                        className="w-4 h-4 accent-[#581C87] cursor-pointer shrink-0"
+                      />
+                      <span className="text-xs sm:text-sm font-bold text-gray-900 leading-snug">
+                        {fam.label}
+                      </span>
+                    </label>
                   );
                 })}
 
-                <button
-                  type="button"
+                <label
                   onClick={() => setSelectedFlavorKey('custom')}
-                  className={`p-3.5 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                  className={`p-3.5 px-4 rounded-xl border transition-all cursor-pointer flex items-center gap-3 ${
                     selectedFlavorKey === 'custom'
-                      ? 'border-[#581C87] bg-purple-50 text-[#581C87] shadow-sm ring-2 ring-[#581C87]/20 font-bold'
-                      : 'border-gray-200 hover:border-purple-200 text-gray-700 bg-white font-semibold'
+                      ? 'border-[#581C87] bg-purple-50/60 shadow-xs'
+                      : 'border-gray-200 hover:border-purple-200 bg-white'
                   }`}
                 >
-                  <span className="text-xs sm:text-sm">Autre saveur personnalisée</span>
-                  {selectedFlavorKey === 'custom' && (
-                    <div className="w-5 h-5 rounded-full bg-[#581C87] text-white flex items-center justify-center shrink-0">
-                      <Check size={11} strokeWidth={3} />
-                    </div>
-                  )}
-                </button>
+                  <input
+                    type="radio"
+                    name="cakeFlavorOption"
+                    checked={selectedFlavorKey === 'custom'}
+                    onChange={() => setSelectedFlavorKey('custom')}
+                    className="w-4 h-4 accent-[#581C87] cursor-pointer shrink-0"
+                  />
+                  <span className="text-xs sm:text-sm font-bold text-gray-900">
+                    Autre saveur personnalisée
+                  </span>
+                </label>
               </div>
 
               {selectedFlavorKey === 'custom' && (
@@ -1007,7 +970,7 @@ export function CustomOrder() {
                   className="mt-4 pt-4 border-t border-purple-100"
                 >
                   <label className="block text-xs font-bold text-gray-700 mb-2">
-                    Précisez votre association de saveurs sur-mesure *
+                    Précisez votre saveur sur-mesure *
                   </label>
                   <input
                     id="field-customFlavorText"
@@ -1035,49 +998,58 @@ export function CustomOrder() {
             </div>
 
             {/* --------------------------------------------------------------------- */}
-            {/* 3.2 TAILLE DU GÂTEAU (MARIAGE VS ANNIVERSAIRE / AUTRES)               */}
+            {/* 3B. TAILLE DU GÂTEAU (AVEC PUCES RADIO & ASSISTANCE POUR + DE 20 PARTS) */}
             {/* --------------------------------------------------------------------- */}
             <div className="pt-6 border-t border-purple-100">
               {isWeddingCategory ? (
                 <div className="space-y-6">
                   <div>
-                    <h4 className="text-sm sm:text-base font-extrabold text-gray-900 mb-1">
-                      Format du Gâteau de Mariage *
+                    <h4 className="text-sm sm:text-base font-extrabold text-gray-900 mb-3">
+                      Taille / Format du Gâteau de Mariage *
                     </h4>
-                    <p className="text-xs text-gray-500 mb-4 font-light">
-                      Choisissez entre une pièce montée (2 à 5 étages) ou des gâteaux séparés (à partir de 3 gâteaux de 8 parts minimum chacun).
-                    </p>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
-                      <button
-                        type="button"
+                      <label
                         onClick={() => setWeddingFormat('piece_montee')}
-                        className={`p-4 rounded-2xl border-2 text-left transition cursor-pointer ${
+                        className={`p-4 rounded-xl border transition cursor-pointer flex items-center gap-3 ${
                           weddingFormat === 'piece_montee'
-                            ? 'border-[#581C87] bg-[#581C87] text-white shadow-md'
-                            : 'border-gray-200 bg-white text-gray-800 hover:border-purple-300'
+                            ? 'border-[#581C87] bg-purple-50/70 shadow-xs'
+                            : 'border-gray-200 bg-white hover:border-purple-200'
                         }`}
                       >
-                        <div className="font-extrabold text-sm">Pièces montées (2 à 5 étages)</div>
-                        <div className={`text-[11px] mt-0.5 ${weddingFormat === 'piece_montee' ? 'text-purple-200' : 'text-gray-500'}`}>
-                          De 30 000 FCFA à 200 000 FCFA selon le nombre d'étages
+                        <input
+                          type="radio"
+                          name="weddingFormatRadio"
+                          checked={weddingFormat === 'piece_montee'}
+                          onChange={() => setWeddingFormat('piece_montee')}
+                          className="w-4 h-4 accent-[#581C87] cursor-pointer shrink-0"
+                        />
+                        <div>
+                          <div className="font-extrabold text-sm text-gray-900">Pièces montées (2 à 5 étages)</div>
+                          <div className="text-[11px] text-gray-500">De 30 000 FCFA à 200 000 FCFA</div>
                         </div>
-                      </button>
+                      </label>
 
-                      <button
-                        type="button"
+                      <label
                         onClick={() => setWeddingFormat('gateaux_separes')}
-                        className={`p-4 rounded-2xl border-2 text-left transition cursor-pointer ${
+                        className={`p-4 rounded-xl border transition cursor-pointer flex items-center gap-3 ${
                           weddingFormat === 'gateaux_separes'
-                            ? 'border-[#581C87] bg-[#581C87] text-white shadow-md'
-                            : 'border-gray-200 bg-white text-gray-800 hover:border-purple-300'
+                            ? 'border-[#581C87] bg-purple-50/70 shadow-xs'
+                            : 'border-gray-200 bg-white hover:border-purple-200'
                         }`}
                       >
-                        <div className="font-extrabold text-sm">Gâteaux séparés</div>
-                        <div className={`text-[11px] mt-0.5 ${weddingFormat === 'gateaux_separes' ? 'text-purple-200' : 'text-gray-500'}`}>
-                          À partir de 8 parts par gâteau et 3 gâteaux minimum
+                        <input
+                          type="radio"
+                          name="weddingFormatRadio"
+                          checked={weddingFormat === 'gateaux_separes'}
+                          onChange={() => setWeddingFormat('gateaux_separes')}
+                          className="w-4 h-4 accent-[#581C87] cursor-pointer shrink-0"
+                        />
+                        <div>
+                          <div className="font-extrabold text-sm text-gray-900">Gâteaux séparés</div>
+                          <div className="text-[11px] text-gray-500">À partir de 8 parts par gâteau et 3 gâteaux</div>
                         </div>
-                      </button>
+                      </label>
                     </div>
 
                     {weddingFormat === 'piece_montee' ? (
@@ -1163,6 +1135,7 @@ export function CustomOrder() {
                           <div className="space-y-2">
                             {separateWeddingPortionOptions.map((opt) => {
                               const isSelected = currentSeparateWeddingPortion.id === opt.id;
+                              const isOptPlus20 = opt.id === 'plus-20';
                               const totalForAllCakes = opt.price * Math.max(3, separateCakesCount);
                               return (
                                 <label
@@ -1186,14 +1159,18 @@ export function CustomOrder() {
                                       <span className="font-extrabold text-xs sm:text-sm text-gray-900">
                                         {opt.label} / gâteau
                                       </span>
-                                      <span className="text-xs text-gray-500 ml-2">
-                                        ({opt.price.toLocaleString('fr-FR')} F × {separateCakesCount} gâteaux)
-                                      </span>
+                                      {!isOptPlus20 && (
+                                        <span className="text-xs text-gray-500 ml-2">
+                                          ({opt.price.toLocaleString('fr-FR')} F × {separateCakesCount} gâteaux)
+                                        </span>
+                                      )}
                                     </div>
                                   </div>
-                                  <span className="font-black text-[#581C87] text-sm shrink-0">
-                                    {totalForAllCakes.toLocaleString('fr-FR')} FCFA
-                                  </span>
+                                  {!isOptPlus20 && (
+                                    <span className="font-black text-[#581C87] text-sm shrink-0">
+                                      {totalForAllCakes.toLocaleString('fr-FR')} FCFA
+                                    </span>
+                                  )}
                                 </label>
                               );
                             })}
@@ -1213,16 +1190,14 @@ export function CustomOrder() {
                 </div>
               ) : (
                 <div>
-                  <h4 className="text-sm sm:text-base font-extrabold text-gray-900 mb-1">
-                    Taille du gâteau (Nombre de parts & Prix) *
+                  <h4 className="text-sm sm:text-base font-extrabold text-gray-900 mb-3">
+                    Taille du gâteau (Nombre de parts et prix) *
                   </h4>
-                  <p className="text-xs text-gray-500 mb-4 font-light">
-                    Grille tarifaire pour <strong className="text-[#581C87]">{activeFamily.label}</strong> :
-                  </p>
 
                   <div className="space-y-2.5">
                     {birthdayPortionsOptions.map((opt) => {
                       const isSelected = currentBirthdayPortion.id === opt.id;
+                      const isOptPlus20 = opt.id === 'plus-20';
                       return (
                         <label
                           key={opt.id}
@@ -1241,247 +1216,182 @@ export function CustomOrder() {
                               onChange={() => setSelectedPortionId(opt.id)}
                               className="w-4 h-4 accent-[#581C87] cursor-pointer"
                             />
-                            <div>
-                              <span className="font-extrabold text-sm text-gray-900">{opt.label}</span>
-                              {opt.desc && (
-                                <span className="text-xs text-gray-500 font-light ml-2 hidden sm:inline">
-                                  — {opt.desc}
-                                </span>
-                              )}
-                            </div>
+                            <span className="font-extrabold text-sm text-gray-900">{opt.label}</span>
                           </div>
-                          <span className="font-black text-[#581C87] text-sm shrink-0">
-                            {opt.price.toLocaleString('fr-FR')} FCFA
-                          </span>
+                          {!isOptPlus20 && (
+                            <span className="font-black text-[#581C87] text-sm shrink-0">
+                              {opt.price.toLocaleString('fr-FR')} FCFA
+                            </span>
+                          )}
                         </label>
                       );
                     })}
                   </div>
+                </div>
+              )}
 
-                  {selectedPortionId === 'plus-20' && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="mt-3 p-4 rounded-2xl bg-purple-50/60 border border-purple-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+              {/* Encadré d'assistance directe (WhatsApp & Appel téléphonique) lorsque "+ de 20 parts" est choisi */}
+              {isPlus20Selected && (
+                <motion.div
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-4 p-5 rounded-2xl bg-purple-50/80 border-2 border-[#581C87]/30 space-y-4"
+                >
+                  <div>
+                    <h5 className="text-xs sm:text-sm font-extrabold text-[#581C87]">
+                      Commande de gâteau au-delà de 20 parts
+                    </h5>
+                    <p className="text-xs text-gray-600 mt-1">
+                      Pour un gâteau de plus de 20 parts, contactez directement notre assistance par WhatsApp ou par appel téléphonique. Le récapitulatif de votre commande est déjà prêt :
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-white border border-purple-100 text-xs text-gray-700 space-y-1 font-medium">
+                    <div><span className="font-bold text-gray-900">Catégorie :</span> {eventLabelForSummary}</div>
+                    <div><span className="font-bold text-gray-900">Modèle :</span> {modelDisplayForSummary}</div>
+                    <div><span className="font-bold text-gray-900">Saveur :</span> {flavorDisplayForSummary}</div>
+                    <div><span className="font-bold text-[#581C87]">Taille :</span> Au-delà de 20 parts (+ de 20 parts)</div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <a
+                      href={whatsappAssistanceUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="py-3.5 px-5 rounded-lg bg-[#25D366] hover:bg-[#1ebe57] text-white font-extrabold text-xs sm:text-sm shadow-md transition flex items-center justify-center gap-2"
                     >
-                      <div>
-                        <label className="block text-xs font-extrabold text-gray-900">
-                          Nombre précis de parts souhaité (+ de 20 parts) :
-                        </label>
-                        <span className="text-[11px] text-gray-500">
-                          Ajustez le nombre de parts pour calculer le tarif et les suppléments.
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          min={21}
-                          max={200}
-                          value={customExtraPartsCount}
-                          onChange={(e) => setCustomExtraPartsCount(Math.max(21, Number(e.target.value) || 21))}
-                          className="w-24 px-3 py-2 rounded-xl border border-purple-300 bg-white font-black text-sm text-[#581C87] text-center outline-none"
-                        />
-                        <span className="text-xs font-bold text-gray-700">parts</span>
-                      </div>
-                    </motion.div>
-                  )}
-                </div>
+                      <MessageCircle size={18} />
+                      <span>Contacter sur WhatsApp</span>
+                    </a>
+
+                    <a
+                      href={phoneAssistanceUrl}
+                      className="py-3.5 px-5 rounded-lg bg-[#581C87] hover:bg-[#6B21A8] text-white font-extrabold text-xs sm:text-sm shadow-md transition flex items-center justify-center gap-2"
+                    >
+                      <PhoneCall size={18} />
+                      <span>Appel téléphonique</span>
+                    </a>
+                  </div>
+                </motion.div>
               )}
-            </div>
-
-            {/* --------------------------------------------------------------------- */}
-            {/* 3.3 SUPPLÉMENTS DU GÂTEAU                                             */}
-            {/* --------------------------------------------------------------------- */}
-            <div className="pt-6 border-t border-purple-100">
-              <h4 className="text-sm sm:text-base font-extrabold text-gray-900 mb-1">
-                Suppléments (optionnels)
-              </h4>
-              <p className="text-xs text-gray-500 mb-4 font-light">
-                Sélectionnez les suppléments souhaités. Ils s'ajoutent automatiquement au montant total du gâteau :
-              </p>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Images comestibles : 5 000 F */}
-                <label
-                  className={`p-3.5 px-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                    suppEdibleImage
-                      ? 'border-[#581C87] bg-purple-50/70 shadow-xs'
-                      : 'border-gray-200 hover:border-purple-200 bg-white'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={suppEdibleImage}
-                      onChange={(e) => setSuppEdibleImage(e.target.checked)}
-                      className="w-4 h-4 accent-[#581C87] rounded cursor-pointer"
-                    />
-                    <span className="text-xs sm:text-sm font-bold text-gray-900">Images comestibles</span>
-                  </div>
-                  <span className="text-xs font-black text-[#581C87] shrink-0">+5 000 FCFA</span>
-                </label>
-
-                {/* Images non comestibles : 1 500 F */}
-                <label
-                  className={`p-3.5 px-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                    suppNonEdibleImage
-                      ? 'border-[#581C87] bg-purple-50/70 shadow-xs'
-                      : 'border-gray-200 hover:border-purple-200 bg-white'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={suppNonEdibleImage}
-                      onChange={(e) => setSuppNonEdibleImage(e.target.checked)}
-                      className="w-4 h-4 accent-[#581C87] rounded cursor-pointer"
-                    />
-                    <span className="text-xs sm:text-sm font-bold text-gray-900">Images non comestibles</span>
-                  </div>
-                  <span className="text-xs font-black text-[#581C87] shrink-0">+1 500 FCFA</span>
-                </label>
-
-                {/* Alcool : 1 000 F */}
-                <label
-                  className={`p-3.5 px-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                    suppAlcohol
-                      ? 'border-[#581C87] bg-purple-50/70 shadow-xs'
-                      : 'border-gray-200 hover:border-purple-200 bg-white'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={suppAlcohol}
-                      onChange={(e) => setSuppAlcohol(e.target.checked)}
-                      className="w-4 h-4 accent-[#581C87] rounded cursor-pointer"
-                    />
-                    <span className="text-xs sm:text-sm font-bold text-gray-900">Alcool</span>
-                  </div>
-                  <span className="text-xs font-black text-[#581C87] shrink-0">+1 000 FCFA</span>
-                </label>
-
-                {/* Pâte à sucre : 2 500 F / part */}
-                <label
-                  className={`p-3.5 px-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                    suppSugarPaste
-                      ? 'border-[#581C87] bg-purple-50/70 shadow-xs'
-                      : 'border-gray-200 hover:border-purple-200 bg-white'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={suppSugarPaste}
-                      onChange={(e) => setSuppSugarPaste(e.target.checked)}
-                      className="w-4 h-4 accent-[#581C87] rounded cursor-pointer"
-                    />
-                    <div>
-                      <span className="block text-xs sm:text-sm font-bold text-gray-900">
-                        Pâte à sucre (2 500 F / part)
-                      </span>
-                      <span className="block text-[11px] text-gray-500">
-                        2 500 F × {effectivePartsCount} parts
-                      </span>
-                    </div>
-                  </div>
-                  <span className="text-xs font-black text-[#581C87] shrink-0">
-                    +{(SUPPLEMENT_PRICES.sugarPastePerPart * effectivePartsCount).toLocaleString('fr-FR')} FCFA
-                  </span>
-                </label>
-              </div>
-
-              {/* Ajustement du nombre de parts pour la pâte à sucre si pièce montée */}
-              {suppSugarPaste && isWeddingCategory && weddingFormat === 'piece_montee' && (
-                <div className="mt-3 p-3.5 rounded-2xl bg-purple-50/50 border border-purple-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <span className="text-xs text-gray-700 font-semibold">
-                    Nombre de parts de la pièce montée pour le calcul de la pâte à sucre (2 500 F / part) :
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      min={6}
-                      max={300}
-                      value={weddingTieredPartsForSugarPaste}
-                      onChange={(e) => setWeddingTieredPartsForSugarPaste(Math.max(6, Number(e.target.value) || 6))}
-                      className="w-24 px-3 py-1.5 rounded-xl border border-purple-300 bg-white font-black text-xs text-[#581C87] text-center"
-                    />
-                    <span className="text-xs font-bold text-gray-700">parts</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Option Carte pour le petit mot (+200 FCFA) */}
-              <div className="mt-3">
-                <label
-                  className={`p-3.5 px-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                    suppGreetingCard
-                      ? 'border-[#581C87] bg-purple-50/70 shadow-xs'
-                      : 'border-gray-200 hover:border-purple-200 bg-white'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={suppGreetingCard}
-                      onChange={(e) => {
-                        setSuppGreetingCard(e.target.checked);
-                        clearFieldError('greetingCardText');
-                      }}
-                      className="w-4 h-4 accent-[#581C87] rounded cursor-pointer"
-                    />
-                    <div>
-                      <span className="block text-xs sm:text-sm font-bold text-gray-900">
-                        Carte pour le petit mot manuscrite
-                      </span>
-                      <span className="block text-[11px] text-gray-500">
-                        Joindre une carte de vœux à votre commande
-                      </span>
-                    </div>
-                  </div>
-                  <span className="text-xs font-black text-[#581C87] shrink-0">+200 FCFA</span>
-                </label>
-
-                {suppGreetingCard && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    className="mt-3"
-                  >
-                    <input
-                      id="field-greetingCardText"
-                      type="text"
-                      value={greetingCardText}
-                      onChange={(e) => {
-                        setGreetingCardText(e.target.value);
-                        clearFieldError('greetingCardText');
-                      }}
-                      placeholder="Texte à écrire sur la carte pour le petit mot..."
-                      className={`w-full px-4 py-3 rounded-2xl border outline-none text-sm bg-white ${
-                        fieldErrors.greetingCardText
-                          ? 'border-2 border-red-500 bg-red-50/20'
-                          : 'border-gray-200 focus:border-[#581C87]'
-                      }`}
-                    />
-                    {fieldErrors.greetingCardText && (
-                      <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5">
-                        <AlertCircle size={13} className="text-red-500 shrink-0" />
-                        <span>{fieldErrors.greetingCardText}</span>
-                      </p>
-                    )}
-                  </motion.div>
-                )}
-              </div>
             </div>
           </div>
 
           {/* ========================================================================= */}
-          {/* POINT 4 : MESSAGE À ÉCRIRE SUR LE GÂTEAU */}
+          {/* POINT 4 : SUPPLÉMENT (OPTIONNEL)                                          */}
+          {/* ========================================================================= */}
+          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm space-y-4">
+            <div>
+              <h3 className="text-base sm:text-lg font-extrabold text-gray-900 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">
+                  4
+                </span>
+                Supplément (optionnel)
+              </h3>
+              <p className="text-xs text-gray-500 mt-1 font-light">
+                Sélectionnez les suppléments souhaités pour votre gâteau :
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Images comestibles : 5 000 F */}
+              <label
+                className={`p-3.5 px-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                  suppEdibleImage
+                    ? 'border-[#581C87] bg-purple-50/70 shadow-xs'
+                    : 'border-gray-200 hover:border-purple-200 bg-white'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={suppEdibleImage}
+                    onChange={(e) => setSuppEdibleImage(e.target.checked)}
+                    className="w-4 h-4 accent-[#581C87] rounded cursor-pointer"
+                  />
+                  <span className="text-xs sm:text-sm font-bold text-gray-900">Images comestibles</span>
+                </div>
+                <span className="text-xs font-black text-[#581C87] shrink-0">+5 000 FCFA</span>
+              </label>
+
+              {/* Images non comestibles : 1 500 F */}
+              <label
+                className={`p-3.5 px-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                  suppNonEdibleImage
+                    ? 'border-[#581C87] bg-purple-50/70 shadow-xs'
+                    : 'border-gray-200 hover:border-purple-200 bg-white'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={suppNonEdibleImage}
+                    onChange={(e) => setSuppNonEdibleImage(e.target.checked)}
+                    className="w-4 h-4 accent-[#581C87] rounded cursor-pointer"
+                  />
+                  <span className="text-xs sm:text-sm font-bold text-gray-900">Images non comestibles</span>
+                </div>
+                <span className="text-xs font-black text-[#581C87] shrink-0">+1 500 FCFA</span>
+              </label>
+
+              {/* Alcool : 1 000 F */}
+              <label
+                className={`p-3.5 px-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                  suppAlcohol
+                    ? 'border-[#581C87] bg-purple-50/70 shadow-xs'
+                    : 'border-gray-200 hover:border-purple-200 bg-white'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={suppAlcohol}
+                    onChange={(e) => setSuppAlcohol(e.target.checked)}
+                    className="w-4 h-4 accent-[#581C87] rounded cursor-pointer"
+                  />
+                  <span className="text-xs sm:text-sm font-bold text-gray-900">Alcool</span>
+                </div>
+                <span className="text-xs font-black text-[#581C87] shrink-0">+1 000 FCFA</span>
+              </label>
+
+              {/* Pâte à sucre : 2 500 F / part */}
+              <label
+                className={`p-3.5 px-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                  suppSugarPaste
+                    ? 'border-[#581C87] bg-purple-50/70 shadow-xs'
+                    : 'border-gray-200 hover:border-purple-200 bg-white'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={suppSugarPaste}
+                    onChange={(e) => setSuppSugarPaste(e.target.checked)}
+                    className="w-4 h-4 accent-[#581C87] rounded cursor-pointer"
+                  />
+                  <div>
+                    <span className="block text-xs sm:text-sm font-bold text-gray-900">
+                      Pâte à sucre (2 500 F / part)
+                    </span>
+                    <span className="block text-[11px] text-gray-500">
+                      2 500 F × {effectivePartsCount} parts
+                    </span>
+                  </div>
+                </div>
+                <span className="text-xs font-black text-[#581C87] shrink-0">
+                  +{(SUPPLEMENT_PRICES.sugarPastePerPart * effectivePartsCount).toLocaleString('fr-FR')} FCFA
+                </span>
+              </label>
+            </div>
+          </div>
+
+          {/* ========================================================================= */}
+          {/* POINT 5 : MESSAGE À ÉCRIRE SUR LE GÂTEAU                                  */}
           {/* ========================================================================= */}
           <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
             <h3 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">
-                4
+                5
               </span>
               Message à écrire sur le gâteau
             </h3>
@@ -1502,85 +1412,66 @@ export function CustomOrder() {
           {/* ========================================================================= */}
           {/* RÉCAPITULATIF DU MONTANT TOTAL & AJOUT AU PANIER                          */}
           {/* ========================================================================= */}
-          <div className="bg-white rounded-3xl p-6 sm:p-8 border-2 border-[#581C87]/20 shadow-lg space-y-4">
-            <h3 className="text-base sm:text-lg font-extrabold text-gray-900 border-b border-gray-100 pb-3">
-              Détail du montant total
-            </h3>
+          {!isPlus20Selected && (
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border-2 border-[#581C87]/20 shadow-lg space-y-4">
+              <div className="space-y-2 text-xs sm:text-sm text-gray-700">
+                <div className="flex justify-between">
+                  <span>Prix du gâteau :</span>
+                  <span className="font-bold text-gray-900">{baseCakePrice.toLocaleString('fr-FR')} FCFA</span>
+                </div>
 
-            <div className="space-y-2 text-xs sm:text-sm text-gray-700">
-              <div className="flex justify-between">
-                <span>
-                  Prix du gâteau ({isWeddingCategory
-                    ? weddingFormat === 'piece_montee'
-                      ? `Pièce montée ${currentWeddingTierOption.tierLabel} - ${currentWeddingTierOption.optionLabel}`
-                      : `${separateCakesCount} gâteaux × ${currentSeparateWeddingPortion.label}`
-                    : currentBirthdayPortion.label}) :
-                </span>
-                <span className="font-bold text-gray-900">{baseCakePrice.toLocaleString('fr-FR')} FCFA</span>
+                {suppEdibleImage && (
+                  <div className="flex justify-between text-purple-900">
+                    <span>Images comestibles :</span>
+                    <span className="font-bold">+{edibleImageCost.toLocaleString('fr-FR')} FCFA</span>
+                  </div>
+                )}
+
+                {suppNonEdibleImage && (
+                  <div className="flex justify-between text-purple-900">
+                    <span>Images non comestibles :</span>
+                    <span className="font-bold">+{nonEdibleImageCost.toLocaleString('fr-FR')} FCFA</span>
+                  </div>
+                )}
+
+                {suppAlcohol && (
+                  <div className="flex justify-between text-purple-900">
+                    <span>Alcool :</span>
+                    <span className="font-bold">+{alcoholCost.toLocaleString('fr-FR')} FCFA</span>
+                  </div>
+                )}
+
+                {suppSugarPaste && (
+                  <div className="flex justify-between text-purple-900">
+                    <span>Pâte à sucre (2 500 F × {effectivePartsCount} parts) :</span>
+                    <span className="font-bold">+{sugarPasteCost.toLocaleString('fr-FR')} FCFA</span>
+                  </div>
+                )}
+
+                <div className="pt-3 border-t border-gray-200 flex items-baseline justify-between">
+                  <span className="text-sm sm:text-base font-extrabold text-gray-900">
+                    Montant Total :
+                  </span>
+                  <span className="text-xl sm:text-2xl font-black text-[#581C87]">
+                    {cakeItemPriceForCart.toLocaleString('fr-FR')} FCFA
+                  </span>
+                </div>
               </div>
 
-              {suppEdibleImage && (
-                <div className="flex justify-between text-purple-900">
-                  <span>Supplément — Images comestibles :</span>
-                  <span className="font-bold">+{edibleImageCost.toLocaleString('fr-FR')} FCFA</span>
-                </div>
-              )}
-
-              {suppNonEdibleImage && (
-                <div className="flex justify-between text-purple-900">
-                  <span>Supplément — Images non comestibles :</span>
-                  <span className="font-bold">+{nonEdibleImageCost.toLocaleString('fr-FR')} FCFA</span>
-                </div>
-              )}
-
-              {suppAlcohol && (
-                <div className="flex justify-between text-purple-900">
-                  <span>Supplément — Alcool :</span>
-                  <span className="font-bold">+{alcoholCost.toLocaleString('fr-FR')} FCFA</span>
-                </div>
-              )}
-
-              {suppSugarPaste && (
-                <div className="flex justify-between text-purple-900">
-                  <span>Supplément — Pâte à sucre (2 500 F × {effectivePartsCount} parts) :</span>
-                  <span className="font-bold">+{sugarPasteCost.toLocaleString('fr-FR')} FCFA</span>
-                </div>
-              )}
-
-              {suppGreetingCard && (
-                <div className="flex justify-between text-purple-900">
-                  <span>Carte pour le petit mot :</span>
-                  <span className="font-bold">+{greetingCardCost.toLocaleString('fr-FR')} FCFA</span>
-                </div>
-              )}
-
-              <div className="pt-3 border-t border-gray-200 flex items-baseline justify-between">
-                <span className="text-sm sm:text-base font-extrabold text-gray-900">
-                  Montant Total (Gâteau + Suppléments) :
-                </span>
-                <span className="text-xl sm:text-2xl font-black text-[#581C87]">
-                  {grandTotalEstimated.toLocaleString('fr-FR')} FCFA
-                </span>
+              <div className="pt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleAddToCartAndProceed}
+                  disabled={isSubmitting}
+                  className="w-full md:w-auto px-8 py-4 rounded-lg bg-[#581C87] text-white hover:bg-[#6B21A8] font-black text-sm shadow-xl transition cursor-pointer flex items-center justify-center gap-3 transform hover:scale-[1.01] active:scale-95 shrink-0 disabled:opacity-50"
+                >
+                  <ShoppingBag size={18} />
+                  <span>Ajouter au panier ({cakeItemPriceForCart.toLocaleString('fr-FR')} FCFA)</span>
+                  <ArrowRight size={18} />
+                </button>
               </div>
             </div>
-
-            <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-2 font-medium">
-              NB : Ces prix peuvent changer en fonction du décor et d'autres paramètres.
-            </p>
-
-            <div className="pt-2 flex justify-end">
-              <button
-                type="button"
-                onClick={handleAddToCartAndProceed}
-                disabled={isSubmitting}
-                className="w-full md:w-auto px-8 py-4 rounded-full bg-[#581C87] text-white hover:bg-[#6B21A8] font-black text-sm shadow-xl transition cursor-pointer flex items-center justify-center gap-3 transform hover:scale-[1.02] active:scale-95 shrink-0 disabled:opacity-50"
-              >
-                <ShoppingBag size={18} />
-                <span>Ajouter au panier ({grandTotalEstimated.toLocaleString('fr-FR')} FCFA)</span>
-                <ArrowRight size={18} />
-              </button>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
