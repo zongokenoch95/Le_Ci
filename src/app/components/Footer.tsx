@@ -34,12 +34,17 @@ export function Footer() {
               <span>contact@lesdouceursdeleci.com</span>
             </a>
 
-            <div className="flex items-center gap-2">
+            <a
+              href="https://maps.app.goo.gl/RewzGk5Cqdiy5Q576?g_st=aw"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 hover:text-white transition"
+            >
               <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
                 <MapPin size={15} className="text-purple-300" />
               </div>
-              <span>Atelier Lê Ci, Ouagadougou, Burkina Faso</span>
-            </div>
+              <span>Les Douceurs de Lê-Ci, 01BP 6131, Ouagadougou</span>
+            </a>
           </div>
 
           {/* Les 3 boutons des réseaux sociaux avec le même aspect (Notion 28/10/26) */}

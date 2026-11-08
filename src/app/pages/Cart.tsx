@@ -61,19 +61,72 @@ export const Cart: React.FC = () => {
     savedPref?.deliveryType || 'livraison'
   );
 
-  // 2. Date et heure (Délai minimum de préparation : 1h à 1h30 -> minimum +1h30)
+  // 2. Date et heure — Cadrage selon les horaires Google Maps de la boutique + 1h30 de préparation
+  // Horaires boutique (Google Maps : Les Douceurs de Lê-Ci, 01BP 6131, Ouagadougou) :
+  // - Lundi au Samedi : 08h30 – 18h00 -> Livraison autorisée de 10h00 (08h30 + 1h30) à 19h30 (18h00 + 1h30)
+  // - Dimanche        : 10h30 – 12h00 -> Livraison autorisée de 12h00 (10h30 + 1h30) à 13h30 (12h00 + 1h30)
   const formatLocalDate = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  const formatLocalTime = (d: Date) =>
-    `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  const formatMinutesToTime = (totalMins: number) =>
+    `${String(Math.floor(totalMins / 60)).padStart(2, '0')}:${String(totalMins % 60).padStart(2, '0')}`;
 
-  const { minDate, minTimeForMinDate, todayDateStr } = useMemo(() => {
-    const now = new Date();
-    const earliest = new Date(now.getTime() + 90 * 60 * 1000); // +1h30 (90 minutes)
+  const getShopDeliveryWindowForDate = (dateStr: string) => {
+    const parts = (dateStr || '').split('-').map(Number);
+    const d =
+      parts.length === 3 && !parts.some(isNaN)
+        ? new Date(parts[0], parts[1] - 1, parts[2])
+        : new Date();
+    const dayOfWeek = d.getDay(); // 0 = Dimanche, 1..6 = Lundi..Samedi
+    if (dayOfWeek === 0) {
+      return {
+        isSunday: true,
+        dayLabel: 'Dimanche',
+        openTimeDisplay: '10h30',
+        closeTimeDisplay: '12h00',
+        minDeliveryMinutes: 12 * 60, // 10h30 + 1h30 = 12h00
+        maxDeliveryMinutes: 13 * 60 + 30, // 12h00 + 1h30 = 13h30
+        minDeliveryTime: '12:00',
+        maxDeliveryTime: '13:30'
+      };
+    }
     return {
-      todayDateStr: formatLocalDate(now),
-      minDate: formatLocalDate(earliest),
-      minTimeForMinDate: formatLocalTime(earliest)
+      isSunday: false,
+      dayLabel: 'Lundi au Samedi',
+      openTimeDisplay: '08h30',
+      closeTimeDisplay: '18h00',
+      minDeliveryMinutes: 10 * 60, // 08h30 + 1h30 = 10h00
+      maxDeliveryMinutes: 19 * 60 + 30, // 18h00 + 1h30 = 19h30
+      minDeliveryTime: '10:00',
+      maxDeliveryTime: '19:30'
+    };
+  };
+
+  const { minDate, defaultTimeForMinDate, todayDateStr } = useMemo(() => {
+    const now = new Date();
+    const todayStr = formatLocalDate(now);
+    const earliest = new Date(now.getTime() + 90 * 60 * 1000); // +1h30 (90 minutes)
+    const earliestDateStr = formatLocalDate(earliest);
+    const earliestMinutes = earliest.getHours() * 60 + earliest.getMinutes();
+    const todayWindow = getShopDeliveryWindowForDate(todayStr);
+
+    // Si aujourd'hui + 1h30 reste dans la journée et ne dépasse pas (fermeture + 1h30)
+    if (earliestDateStr === todayStr && earliestMinutes <= todayWindow.maxDeliveryMinutes) {
+      const effectiveMinMins = Math.max(todayWindow.minDeliveryMinutes, earliestMinutes);
+      return {
+        todayDateStr: todayStr,
+        minDate: todayStr,
+        defaultTimeForMinDate: formatMinutesToTime(effectiveMinMins)
+      };
+    }
+
+    // Sinon (commande passée trop tard en soirée / après fermeture), basculer au lendemain dès (ouverture + 1h30)
+    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const tomorrowStr = formatLocalDate(tomorrow);
+    const tomorrowWindow = getShopDeliveryWindowForDate(tomorrowStr);
+    return {
+      todayDateStr: todayStr,
+      minDate: tomorrowStr,
+      defaultTimeForMinDate: tomorrowWindow.minDeliveryTime
     };
   }, []);
 
@@ -84,12 +137,64 @@ export const Cart: React.FC = () => {
     return minDate;
   });
 
+  const selectedDateWindow = useMemo(
+    () => getShopDeliveryWindowForDate(deliveryDate || minDate),
+    [deliveryDate, minDate]
+  );
+
+  // Heure minimale et maximale autorisées pour la date actuellement sélectionnée
+  const { minAllowedTimeForSelectedDate, maxAllowedTimeForSelectedDate } = useMemo(() => {
+    const maxTime = selectedDateWindow.maxDeliveryTime;
+    if (deliveryDate === todayDateStr) {
+      const now = new Date();
+      const earliest = new Date(now.getTime() + 90 * 60 * 1000);
+      if (formatLocalDate(earliest) === todayDateStr) {
+        const earliestMins = earliest.getHours() * 60 + earliest.getMinutes();
+        const effectiveMin = Math.min(
+          selectedDateWindow.maxDeliveryMinutes,
+          Math.max(selectedDateWindow.minDeliveryMinutes, earliestMins)
+        );
+        return {
+          minAllowedTimeForSelectedDate: formatMinutesToTime(effectiveMin),
+          maxAllowedTimeForSelectedDate: maxTime
+        };
+      }
+    }
+    return {
+      minAllowedTimeForSelectedDate: selectedDateWindow.minDeliveryTime,
+      maxAllowedTimeForSelectedDate: maxTime
+    };
+  }, [deliveryDate, todayDateStr, selectedDateWindow]);
+
   const [deliveryTimeSlot, setDeliveryTimeSlot] = useState<string>(() => {
     if (savedPref?.deliveryTimeSlot && /^\d{2}:\d{2}$/.test(savedPref.deliveryTimeSlot)) {
-      return savedPref.deliveryTimeSlot;
+      const [h, m] = savedPref.deliveryTimeSlot.split(':').map(Number);
+      const savedMins = h * 60 + m;
+      const initWin = getShopDeliveryWindowForDate(
+        savedPref?.deliveryDate && savedPref.deliveryDate >= minDate ? savedPref.deliveryDate : minDate
+      );
+      if (savedMins >= initWin.minDeliveryMinutes && savedMins <= initWin.maxDeliveryMinutes) {
+        return savedPref.deliveryTimeSlot;
+      }
     }
-    return minTimeForMinDate;
+    return defaultTimeForMinDate;
   });
+
+  // Ajuster automatiquement l'heure si le client change de jour (ex: passe d'un jour de semaine au dimanche)
+  useEffect(() => {
+    const match = deliveryTimeSlot.trim().match(/^(\d{1,2}):(\d{2})$/);
+    if (!match) return;
+    const currentMins = parseInt(match[1], 10) * 60 + parseInt(match[2], 10);
+    const [minH, minM] = minAllowedTimeForSelectedDate.split(':').map(Number);
+    const [maxH, maxM] = maxAllowedTimeForSelectedDate.split(':').map(Number);
+    const minMins = minH * 60 + minM;
+    const maxMins = maxH * 60 + maxM;
+    if (currentMins < minMins) {
+      setDeliveryTimeSlot(minAllowedTimeForSelectedDate);
+    } else if (currentMins > maxMins) {
+      setDeliveryTimeSlot(maxAllowedTimeForSelectedDate);
+    }
+  }, [deliveryDate, minAllowedTimeForSelectedDate, maxAllowedTimeForSelectedDate]);
 
   // 3. Coordonnées de la personne qui reçoit le colis
   const [recipientPhone, setRecipientPhone] = useState<string>(savedPref?.customerPhone || '');
@@ -225,9 +330,32 @@ export const Cart: React.FC = () => {
     }
     const chosenHours = parseInt(timeMatch[1], 10);
     const chosenMinutes = timeMatch[2] ? parseInt(timeMatch[2], 10) : 0;
+    const chosenTotalMinutes = chosenHours * 60 + chosenMinutes;
     const [year, month, day] = deliveryDate.split('-').map(Number);
     const chosenDateTime = new Date(year, month - 1, day, chosenHours, chosenMinutes, 0, 0);
+    const dayWindow = getShopDeliveryWindowForDate(deliveryDate);
 
+    // Règle 2 : Pas d'heure de livraison en dessous de l'heure d'ouverture + 1h30
+    if (chosenTotalMinutes < dayWindow.minDeliveryMinutes) {
+      setSingleError(
+        'deliveryTimeSlot',
+        `La boutique ouvre à ${dayWindow.openTimeDisplay} (${dayWindow.dayLabel}). Avec 1h30 de préparation, l'heure de réception ne peut pas être avant ${dayWindow.minDeliveryTime.replace(':', 'h')} (ouverture + 1h30).`,
+        'field-cart-time'
+      );
+      return false;
+    }
+
+    // Règle 1 : Pas d'heure de livraison au-delà de l'heure de fermeture + 1h30
+    if (chosenTotalMinutes > dayWindow.maxDeliveryMinutes) {
+      setSingleError(
+        'deliveryTimeSlot',
+        `La boutique ferme à ${dayWindow.closeTimeDisplay} (${dayWindow.dayLabel}). L'heure de réception ne peut pas dépasser ${dayWindow.maxDeliveryTime.replace(':', 'h')} (fermeture + 1h30).`,
+        'field-cart-time'
+      );
+      return false;
+    }
+
+    // Règle temps réel : Délai minimum de préparation de 1h30 à partir de l'instant présent
     const minAllowedDateTime = new Date(now.getTime() + 89 * 60 * 1000);
     const displayMinDateTime = new Date(now.getTime() + 90 * 60 * 1000);
     const nowFormatted = `${String(now.getHours()).padStart(2, '0')}h${String(now.getMinutes()).padStart(2, '0')}`;
@@ -574,20 +702,25 @@ export const Cart: React.FC = () => {
                         <span>{fieldErrors.deliveryDate}</span>
                       </p>
                     )}
-                    <span className="block text-[11px] text-gray-400 mt-1">
-                      La préparation prend 1h à 1h30 (disponible dès le {minDate}).
+                    <span className="block text-[11px] text-gray-500 mt-1">
+                      Horaires boutique ({selectedDateWindow.dayLabel}) :{' '}
+                      <strong className="text-[#581C87]">
+                        {selectedDateWindow.openTimeDisplay} – {selectedDateWindow.closeTimeDisplay}
+                      </strong>
                     </span>
                   </div>
 
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
                       <Clock size={14} className="text-[#581C87]" />
-                      Heure souhaitée (min. +1h30 de préparation) *
+                      Heure souhaitée ({minAllowedTimeForSelectedDate.replace(':', 'h')} à{' '}
+                      {maxAllowedTimeForSelectedDate.replace(':', 'h')}) *
                     </label>
                     <input
                       id="field-cart-time"
                       type="time"
-                      min={deliveryDate === minDate ? minTimeForMinDate : undefined}
+                      min={minAllowedTimeForSelectedDate}
+                      max={maxAllowedTimeForSelectedDate}
                       value={deliveryTimeSlot}
                       onChange={(e) => {
                         setDeliveryTimeSlot(e.target.value);
@@ -606,9 +739,15 @@ export const Cart: React.FC = () => {
                       </p>
                     )}
                     <span className="block text-[11px] text-gray-500 mt-1">
-                      {deliveryDate === todayDateStr
-                        ? `⏱️ Pour aujourd'hui, heure minimum autorisée : ${minTimeForMinDate.replace(':', 'h')} (+1h30 de préparation).`
-                        : '⏱️ La préparation d’une commande prend 1h à 1h30 de temps.'}
+                      ⏱️ Créneau autorisé (+1h30 de préparation) : de{' '}
+                      <strong className="text-gray-700">
+                        {minAllowedTimeForSelectedDate.replace(':', 'h')}
+                      </strong>{' '}
+                      à{' '}
+                      <strong className="text-gray-700">
+                        {maxAllowedTimeForSelectedDate.replace(':', 'h')}
+                      </strong>
+                      .
                     </span>
                   </div>
                 </div>
