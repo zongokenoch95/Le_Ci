@@ -450,78 +450,8 @@ export const Cart: React.FC = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            {/* COLONNE GAUCHE (7 cols) : Affichage du panier & Formulaire de commande */}
+            {/* COLONNE GAUCHE (7 cols) : Formulaire de commande */}
             <div className="lg:col-span-7 space-y-8">
-              {/* AFFICHAGE DU PANIER : Image, Nom, Quantité et Prix dynamique */}
-              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-base sm:text-lg font-extrabold text-gray-900 flex items-center gap-2">
-                    <ShoppingBag size={18} className="text-[#581C87]" />
-                    <span>Articles dans votre panier ({totalItems})</span>
-                  </h2>
-                </div>
-
-                <div className="divide-y divide-gray-100 space-y-4">
-                  {items.map((item) => (
-                    <div key={item.id} className="pt-4 first:pt-0">
-                      <div className="flex items-center gap-4">
-                        <img
-                          src={item.image || '/products/gateau_1.jpeg'}
-                          alt={item.name}
-                          className="w-20 h-20 rounded-2xl object-cover shrink-0 border border-gray-200 shadow-sm"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <h3 className="font-extrabold text-sm sm:text-base text-gray-900 leading-snug">
-                              {item.name}
-                            </h3>
-                            <button
-                              type="button"
-                              onClick={() => removeFromCart(item.id)}
-                              className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition cursor-pointer shrink-0"
-                              title="Supprimer cet article"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-
-                          {/* Quantité & Prix qui change avec la quantité */}
-                          <div className="flex items-center justify-between mt-3 pt-1">
-                            <div className="flex items-center border border-gray-200 rounded-lg bg-white px-2 py-1 shadow-xs">
-                              <button
-                                type="button"
-                                onClick={() => updateQuantity(item.id, -1)}
-                                className="p-1 text-gray-500 hover:text-[#581C87] transition cursor-pointer"
-                                title="Diminuer la quantité"
-                              >
-                                <Minus size={14} />
-                              </button>
-                              <span className="w-8 text-center text-xs sm:text-sm font-extrabold text-gray-900">
-                                {item.quantity}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => updateQuantity(item.id, 1)}
-                                className="p-1 text-gray-500 hover:text-[#581C87] transition cursor-pointer"
-                                title="Augmenter la quantité"
-                              >
-                                <Plus size={14} />
-                              </button>
-                            </div>
-
-                            <div className="text-right">
-                              <div className="text-sm sm:text-base font-black text-[#581C87]">
-                                {(item.numericPrice * item.quantity).toLocaleString('fr-FR')} FCFA
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
               {/* POINT 1 : MODE DE RÉCEPTION */}
               <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
                 <h2 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
@@ -898,7 +828,7 @@ export const Cart: React.FC = () => {
                   </span>
                 </h3>
 
-                {/* Liste épurée des articles : Nom & Saveur */}
+                {/* Liste des articles du panier dans le Récapitulatif : Image, Nom, Quantité & Prix dynamique */}
                 <div className="space-y-3 pb-5 border-b border-gray-100">
                   {items.map((item) => {
                     const descFlavorMatch = (item.description || '').match(/Saveur:\s*([^|\]]+)/i);
@@ -907,30 +837,66 @@ export const Cart: React.FC = () => {
                     return (
                       <div
                         key={item.id}
-                        className="p-3 rounded-2xl bg-purple-50/40 border border-purple-100 flex items-start justify-between gap-2 text-xs sm:text-sm"
+                        className="p-3.5 rounded-2xl bg-purple-50/40 border border-purple-100 flex items-center gap-3.5 text-xs sm:text-sm"
                       >
-                        <div className="space-y-1 min-w-0">
-                          <div className="text-gray-900 font-extrabold leading-snug">
-                            <span className="text-gray-500 font-semibold">Nom :</span> {item.name}
-                            {item.quantity > 1 && (
-                              <span className="ml-1 text-[#581C87]">(×{item.quantity})</span>
-                            )}
-                          </div>
-                          {flavorLabel && (
-                            <div className="text-xs text-gray-700">
-                              <span className="font-semibold text-gray-500">Saveur :</span>{' '}
-                              <span className="font-bold text-[#581C87]">{flavorLabel}</span>
+                        <img
+                          src={item.image || '/products/gateau_1.jpeg'}
+                          alt={item.name}
+                          className="w-16 h-16 rounded-xl object-cover shrink-0 border border-purple-100 bg-white shadow-xs"
+                        />
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="text-gray-900 font-extrabold leading-snug truncate">
+                                {item.name}
+                              </div>
+                              {flavorLabel && (
+                                <div className="text-[11px] text-gray-600 mt-0.5 truncate">
+                                  <span className="font-semibold text-gray-500">Saveur :</span>{' '}
+                                  <span className="font-bold text-[#581C87]">{flavorLabel}</span>
+                                </div>
+                              )}
                             </div>
-                          )}
+
+                            <button
+                              type="button"
+                              onClick={() => removeFromCart(item.id)}
+                              className="p-1 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition cursor-pointer shrink-0"
+                              title="Retirer cet article"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-2 mt-2.5">
+                            <div className="flex items-center border border-purple-200 rounded-lg bg-white px-1.5 py-0.5 shadow-2xs">
+                              <button
+                                type="button"
+                                onClick={() => updateQuantity(item.id, -1)}
+                                className="p-1 text-gray-500 hover:text-[#581C87] transition cursor-pointer"
+                                title="Diminuer la quantité"
+                              >
+                                <Minus size={13} />
+                              </button>
+                              <span className="w-7 text-center text-xs font-extrabold text-gray-900">
+                                {item.quantity}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => updateQuantity(item.id, 1)}
+                                className="p-1 text-gray-500 hover:text-[#581C87] transition cursor-pointer"
+                                title="Augmenter la quantité"
+                              >
+                                <Plus size={13} />
+                              </button>
+                            </div>
+
+                            <div className="text-right font-black text-sm sm:text-base text-[#581C87] shrink-0">
+                              {(item.numericPrice * item.quantity).toLocaleString('fr-FR')} FCFA
+                            </div>
+                          </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => removeFromCart(item.id)}
-                          className="p-1 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition cursor-pointer shrink-0"
-                          title="Retirer cet article"
-                        >
-                          <Trash2 size={15} />
-                        </button>
                       </div>
                     );
                   })}
