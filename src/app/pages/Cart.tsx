@@ -4,6 +4,8 @@ import { motion } from 'motion/react';
 import {
   ShoppingBag,
   Trash2,
+  Plus,
+  Minus,
   ArrowRight,
   ArrowLeft,
   Truck,
@@ -30,7 +32,7 @@ import {
 import { validateBurkinaPhone } from '../utils/phoneValidation';
 
 export const Cart: React.FC = () => {
-  const { items, removeFromCart, clearCart, totalItems, totalAmount } = useCart();
+  const { items, removeFromCart, updateQuantity, clearCart, totalItems, totalAmount } = useCart();
   const navigate = useNavigate();
 
   // Chargement des préférences de commande pré-remplies
@@ -448,8 +450,78 @@ export const Cart: React.FC = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            {/* COLONNE GAUCHE (7 cols) : Formulaire de commande */}
+            {/* COLONNE GAUCHE (7 cols) : Affichage du panier & Formulaire de commande */}
             <div className="lg:col-span-7 space-y-8">
+              {/* AFFICHAGE DU PANIER : Image, Nom, Quantité et Prix dynamique */}
+              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-base sm:text-lg font-extrabold text-gray-900 flex items-center gap-2">
+                    <ShoppingBag size={18} className="text-[#581C87]" />
+                    <span>Articles dans votre panier ({totalItems})</span>
+                  </h2>
+                </div>
+
+                <div className="divide-y divide-gray-100 space-y-4">
+                  {items.map((item) => (
+                    <div key={item.id} className="pt-4 first:pt-0">
+                      <div className="flex items-center gap-4">
+                        <img
+                          src={item.image || '/products/gateau_1.jpeg'}
+                          alt={item.name}
+                          className="w-20 h-20 rounded-2xl object-cover shrink-0 border border-gray-200 shadow-sm"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <h3 className="font-extrabold text-sm sm:text-base text-gray-900 leading-snug">
+                              {item.name}
+                            </h3>
+                            <button
+                              type="button"
+                              onClick={() => removeFromCart(item.id)}
+                              className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition cursor-pointer shrink-0"
+                              title="Supprimer cet article"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+
+                          {/* Quantité & Prix qui change avec la quantité */}
+                          <div className="flex items-center justify-between mt-3 pt-1">
+                            <div className="flex items-center border border-gray-200 rounded-lg bg-white px-2 py-1 shadow-xs">
+                              <button
+                                type="button"
+                                onClick={() => updateQuantity(item.id, -1)}
+                                className="p-1 text-gray-500 hover:text-[#581C87] transition cursor-pointer"
+                                title="Diminuer la quantité"
+                              >
+                                <Minus size={14} />
+                              </button>
+                              <span className="w-8 text-center text-xs sm:text-sm font-extrabold text-gray-900">
+                                {item.quantity}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => updateQuantity(item.id, 1)}
+                                className="p-1 text-gray-500 hover:text-[#581C87] transition cursor-pointer"
+                                title="Augmenter la quantité"
+                              >
+                                <Plus size={14} />
+                              </button>
+                            </div>
+
+                            <div className="text-right">
+                              <div className="text-sm sm:text-base font-black text-[#581C87]">
+                                {(item.numericPrice * item.quantity).toLocaleString('fr-FR')} FCFA
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               {/* POINT 1 : MODE DE RÉCEPTION */}
               <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
                 <h2 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
