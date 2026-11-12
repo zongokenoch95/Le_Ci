@@ -434,47 +434,18 @@ export function Home() {
       </section>
 
       {/* ========================================================================= */}
-      {/* BANDEAU DES 3 ASSOCIATIONS COULEURS DE LA CHARTE (CHARTE2.jpeg Page 6)    */}
-      {/* ========================================================================= */}
-      <section className="max-w-5xl mx-auto px-4 sm:px-6 -mt-8 relative z-20">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Link
-            to="/catalogue"
-            className="bg-[#2B1204] text-[#F8BE40] py-5 px-6 rounded-xl shadow-lg border border-[#F8BE40]/30 text-center font-adapt font-black text-base sm:text-lg tracking-wider uppercase hover:scale-[1.02] transition transform"
-          >
-            OFFRE DOUCEURS
-          </Link>
-          <Link
-            to="/fidelite"
-            className="bg-[#F8BE40] text-[#C20A0A] py-5 px-6 rounded-xl shadow-lg border border-[#2B1204]/10 text-center font-adapt font-black text-base sm:text-lg tracking-wider uppercase hover:scale-[1.02] transition transform"
-          >
-            GRANDE PROMO
-          </Link>
-          <Link
-            to="/sur-commande"
-            className="bg-[#5DBA68] text-white py-5 px-6 rounded-xl shadow-lg text-center font-fredoka font-bold text-sm sm:text-base hover:scale-[1.02] transition transform flex items-center justify-center"
-          >
-            Connaissez-vous le Arzanier ?
-          </Link>
-        </div>
-      </section>
-
-      {/* ========================================================================= */}
-      {/* 2. SECTION NOS DOUCEURS — AFFICHAGE EN 2 COLONNES                         */}
+      {/* 2. SECTION NOS DOUCEURS — DÉFILEMENT HORIZONTAL (IMAGE + TITRE UNIQUEMENT) */}
       {/* ========================================================================= */}
       <section
         id="nos-produits"
-        className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24"
+        className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24"
       >
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center mb-12 sm:mb-16"
+          className="text-center mb-10 sm:mb-14"
         >
-          <span className="inline-block px-3.5 py-1 rounded-full bg-[#F6C58E]/50 text-[#2B1204] text-xs font-extrabold uppercase tracking-wider mb-2">
-            Savoir-faire artisanal
-          </span>
           <h2 className="text-3xl sm:text-5xl font-black text-[#2B1204] tracking-tight">
             Nos Douceurs
           </h2>
@@ -483,8 +454,8 @@ export function Home() {
           </p>
         </motion.div>
 
-        {/* Grille des Catégories en 2 COLONNES (grid-cols-2) */}
-        <div className="grid grid-cols-2 gap-4 sm:gap-8">
+        {/* Catégories alignées horizontalement avec défilement horizontal (image + titre uniquement) */}
+        <div className="flex overflow-x-auto gap-4 sm:gap-6 pb-4 snap-x snap-mandatory scrollbar-thin">
           {productCategories.map((cat, idx) => {
             const targetUrl =
               cat.id === 'gateaux'
@@ -493,53 +464,30 @@ export function Home() {
             return (
               <motion.div
                 key={cat.id}
-                initial={{ opacity: 0, y: 25 }}
+                initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.45, delay: idx * 0.08 }}
-                className="h-full"
+                transition={{ duration: 0.4, delay: idx * 0.08 }}
+                className="w-60 sm:w-72 shrink-0 snap-start"
               >
                 <Link
                   to={targetUrl}
-                  className="group relative bg-white rounded-2xl overflow-hidden border-2 border-[#F6C58E]/60 hover:border-[#2B1204] shadow-md hover:shadow-2xl transition-all duration-300 flex flex-col justify-between h-full cursor-pointer transform hover:-translate-y-1"
+                  className="group block bg-white rounded-2xl overflow-hidden border-2 border-[#F6C58E]/60 hover:border-[#2B1204] shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:-translate-y-1"
                 >
-                  {/* Photo représentative de la catégorie */}
+                  {/* Image de la catégorie */}
                   <div className="relative aspect-[4/3] overflow-hidden bg-[#FDF6EC]">
                     <ImageWithFallback
                       src={cat.image}
                       alt={cat.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
-                    <span
-                      className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-md text-[10px] sm:text-xs font-extrabold shadow-xs"
-                      style={{
-                        backgroundColor: cat.accentColor,
-                        color: cat.accentColor === '#F8BE40' ? '#2B1204' : '#FFFFFF'
-                      }}
-                    >
-                      {cat.tag}
-                    </span>
                   </div>
 
-                  {/* Corps de la carte */}
-                  <div className="p-4 sm:p-6 flex-1 flex flex-col justify-between">
-                    <div>
-                      <h3 className="text-base sm:text-xl font-black text-[#2B1204] group-hover:text-[#C20A0A] transition mb-1.5">
-                        {cat.title}
-                      </h3>
-                      <p className="hidden sm:block text-xs text-[#2B1204]/75 font-normal leading-relaxed mb-4 line-clamp-2">
-                        {cat.description}
-                      </p>
-                    </div>
-
-                    {/* Bouton Découvrir à coin légèrement arrondi */}
-                    <div className="w-full py-2.5 sm:py-3 px-3 sm:px-5 rounded-lg bg-[#2B1204] group-hover:bg-[#F8BE40] text-[#F8BE40] group-hover:text-[#2B1204] font-extrabold text-xs transition-all duration-300 flex items-center justify-center gap-2 shadow-xs">
-                      <span>Découvrir</span>
-                      <ArrowRight
-                        size={14}
-                        className="group-hover:translate-x-1 transition-transform"
-                      />
-                    </div>
+                  {/* Titre uniquement */}
+                  <div className="p-4 sm:p-5 text-center">
+                    <h3 className="text-base sm:text-lg font-black text-[#2B1204] group-hover:text-[#C20A0A] transition">
+                      {cat.title}
+                    </h3>
                   </div>
                 </Link>
               </motion.div>
