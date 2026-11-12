@@ -58,52 +58,51 @@ export function Header() {
       });
   }, []);
 
-  const bannerText = banner?.message || '✦ OFFRE SPÉCIALE : -10% sur votre commande avec le code « DOUCEUR10 » ✦ Inscription fidélité offerte dès aujourd\'hui ✦ Livraison soignée à domicile ✦';
-  const bannerTextColor = banner?.text_color || '#FFFFFF';
-  const bannerBgColor = banner?.bg_color || '#3B0764';
+  const bannerText = banner?.message || '✦ OFFRE DOUCEURS : -10% sur votre commande avec le code « DOUCEUR10 » ✦ Pâtisserie saine au Moringa & Bissap ✦ Livraison soignée à domicile ✦';
+  const bannerTextColor = banner?.text_color || '#2B1204';
+  const bannerBgColor = banner?.bg_color && banner.bg_color !== '#3B0764' ? banner.bg_color : '#F8BE40';
   const showBanner = banner ? (banner.is_currently_visible !== false && banner.is_active !== false) : true;
 
   return (
     <>
-      {/* BANDEAU LUMINEUX DE PROMOTION DÉFILANT (PARAMÉTRABLE CÔTÉ GÉRANT) */}
+      {/* BANDEAU LUMINEUX DE PROMOTION DÉFILANT (Jaune doré #F8BE40 & Brun cacao #2B1204 / Rouge gourmand #C20A0A - Charte Graphique) */}
       {showBanner && (
         <div
-          className="w-full overflow-hidden text-xs py-2 shadow-inner z-50 select-none border-b border-white/10"
+          className="w-full overflow-hidden text-xs py-2 shadow-inner z-50 select-none border-b border-[#2B1204]/15"
           style={{ backgroundColor: bannerBgColor, color: bannerTextColor }}
         >
-          <div className="animate-marquee whitespace-nowrap flex items-center gap-10 font-bold uppercase tracking-wider text-[11px]">
+          <div className="animate-marquee whitespace-nowrap flex items-center gap-10 font-extrabold uppercase tracking-wider text-[11px]">
             <div className="flex items-center gap-6">
-              <span className="flex items-center gap-1.5"><Sparkles size={13} className="text-purple-300 animate-spin" /> {bannerText}</span>
-              <span>•</span>
-              <span>DES DOUCEURS SAINES & ARTISANALES FAITES AVEC AMOUR</span>
-              <span>•</span>
-              <span>PAIEMENT INSTANTANÉ ORANGE MONEY SANS FRAIS</span>
-              <span>•</span>
-              <span>LIVRAISON EXPRESS & RETRAIT DISPONIBLES</span>
+              <span className="flex items-center gap-1.5"><Sparkles size={13} className="text-[#C20A0A] animate-spin" /> {bannerText}</span>
+              <span className="text-[#C20A0A]">•</span>
+              <span>ARZANIER AU MORINGA & BISSAP — LE BURKINA DANS TON ASSIETTE</span>
+              <span className="text-[#C20A0A]">•</span>
+              <span>PAIEMENT INSTANTANÉ MOBILE MONEY</span>
+              <span className="text-[#C20A0A]">•</span>
+              <span>LIVRAISON EXPRESS & RETRAIT BOUTIQUE</span>
             </div>
             <div className="flex items-center gap-6" aria-hidden="true">
-              <span className="flex items-center gap-1.5"><Sparkles size={13} className="text-purple-300 animate-spin" /> {bannerText}</span>
-              <span>•</span>
-              <span>DES DOUCEURS SAINES & ARTISANALES FAITES AVEC AMOUR</span>
-              <span>•</span>
-              <span>PAIEMENT INSTANTANÉ ORANGE MONEY SANS FRAIS</span>
-              <span>•</span>
-              <span>LIVRAISON EXPRESS & RETRAIT DISPONIBLES</span>
+              <span className="flex items-center gap-1.5"><Sparkles size={13} className="text-[#C20A0A] animate-spin" /> {bannerText}</span>
+              <span className="text-[#C20A0A]">•</span>
+              <span>ARZANIER AU MORINGA & BISSAP — LE BURKINA DANS TON ASSIETTE</span>
+              <span className="text-[#C20A0A]">•</span>
+              <span>PAIEMENT INSTANTANÉ MOBILE MONEY</span>
+              <span className="text-[#C20A0A]">•</span>
+              <span>LIVRAISON EXPRESS & RETRAIT BOUTIQUE</span>
             </div>
           </div>
         </div>
       )}
 
-      {/* HEADER PRINCIPAL AVEC LOGO CENTRÉ */}
-      {/* Quand on scroll : passe en violet #581C87 avec texte en blanc pur */}
+      {/* HEADER PRINCIPAL AVEC LOGO CENTRÉ — Brun cacao #2B1204 & Jaune doré #F8BE40 */}
       <header className={`w-full transition-all duration-300 z-40 ${
         isHome
           ? (scrolled 
-              ? 'sticky top-0 bg-[#581C87] shadow-xl text-white border-b border-purple-900/40 backdrop-blur-md' 
-              : 'absolute top-9 left-0 bg-gradient-to-b from-black/75 via-black/40 to-transparent text-white')
+              ? 'sticky top-0 bg-[#2B1204] shadow-xl text-white border-b border-[#F8BE40]/30 backdrop-blur-md' 
+              : 'absolute top-9 left-0 bg-gradient-to-b from-[#2B1204]/90 via-[#2B1204]/50 to-transparent text-white')
           : (scrolled
-              ? 'sticky top-0 bg-[#581C87] shadow-xl text-white border-b border-purple-900/40'
-              : 'sticky top-0 bg-[#581C87] shadow-md text-white border-b border-purple-800')
+              ? 'sticky top-0 bg-[#2B1204] shadow-xl text-white border-b border-[#F8BE40]/30'
+              : 'sticky top-0 bg-[#2B1204] shadow-md text-white border-b border-[#F8BE40]/25')
       }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="relative flex justify-between items-center h-20 sm:h-24">
@@ -113,7 +112,7 @@ export function Header() {
             {/* ========================================================= */}
             <div className="flex md:hidden items-center">
               <button
-                className="p-2 rounded-xl transition cursor-pointer text-white hover:bg-white/10"
+                className="p-2 rounded-xl transition cursor-pointer text-[#F8BE40] hover:bg-white/10"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 aria-label="Menu"
               >
@@ -135,12 +134,12 @@ export function Header() {
             <div className="flex md:hidden items-center">
               <button
                 onClick={() => navigate('/panier')}
-                className="relative p-2 rounded-xl transition cursor-pointer text-white hover:bg-white/10"
+                className="relative p-2 rounded-xl transition cursor-pointer text-[#F8BE40] hover:bg-white/10"
                 aria-label="Voir mon panier"
               >
                 <ShoppingBag size={24} />
                 {totalItems > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-purple-500 text-white text-[10px] font-black rounded-full h-5 w-5 flex items-center justify-center shadow">
+                  <span className="absolute -top-1 -right-1 bg-[#C20A0A] text-white text-[10px] font-black rounded-full h-5 w-5 flex items-center justify-center shadow">
                     {totalItems}
                   </span>
                 )}
@@ -159,13 +158,13 @@ export function Header() {
                   to={item.path}
                   className={`text-sm font-bold tracking-wide transition-all duration-200 relative py-1 ${
                     isActive(item.path)
-                      ? 'text-purple-200 font-extrabold'
-                      : 'text-white/90 hover:text-white'
+                      ? 'text-[#F8BE40] font-extrabold'
+                      : 'text-[#FDF8F2]/90 hover:text-[#F8BE40]'
                   }`}
                 >
                   {item.name}
                   {isActive(item.path) && (
-                    <span className="absolute bottom-0 left-0 w-full h-0.5 bg-purple-300 rounded-full shadow-[0_0_8px_#C084FC]" />
+                    <span className="absolute bottom-0 left-0 w-full h-0.5 bg-[#F8BE40] rounded-full shadow-[0_0_8px_#F8BE40]" />
                   )}
                 </Link>
               ))}
@@ -191,28 +190,28 @@ export function Header() {
                     to={item.path}
                     className={`text-sm font-bold tracking-wide transition-all duration-200 relative py-1 ${
                       isActive(item.path)
-                        ? 'text-purple-200 font-extrabold'
-                        : 'text-white/90 hover:text-white'
+                        ? 'text-[#F8BE40] font-extrabold'
+                        : 'text-[#FDF8F2]/90 hover:text-[#F8BE40]'
                     }`}
                   >
                     {item.name}
                     {isActive(item.path) && (
-                      <span className="absolute bottom-0 left-0 w-full h-0.5 bg-purple-300 rounded-full shadow-[0_0_8px_#C084FC]" />
+                      <span className="absolute bottom-0 left-0 w-full h-0.5 bg-[#F8BE40] rounded-full shadow-[0_0_8px_#F8BE40]" />
                     )}
                   </Link>
                 ))}
               </nav>
 
-              {/* Bouton Panier */}
+              {/* Bouton Panier Jaune doré #F8BE40 & Brun cacao #2B1204 */}
               <button
                 onClick={() => navigate('/panier')}
-                className="relative flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-bold transition-all shadow-md cursor-pointer bg-white/15 hover:bg-white/25 text-white border border-white/25 active:scale-95"
+                className="relative flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-extrabold transition-all shadow-md cursor-pointer bg-[#F8BE40] hover:bg-[#f5b120] text-[#2B1204] border border-[#F8BE40] active:scale-95"
                 aria-label="Voir mon panier"
               >
-                <ShoppingBag size={16} className="text-purple-300" />
+                <ShoppingBag size={16} className="text-[#2B1204]" />
                 <span>Panier</span>
                 {totalItems > 0 && (
-                  <span className="ml-1 bg-purple-400 text-purple-950 text-[11px] font-black rounded-full h-5 min-w-5 px-1.5 flex items-center justify-center animate-bounce">
+                  <span className="ml-1 bg-[#C20A0A] text-white text-[11px] font-black rounded-full h-5 min-w-5 px-1.5 flex items-center justify-center animate-bounce">
                     {totalItems}
                   </span>
                 )}
@@ -223,14 +222,14 @@ export function Header() {
 
         {/* Menu Mobile Déroulant */}
         {mobileMenuOpen && (
-          <div className="md:hidden bg-[#3B0764] text-white border-t border-purple-800 px-6 py-6 shadow-2xl animate-fade-in">
+          <div className="md:hidden bg-[#2B1204] text-white border-t border-[#F8BE40]/25 px-6 py-6 shadow-2xl animate-fade-in">
             <nav className="flex flex-col gap-4">
               {allNavItems.map((item) => (
                 <Link
                   key={item.path}
                   to={item.path}
                   className={`text-base font-bold py-2 transition ${
-                    isActive(item.path) ? 'text-purple-200' : 'text-gray-200 hover:text-white'
+                    isActive(item.path) ? 'text-[#F8BE40]' : 'text-[#FDF8F2]/90 hover:text-[#F8BE40]'
                   }`}
                   onClick={() => setMobileMenuOpen(false)}
                 >
@@ -244,9 +243,9 @@ export function Header() {
                     setMobileMenuOpen(false);
                     navigate('/panier');
                   }}
-                  className="w-full text-center py-3 rounded-2xl bg-white/15 text-white font-bold text-sm flex items-center justify-center gap-2 border border-white/20 cursor-pointer"
+                  className="w-full text-center py-3 rounded-lg bg-[#F8BE40] text-[#2B1204] font-extrabold text-sm flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  <ShoppingBag size={18} className="text-purple-300" />
+                  <ShoppingBag size={18} className="text-[#2B1204]" />
                   <span>Mon Panier ({totalItems} articles)</span>
                 </button>
               </div>

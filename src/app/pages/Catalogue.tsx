@@ -378,24 +378,23 @@ export function Catalogue() {
   };
 
   return (
-    <div className="min-h-screen py-12 bg-[#FAF8F5]">
-      <div className="max-w-7xl lg:max-w-5xl xl:max-w-6xl mx-auto px-4 sm:px-6 lg:px-14 xl:px-20">
+    <div className="min-h-screen py-12 bg-[#FDF8F2] text-[#2B1204]">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-10">
         {/* En-tête */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-12"
         >
-          
-          <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 mt-2 mb-4">Nos Douceurs</h1>
-          <p className="font-barcelony text-2xl sm:text-3xl text-gray-600 max-w-2xl mx-auto mb-2">
+          <h1 className="text-4xl sm:text-5xl font-black text-[#2B1204] mt-2 mb-4">Nos Douceurs</h1>
+          <p className="font-barcelony text-2xl sm:text-3xl text-[#C20A0A] max-w-2xl mx-auto mb-2">
             La croisée entre la santé consciente, le plaisir gourmand et la fierté locale.
           </p>
-          <p className="text-xs text-gray-600 max-w-2xl mx-auto">
-            Chaque création est préparée à la commande avec des ingrédients nobles. Commandez en quelques clics et payez instantanément via Orange Money.
+          <p className="text-xs text-[#2B1204]/75 max-w-2xl mx-auto">
+            Chaque création est préparée à la commande avec des ingrédients nobles et locaux. Commandez en quelques clics et payez instantanément via Mobile Money.
           </p>
-          <div className="inline-flex items-center gap-2 mt-4 px-4 py-1.5 rounded-full bg-purple-100/70 text-[#581C87] text-xs font-semibold">
-            <ShieldCheck size={14} /> Préparation artisanale fraîche & Paiement direct Orange Money
+          <div className="inline-flex items-center gap-2 mt-4 px-4 py-1.5 rounded-full bg-[#5DBA68]/15 border border-[#5DBA68]/40 text-[#2B1204] text-xs font-bold">
+            <ShieldCheck size={14} className="text-[#5DBA68]" /> Préparation artisanale fraîche & Paiement direct Mobile Money
           </div>
         </motion.div>
 
@@ -412,10 +411,10 @@ export function Catalogue() {
                     setSelectedCategory(category);
                   }
                 }}
-                className={`px-6 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                className={`px-6 py-2.5 rounded-lg text-xs sm:text-sm font-extrabold transition-all cursor-pointer ${
                   selectedCategory === category
-                    ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30 scale-105'
-                    : 'bg-white text-gray-700 border border-purple-100 hover:border-purple-300 hover:bg-purple-50/50'
+                    ? 'bg-[#2B1204] text-[#F8BE40] shadow-lg scale-105 border-2 border-[#F8BE40]'
+                    : 'bg-white text-[#2B1204] border border-[#F6C58E] hover:border-[#2B1204] hover:bg-[#FDF6EC]'
                 }`}
               >
                 {category}
@@ -424,14 +423,14 @@ export function Catalogue() {
           </div>
         </div>
 
-        {/* Grille de Produits */}
+        {/* Grille de Produits en 2 COLONNES */}
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-24 text-gray-400 gap-3">
-            <Loader2 className="animate-spin text-[#581C87]" size={36} />
+          <div className="flex flex-col items-center justify-center py-24 text-[#2B1204]/60 gap-3">
+            <Loader2 className="animate-spin text-[#2B1204]" size={36} />
             <span className="text-sm font-medium">Chargement de nos douceurs artisanales...</span>
           </div>
         ) : (
-          <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <motion.div layout className="grid grid-cols-2 gap-4 sm:gap-8">
             <AnimatePresence>
               {filteredProducts.map((product) => {
                 const isAdded = addedProductId === product.id;
@@ -442,10 +441,10 @@ export function Catalogue() {
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
                     key={product.id}
-                    className="bg-white rounded-none overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between group"
+                    className="bg-white rounded-2xl overflow-hidden border-2 border-[#F6C58E]/60 hover:border-[#2B1204] shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between group"
                   >
                     <div>
-                      <div className="relative aspect-square overflow-hidden bg-gray-50">
+                      <div className="relative aspect-[4/3] overflow-hidden bg-[#FDF6EC]">
                         <ImageWithFallback
                           src={product.image}
                           alt={product.name}
@@ -453,11 +452,11 @@ export function Catalogue() {
                         />
                       </div>
 
-                      <div className="p-5">
-                        <h3 className="font-bold text-gray-900 text-base group-hover:text-[#581C87] transition mb-1.5 line-clamp-1">
+                      <div className="p-4 sm:p-6">
+                        <h3 className="font-black text-[#2B1204] text-sm sm:text-lg group-hover:text-[#C20A0A] transition mb-1.5 line-clamp-2">
                           {product.name}
                         </h3>
-                        <p className="text-xs text-gray-500 mb-3 line-clamp-2 leading-relaxed">
+                        <p className="hidden sm:block text-xs text-[#2B1204]/75 mb-3 line-clamp-2 leading-relaxed">
                           {product.description || 'Création artisanale raffinée avec des ingrédients d excellence.'}
                         </p>
 
@@ -467,7 +466,7 @@ export function Catalogue() {
                             {product.composition.map((comp: { name: string; count: number }, idx: number) => (
                               <span
                                 key={idx}
-                                className="px-2 py-0.5 rounded-md bg-purple-50 text-[#581C87] border border-purple-100 text-[10px] font-bold"
+                                className="px-2 py-0.5 rounded-md bg-[#FDF6EC] text-[#2B1204] border border-[#F6C58E] text-[10px] font-bold"
                               >
                                 {comp.count} {comp.name}
                               </span>
@@ -477,16 +476,16 @@ export function Catalogue() {
 
                         {/* Configurateur de nombre de pièces pour Paquets (minimum + possibilité d'augmenter) */}
                         {/paquet/i.test(product.category || '') ? (
-                          <div className="mt-2 pt-2 border-t border-purple-100/80 space-y-2">
+                          <div className="mt-2 pt-2 border-t border-[#F6C58E]/60 space-y-2">
                             {(() => {
                               const minPcs = product.min_pieces && product.min_pieces > 0 ? product.min_pieces : 20;
                               const currentPcs = Math.max(minPcs, selectedPaquetPieces[product.id] || minPcs);
                               const computedPrice = Math.round((product.numericPrice / minPcs) * currentPcs);
                               return (
                                 <>
-                                  <div className="flex items-center justify-between text-[11px]">
-                                    <span className="font-semibold text-gray-600">
-                                      Min. <strong className="text-[#581C87]">{minPcs} pièces</strong> :
+                                  <div className="flex flex-wrap items-center justify-between gap-1 text-[11px]">
+                                    <span className="font-semibold text-[#2B1204]/80">
+                                      Min. <strong className="text-[#C20A0A]">{minPcs} pcs</strong> :
                                     </span>
                                     <div className="flex items-center gap-1">
                                       <button
@@ -498,7 +497,7 @@ export function Catalogue() {
                                           }))
                                         }
                                         disabled={currentPcs <= minPcs}
-                                        className="w-6 h-6 rounded-md border border-purple-200 bg-purple-50 text-[#581C87] flex items-center justify-center disabled:opacity-40 cursor-pointer"
+                                        className="w-6 h-6 rounded-md border border-[#F6C58E] bg-[#FDF6EC] text-[#2B1204] flex items-center justify-center disabled:opacity-40 cursor-pointer"
                                       >
                                         <Minus size={11} />
                                       </button>
@@ -513,7 +512,7 @@ export function Catalogue() {
                                             [product.id]: isNaN(val) ? minPcs : Math.max(minPcs, val)
                                           }));
                                         }}
-                                        className="w-14 text-center py-0.5 border border-purple-200 rounded-md text-xs font-extrabold text-[#581C87] focus:outline-none"
+                                        className="w-12 sm:w-14 text-center py-0.5 border border-[#F6C58E] rounded-md text-xs font-extrabold text-[#2B1204] focus:outline-none"
                                       />
                                       <button
                                         type="button"
@@ -523,36 +522,36 @@ export function Catalogue() {
                                             [product.id]: currentPcs + 1
                                           }))
                                         }
-                                        className="w-6 h-6 rounded-md border border-purple-200 bg-purple-50 text-[#581C87] flex items-center justify-center cursor-pointer"
+                                        className="w-6 h-6 rounded-md border border-[#F6C58E] bg-[#FDF6EC] text-[#2B1204] flex items-center justify-center cursor-pointer"
                                       >
                                         <Plus size={11} />
                                       </button>
                                     </div>
                                   </div>
-                                  <div className="text-base font-extrabold text-[#581C87]">
+                                  <div className="text-sm sm:text-lg font-black text-[#C20A0A]">
                                     {computedPrice.toLocaleString('fr-FR')} FCFA{' '}
-                                    <span className="text-[11px] font-medium text-gray-500">({currentPcs} pcs)</span>
+                                    <span className="text-[11px] font-medium text-[#2B1204]/60">({currentPcs} pcs)</span>
                                   </div>
                                 </>
                               );
                             })()}
                           </div>
                         ) : (
-                          <div className="text-base font-extrabold text-[#581C87]">
+                          <div className="text-sm sm:text-lg font-black text-[#C20A0A]">
                             {product.price}
                           </div>
                         )}
                       </div>
                     </div>
 
-                    <div className="p-5 pt-0">
-                      <div className="flex gap-2">
+                    <div className="p-4 sm:p-6 pt-0">
+                      <div className="flex flex-col sm:flex-row gap-2">
                         <button
                           onClick={() => handleAddToCart(product, false)}
                           className={`flex-1 py-2.5 px-3 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                             isAdded
-                              ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-                              : 'bg-white hover:bg-purple-50 text-gray-800 border border-gray-200 hover:border-purple-200 shadow-sm'
+                              ? 'bg-[#5DBA68] text-white shadow-md'
+                              : 'bg-[#FDF6EC] hover:bg-[#F8BE40]/40 text-[#2B1204] border border-[#2B1204]/20 shadow-xs'
                           }`}
                           title="Ajouter au panier"
                         >
@@ -562,14 +561,14 @@ export function Catalogue() {
                             </>
                           ) : (
                             <>
-                              <ShoppingBag size={15} /> Ajouter au panier
+                              <ShoppingBag size={15} /> Panier
                             </>
                           )}
                         </button>
 
                         <button
                           onClick={() => handleAddToCart(product, true)}
-                          className="flex-1 py-2.5 px-3 rounded-lg font-extrabold text-xs bg-[#581C87] hover:bg-[#6B21A8] text-white shadow-md shadow-purple-900/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                          className="flex-1 py-2.5 px-3 rounded-lg font-extrabold text-xs bg-[#2B1204] hover:bg-[#F8BE40] text-[#F8BE40] hover:text-[#2B1204] shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
                           title="Commander immédiatement"
                         >
                           <Zap size={15} />
@@ -585,11 +584,11 @@ export function Catalogue() {
         )}
 
         {filteredProducts.length === 0 && !loading && (
-          <div className="text-center py-16 bg-white rounded-3xl border border-gray-100 p-8">
-            <p className="text-gray-500 font-medium mb-4">Aucune douceur ne correspond à votre recherche.</p>
+          <div className="text-center py-16 bg-white rounded-3xl border border-[#F6C58E] p-8">
+            <p className="text-[#2B1204]/70 font-medium mb-4">Aucune douceur ne correspond à votre recherche.</p>
             <button
               onClick={() => setSelectedCategory('Tous')}
-              className="px-7 py-3 bg-[#581C87] text-white rounded-full text-xs font-bold hover:bg-[#6B21A8] transition cursor-pointer shadow-md"
+              className="px-7 py-3 bg-[#2B1204] text-[#F8BE40] rounded-lg text-xs font-extrabold hover:bg-[#431E09] transition cursor-pointer shadow-md"
             >
               Réinitialiser les filtres
             </button>

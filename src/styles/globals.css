@@ -1,16 +1,39 @@
 @layer base {
   :root {
-    --cream: #FAF7F5;
-    --beige-gold: #7E22CE; /* Remplacé par le violet */
-    --violet-primary: #581C87;
-    --violet-accent: #7E22CE;
-    --violet-dark: #3B0764;
-    --violet-soft: #F3E8FF;
-    --violet-border: #DDD6FE;
-    --brown-deep: #2A1B2E;
-    --grey-light: #EDEDED;
+    /* CHARTE GRAPHIQUE 2026 - LES DOUCEURS DE LÊ-CI */
+    --cacao: #2B1204;          /* Brun cacao — couleur principale */
+    --cacao-soft: #431E09;     /* Brun cacao nuancé */
+    --jaune-dore: #F8BE40;     /* Jaune doré — couleur secondaire majeure */
+    --rouge-gourmand: #C20A0A; /* Rouge gourmand — bissap & fruits rouges */
+    --vert-moringa: #5DBA68;   /* Vert moringa — naturalité, santé & Arzanier */
+    --rose-doux: #EE7362;      /* Rose doux — finesse & glaçage */
+    --beige-sable: #F6C58E;    /* Beige sable — douceur & équilibre */
+    --cream: #FDF8F2;          /* Fond principal crème sable doux */
+
+    /* Mapping hérité pour cohérence globale sur toutes les pages */
+    --beige-gold: #F8BE40;
+    --violet-primary: #2B1204;
+    --violet-accent: #C20A0A;
+    --violet-dark: #2B1204;
+    --violet-soft: #FDF3E3;
+    --violet-border: #F6C58E;
+    --brown-deep: #2B1204;
+    --grey-light: #F3ECE3;
     --white: #FFFFFF;
-    
+
+    /* Remplacement de la palette purple de Tailwind par la gamme Brun Cacao / Beige Sable / Doré de la Charte */
+    --color-purple-50: #FDF6EC;
+    --color-purple-100: #FAE8CE;
+    --color-purple-200: #F6C58E;
+    --color-purple-300: #F8BE40;
+    --color-purple-400: #E5A024;
+    --color-purple-500: #C20A0A;
+    --color-purple-600: #5A280D;
+    --color-purple-700: #431E09;
+    --color-purple-800: #361706;
+    --color-purple-900: #2B1204;
+    --color-purple-950: #1D0B02;
+
     --radius: 12px;
   }
 
@@ -20,13 +43,13 @@
 
   body {
     @apply bg-[var(--cream)] text-[var(--brown-deep)];
-    font-family: 'Gotham Pro', 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
-    font-size: 0.95rem; /* Légèrement réduit comme demandé */
-    letter-spacing: -0.01em;
+    font-family: 'Fredoka', 'Gotham Pro', 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 0.95rem;
+    letter-spacing: -0.005em;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Gotham Pro', 'Montserrat', sans-serif;
+    font-family: 'Adapt Var', 'Fredoka', 'Montserrat', sans-serif;
     font-weight: 700;
   }
 
@@ -57,17 +80,43 @@
   }
 
   button {
-    font-family: 'Gotham Pro', 'Montserrat', sans-serif;
+    font-family: 'Fredoka', 'Gotham Pro', 'Montserrat', sans-serif;
     transition: all 250ms ease-in-out;
   }
 }
 
 .font-barcelony, .font-signature {
-  font-family: 'Barcelony', cursive !important;
+  font-family: 'Barcelony', 'Monotype Corsiva', 'Cormorant Garamond', cursive !important;
+}
+
+.font-corsiva {
+  font-family: 'Monotype Corsiva', 'Cormorant Garamond', 'Barcelony', cursive, serif !important;
+}
+
+.font-fredoka {
+  font-family: 'Fredoka', sans-serif !important;
+}
+
+.font-adapt {
+  font-family: 'Adapt Var', 'Montserrat', 'Fredoka', sans-serif !important;
 }
 
 .font-gotham {
-  font-family: 'Gotham Pro', 'Montserrat', sans-serif !important;
+  font-family: 'Fredoka', 'Gotham Pro', 'Montserrat', sans-serif !important;
+}
+
+/* Surcharges globales des anciennes classes violettes vers le Brun Cacao (#2B1204) de la Charte */
+.bg-\[\#581C87\], .bg-\[\#3B0764\], .bg-\[\#2E0249\] {
+  background-color: #2B1204 !important;
+}
+.hover\:bg-\[\#6B21A8\]:hover, .hover\:bg-\[\#581C87\]:hover {
+  background-color: #431E09 !important;
+}
+.text-\[\#581C87\], .text-\[\#3B0764\] {
+  color: #2B1204 !important;
+}
+.border-\[\#581C87\] {
+  border-color: #2B1204 !important;
 }
 
 @layer utilities {
