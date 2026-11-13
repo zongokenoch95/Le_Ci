@@ -335,6 +335,68 @@ export function Home() {
         </motion.div>
       </section>
 
+      {/* ========================================================================= */}
+      {/* 2. SECTION NOS DOUCEURS (Ancienne configuration en grille : Image + Titre) */}
+      {/* ========================================================================= */}
+      <section
+        id="nos-produits"
+        className="max-w-7xl lg:max-w-5xl xl:max-w-6xl mx-auto px-4 sm:px-6 lg:px-14 xl:px-20 py-20 sm:py-24"
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="text-center mb-16"
+        >
+          <h2 className="text-3xl sm:text-5xl font-extrabold text-[#2B1204] tracking-tight">
+            Nos Douceurs
+          </h2>
+          <p className="font-barcelony text-2xl sm:text-3xl text-[#C20A0A] max-w-2xl mx-auto mt-3 leading-relaxed">
+            Explorez toutes nos créations confectionnées avec des ingrédients frais et locaux.
+          </p>
+        </motion.div>
+
+        {/* Grille des 4 Catégories (présentation encadrée blanc : Image + Titre) */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-7">
+          {productCategories.map((cat, idx) => {
+            const targetUrl =
+              cat.id === 'gateaux'
+                ? '/sur-commande'
+                : `/catalogue?category=${encodeURIComponent(cat.categoryQuery)}`;
+            return (
+              <motion.div
+                key={cat.id}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: idx * 0.1 }}
+                className="h-full"
+              >
+                <Link
+                  to={targetUrl}
+                  className="group relative bg-white p-1 rounded-xl overflow-hidden shadow-[0_4px_16px_rgba(43,18,4,0.08)] hover:shadow-[0_8px_24px_rgba(43,18,4,0.14)] transition-all duration-300 flex flex-col justify-between h-full cursor-pointer block transform hover:-translate-y-1.5"
+                >
+                  {/* Photo encadrée de blanc */}
+                  <div className="relative aspect-[4/5] rounded-lg overflow-hidden bg-[#FDF6EC]">
+                    <ImageWithFallback
+                      src={cat.image}
+                      alt={cat.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  </div>
+
+                  {/* Titre centré */}
+                  <div className="pt-4 pb-1 text-center">
+                    <h3 className="font-adapt text-xs sm:text-sm font-bold uppercase tracking-[0.1em] text-[#2B1204] group-hover:text-[#5DBA68] transition">
+                      {cat.title}
+                    </h3>
+                  </div>
+                </Link>
+              </motion.div>
+            );
+          })}
+        </div>
+      </section>
 
       {/* ========================================================================= */}
       {/* 2.BIS SECTION SIGNATURE DE LA MAISON — PRÉSENTATION DE CARTE ÉDITORIALE    */}
@@ -367,7 +429,7 @@ export function Home() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.45, delay: idx * 0.08 }}
-                  className="bg-white text-[#2B1204] p-1 rounded-xl border-2 border-[#F8BE40] shadow-2xl transition-all duration-300 flex flex-col justify-between group hover:-translate-y-1"
+                  className="bg-white text-[#2B1204] p-1 rounded-xl shadow-[0_4px_16px_rgba(43,18,4,0.08)] hover:shadow-[0_8px_24px_rgba(43,18,4,0.14)] transition-all duration-300 flex flex-col justify-between group hover:-translate-y-1"
                 >
                   <div>
                     {/* 1. Photo */}
@@ -479,71 +541,6 @@ export function Home() {
           </div>
         </div>
       </section>
-
-
-      {/* ========================================================================= */}
-      {/* 2. SECTION NOS DOUCEURS (Ancienne configuration en grille : Image + Titre) */}
-      {/* ========================================================================= */}
-      <section
-        id="nos-produits"
-        className="max-w-7xl lg:max-w-5xl xl:max-w-6xl mx-auto px-4 sm:px-6 lg:px-14 xl:px-20 py-20 sm:py-24"
-      >
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-center mb-16"
-        >
-          <h2 className="text-3xl sm:text-5xl font-extrabold text-[#2B1204] tracking-tight">
-            Nos Douceurs
-          </h2>
-          <p className="font-barcelony text-2xl sm:text-3xl text-[#C20A0A] max-w-2xl mx-auto mt-3 leading-relaxed">
-            Explorez toutes nos créations confectionnées avec des ingrédients frais et locaux.
-          </p>
-        </motion.div>
-
-        {/* Grille des 4 Catégories (présentation encadrée blanc : Image + Titre) */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-7">
-          {productCategories.map((cat, idx) => {
-            const targetUrl =
-              cat.id === 'gateaux'
-                ? '/sur-commande'
-                : `/catalogue?category=${encodeURIComponent(cat.categoryQuery)}`;
-            return (
-              <motion.div
-                key={cat.id}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: idx * 0.1 }}
-                className="h-full"
-              >
-                <Link
-                  to={targetUrl}
-                  className="group relative bg-white p-1 rounded-xl border-2 border-[#F8BE40] overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 flex flex-col justify-between h-full cursor-pointer block transform hover:-translate-y-1.5"
-                >
-                  {/* Photo encadrée de blanc */}
-                  <div className="relative aspect-[4/5] rounded-lg overflow-hidden bg-[#FDF6EC]">
-                    <ImageWithFallback
-                      src={cat.image}
-                      alt={cat.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                  </div>
-
-                  {/* Titre centré */}
-                  <div className="pt-4 pb-1 text-center">
-                    <h3 className="font-adapt text-xs sm:text-sm font-bold uppercase tracking-[0.1em] text-[#2B1204] group-hover:text-[#5DBA68] transition">
-                      {cat.title}
-                    </h3>
-                  </div>
-                </Link>
-              </motion.div>
-            );
-          })}
-        </div>
-      </section>
-
 
 
       {/* ========================================================================= */}
