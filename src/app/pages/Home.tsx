@@ -310,7 +310,7 @@ export function Home() {
           <div className="flex justify-center items-center">
             <button
               onClick={() => scrollToSection('nos-produits')}
-              className="px-10 py-4 bg-transparent hover:bg-[#F8BE40]/15 text-[#F8BE40] font-extrabold rounded-full shadow-[0_8px_24px_rgba(0,0,0,0.25)] transition-all inline-flex items-center justify-center gap-2.5 transform hover:-translate-y-0.5 text-sm cursor-pointer border-2 border-[#F8BE40]"
+              className="px-10 py-4 bg-[#F8BE40]/25 hover:bg-[#F8BE40]/40 backdrop-blur-sm text-[#F8BE40] font-extrabold rounded-full shadow-[0_8px_24px_rgba(0,0,0,0.25)] transition-all inline-flex items-center justify-center gap-2.5 transform hover:-translate-y-0.5 text-sm cursor-pointer border-2 border-[#F8BE40]"
             >
               <span>Commander</span>
               <ArrowRight size={18} />
@@ -328,7 +328,7 @@ export function Home() {
               <span className="text-[11px] font-bold tracking-wide">Healthy</span>
             </div>
             <div className="flex flex-col items-center gap-1.5">
-              <Clock size={22} className="text-[#F8BE40]" />
+              <Leaf size={22} className="text-[#F8BE40]" />
               <span className="text-[11px] font-bold tracking-wide">Produits frais</span>
             </div>
           </div>
@@ -362,7 +362,7 @@ export function Home() {
           <h2 className="font-fredoka text-3xl sm:text-5xl font-extrabold text-[#2B1204] tracking-tight">
             Nos Douceurs
           </h2>
-          <p className="font-barcelony text-2xl sm:text-3xl text-[#C20A0A] max-w-2xl mx-auto mt-3 leading-relaxed">
+          <p className="font-barcelony text-2xl sm:text-3xl text-[#F8BE40] max-w-2xl mx-auto mt-3 leading-relaxed drop-shadow-[0_1px_4px_rgba(43,18,4,0.35)]">
             Explorez toutes nos créations confectionnées avec des ingrédients frais et locaux.
           </p>
         </motion.div>
@@ -575,7 +575,7 @@ export function Home() {
             <h2 className="font-fredoka text-3xl sm:text-5xl font-extrabold text-[#2B1204] tracking-tight">
               Promotions et Événements
             </h2>
-            <p className="font-barcelony text-2xl sm:text-3xl text-[#C20A0A] max-w-2xl mx-auto mt-3 leading-relaxed">
+            <p className="font-barcelony text-2xl sm:text-3xl text-[#F8BE40] max-w-2xl mx-auto mt-3 leading-relaxed drop-shadow-[0_1px_3px_rgba(43,18,4,0.25)]">
               Soyez au courant de nos offres gourmandes et créations du terroir.
             </p>
           </motion.div>

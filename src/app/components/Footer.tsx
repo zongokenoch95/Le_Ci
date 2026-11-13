@@ -111,15 +111,9 @@ export function Footer() {
 
             {/* Mentions légales & Copyright */}
             <div className="w-full border-t border-[#F6C58E]/20 pt-5 mt-2 flex flex-col items-center gap-2 text-xs text-[#F6C58E]/70">
-              <div className="flex flex-wrap items-center justify-center gap-3">
-                <Link to="/mentions-legales" className="hover:text-[#F8BE40] transition font-medium">
-                  Mentions légales
-                </Link>
-                <span>·</span>
-                <Link to="/admin/login" className="hover:text-[#F8BE40] transition">
-                  Espace Gestionnaire
-                </Link>
-              </div>
+              <Link to="/mentions-legales" className="hover:text-[#F8BE40] transition font-medium">
+                Mentions légales
+              </Link>
               <p className="text-[11px] text-[#F6C58E]/55">
                 © 2026 Les Douceurs de Lê-Ci. Tous droits réservés.
               </p>
