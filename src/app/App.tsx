@@ -3,6 +3,7 @@ import { Header } from './components/Header';
 import { ScrollToTop } from './components/ScrollToTop';
 import { Footer } from './components/Footer';
 import { PageLoader } from './components/PageLoader';
+import { FloatingCartButton } from './components/FloatingCartButton';
 import { CartProvider } from './context/CartContext';
 import { Home } from './pages/Home';
 import { Catalogue } from './pages/Catalogue';
@@ -54,7 +55,8 @@ export default function App() {
             </Routes>
           </main>
           <Footer />
-                  </div>
+          <FloatingCartButton />
+        </div>
       </CartProvider>
     </Router>
   );

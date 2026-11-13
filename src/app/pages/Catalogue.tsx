@@ -248,7 +248,7 @@ export function Catalogue() {
       }
     }
   }, [categoryParam, navigate]);
-  
+
   const [addedProductId, setAddedProductId] = useState<number | null>(null);
 
   const { items: cartItems, addToCart, updateQuantity } = useCart();
@@ -282,13 +282,13 @@ export function Catalogue() {
               if (p.portions && Array.isArray(p.portions)) {
                 portions = p.portions;
               } else if (p.portions_json) {
-                try { portions = JSON.parse(p.portions_json); } catch(e) {}
+                try { portions = JSON.parse(p.portions_json); } catch (e) { }
               }
               let composition: { name: string; count: number }[] = [];
               if (p.composition && Array.isArray(p.composition)) {
                 composition = p.composition;
               } else if (p.composition_json) {
-                try { composition = JSON.parse(p.composition_json); } catch(e) {}
+                try { composition = JSON.parse(p.composition_json); } catch (e) { }
               }
               const isPaquetCat = Boolean(p.category && /paquet/i.test(p.category));
               const minPieces = p.min_pieces && p.min_pieces > 0 ? p.min_pieces : (isPaquetCat ? 20 : 0);
@@ -323,9 +323,9 @@ export function Catalogue() {
       const signatureIds = [1, 4, 6, 7, 20, 22];
       const nameLower = (product.name || '').toLowerCase();
       const descLower = (product.description || '').toLowerCase();
-      return signatureIds.includes(product.id) || 
-        nameLower.includes('signature') || 
-        nameLower.includes('prestige') || 
+      return signatureIds.includes(product.id) ||
+        nameLower.includes('signature') ||
+        nameLower.includes('prestige') ||
         descLower.includes('signature') ||
         product.is_signature;
     }
@@ -390,17 +390,11 @@ export function Catalogue() {
           <p className="font-barcelony text-2xl sm:text-3xl text-[#C20A0A] max-w-2xl mx-auto mb-2">
             La croisée entre la santé consciente, le plaisir gourmand et la fierté locale.
           </p>
-          <p className="text-xs text-[#2B1204]/75 max-w-2xl mx-auto">
-            Chaque création est préparée à la commande avec des ingrédients nobles et locaux. Commandez en quelques clics et payez instantanément via Mobile Money.
-          </p>
-          <div className="inline-flex items-center gap-2 mt-4 px-4 py-1.5 rounded-full bg-[#5DBA68]/15 border border-[#5DBA68]/40 text-[#2B1204] text-xs font-bold">
-            <ShieldCheck size={14} className="text-[#5DBA68]" /> Préparation artisanale fraîche & Paiement direct Mobile Money
-          </div>
         </motion.div>
 
         {/* Filtres par Catégorie — Intitulés alignés horizontalement avec défilement horizontal */}
         <div className="mb-10">
-          <div className="flex flex-nowrap items-center justify-start md:justify-center gap-2.5 sm:gap-3 overflow-x-auto pb-2 px-1">
+          <div className="flex flex-nowrap items-center justify-start md:justify-center gap-2.5 sm:gap-3 overflow-x-auto py-2 px-1">
             {categories.map((category) => (
               <button
                 key={category}
@@ -411,11 +405,10 @@ export function Catalogue() {
                     setSelectedCategory(category);
                   }
                 }}
-                className={`shrink-0 whitespace-nowrap px-5 sm:px-6 py-2.5 rounded-lg text-xs sm:text-sm font-extrabold transition-all cursor-pointer ${
-                  selectedCategory === category
-                    ? 'bg-[#2B1204] text-[#F8BE40] shadow-lg border-2 border-[#F8BE40]'
-                    : 'bg-white text-[#2B1204] border border-[#F6C58E] hover:border-[#2B1204] hover:bg-[#FDF6EC]'
-                }`}
+                className={`shrink-0 whitespace-nowrap px-5 sm:px-6 py-2.5 rounded-lg text-xs sm:text-sm font-extrabold border-0 transition-all cursor-pointer ${selectedCategory === category
+                    ? 'bg-[#2B1204] text-[#F8BE40] shadow-[0_6px_18px_rgba(43,18,4,0.22)]'
+                    : 'bg-white text-[#2B1204] shadow-[0_3px_12px_rgba(43,18,4,0.08)] hover:shadow-[0_6px_16px_rgba(43,18,4,0.14)] hover:bg-[#FDF6EC]'
+                  }`}
               >
                 {category}
               </button>
