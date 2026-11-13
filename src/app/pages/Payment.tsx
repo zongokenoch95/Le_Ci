@@ -570,7 +570,7 @@ export function Payment() {
                       <button
                         type="submit"
                         disabled={enrolling}
-                        className="w-full py-3 px-4 rounded-full bg-[#581C87] hover:bg-[#6B21A8] text-white font-extrabold text-xs shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
+                        className="w-full py-3 px-4 rounded-full bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] border-2 border-[#F8BE40] font-extrabold text-xs shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
                       >
                         <UserCheck size={16} />
                         <span>{enrolling ? 'Inscription en cours...' : `M'inscrire & Récupérer mes points offerts`}</span>
@@ -658,7 +658,7 @@ export function Payment() {
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <button
                   onClick={() => navigate('/catalogue')}
-                  className="px-8 py-3.5 bg-[#581C87] hover:bg-[#6B21A8] text-white font-bold rounded-full transition shadow-lg shadow-purple-900/20 cursor-pointer"
+                  className="px-8 py-3.5 bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] border-2 border-[#F8BE40] font-extrabold rounded-full transition shadow-lg cursor-pointer"
                 >
                   Continuer mes achats
                 </button>
@@ -674,18 +674,18 @@ export function Payment() {
               key="cancelled"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-white rounded-3xl p-8 sm:p-10 shadow-2xl border border-red-100 text-center"
+              className="bg-white rounded-3xl p-8 sm:p-10 shadow-2xl border-2 border-[#F8BE40] text-center font-fredoka"
             >
-              <div className="w-20 h-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+              <div className="w-20 h-20 bg-red-100 text-[#C20A0A] rounded-full flex items-center justify-center mx-auto mb-6">
                 <XCircle size={48} />
               </div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">Commande Annulée</h1>
-              <p className="text-gray-600 mb-6 max-w-md mx-auto text-sm font-light">
+              <h1 className="font-adapt text-2xl font-bold text-[#2B1204] mb-2">Commande Annulée</h1>
+              <p className="text-[#2B1204]/75 mb-6 max-w-md mx-auto text-sm font-light">
                 Cette commande a été annulée. Aucun montant n'a été débité de votre compte.
               </p>
               <button
                 onClick={() => navigate('/catalogue')}
-                className="px-8 py-3.5 bg-[#581C87] hover:bg-[#6B21A8] text-white font-semibold rounded-full transition cursor-pointer"
+                className="px-8 py-3.5 bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] border-2 border-[#F8BE40] font-extrabold rounded-full transition cursor-pointer"
               >
                 Passer une nouvelle commande
               </button>
@@ -701,7 +701,7 @@ export function Payment() {
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
-              className="bg-white rounded-3xl shadow-2xl border border-purple-100 overflow-hidden"
+              className="bg-white rounded-3xl shadow-2xl border-2 border-[#F8BE40] overflow-hidden font-fredoka"
             >
               {/* Corps du formulaire de paiement (directement au choix du moyen de paiement mobile) */}
               <div className="p-6 sm:p-8 space-y-8">
@@ -709,13 +709,13 @@ export function Payment() {
                   {/* 1. Choix du moyen de paiement mobile */}
                   <div>
                     <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                      <label className="text-xs font-extrabold uppercase tracking-wider text-gray-600 flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full bg-purple-100 text-[#581C87] text-[11px] font-black flex items-center justify-center">
+                      <label className="font-adapt text-xs font-extrabold uppercase tracking-wider text-[#2B1204] flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-[#F8BE40] text-[#2B1204] text-[11px] font-black flex items-center justify-center">
                           1
                         </span>
                         Choisissez votre moyen de paiement mobile *
                       </label>
-                      <span className="text-sm sm:text-base font-black text-[#581C87] bg-purple-50 px-3 py-1 rounded-lg border border-purple-100">
+                      <span className="font-adapt text-sm sm:text-base font-black text-[#C20A0A] bg-[#FDF8F2] px-3 py-1 rounded-full border border-[#F8BE40]">
                         {amount.toLocaleString('fr-FR')} FCFA
                       </span>
                     </div>
@@ -777,10 +777,10 @@ export function Payment() {
                     </div>
                   </div>
 
-                  {/* 2. Saisie du numéro de transfert (sans le champ Nom et prénom) */}
-                  <div className="bg-gray-50/80 p-6 rounded-2xl border border-gray-200 space-y-3">
-                    <label className="block text-xs font-extrabold uppercase tracking-wider text-gray-600 flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-full bg-purple-100 text-[#581C87] text-[11px] font-black flex items-center justify-center">
+                  {/* 2. Saisie du numéro de transfert (validation en temps réel vert / rouge) */}
+                  <div className="bg-[#FDF8F2] p-6 rounded-2xl border border-[#F6C58E] space-y-3">
+                    <label className="font-adapt block text-xs font-extrabold uppercase tracking-wider text-[#2B1204] flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-[#F8BE40] text-[#2B1204] text-[11px] font-black flex items-center justify-center">
                         2
                       </span>
                       Votre Numéro Mobile Money de transfert *
@@ -790,31 +790,55 @@ export function Payment() {
                       required
                       value={payerPhone}
                       onChange={(e) => {
-                        setPayerPhone(e.target.value);
-                        setPaymentError('');
+                        const val = e.target.value;
+                        setPayerPhone(val);
+                        if (!val.trim()) {
+                          setPaymentError('');
+                        } else {
+                          const res = validateBurkinaPhone(val);
+                          setPaymentError(
+                            res.isValid ? '' : res.error || 'Numéro Mobile Money invalide (8 chiffres du Burkina Faso requis).'
+                          );
+                        }
+                      }}
+                      onBlur={() => {
+                        if (payerPhone.trim()) {
+                          const res = validateBurkinaPhone(payerPhone);
+                          if (!res.isValid) {
+                            setPaymentError(
+                              res.error || 'Numéro Mobile Money invalide (8 chiffres du Burkina Faso requis).'
+                            );
+                          }
+                        }
                       }}
                       placeholder="Ex: 70 00 00 00 ou 76 00 00 00"
-                      className="w-full px-4 py-3.5 rounded-lg border border-gray-200 bg-white focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm font-semibold"
+                      className={`w-full px-4 py-3.5 rounded-2xl bg-white outline-none text-sm font-semibold transition ${
+                        paymentError
+                          ? 'border-2 border-[#C20A0A] bg-red-50/20 ring-2 ring-red-200'
+                          : payerPhone.trim() && validateBurkinaPhone(payerPhone).isValid
+                            ? 'border-2 border-[#5DBA68] bg-emerald-50/20'
+                            : 'border border-[#F6C58E] focus:border-[#F8BE40]'
+                      }`}
                     />
                   </div>
 
                   {paymentError && (
-                    <div className="p-4 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-2">
-                      <AlertTriangle size={16} className="text-rose-600 shrink-0" />
+                    <div className="p-4 rounded-2xl bg-rose-50 border border-[#C20A0A]/40 text-[#C20A0A] text-xs font-bold flex items-center gap-2">
+                      <AlertTriangle size={16} className="text-[#C20A0A] shrink-0" />
                       <span>{paymentError}</span>
                     </div>
                   )}
 
-                  {/* Boutons en rectangle avec coins légèrement arrondis */}
+                  {/* Boutons conformes charte : Confirmer doré & Payer avec un autre numéro blanc bordé doré */}
                   <div className="pt-2 space-y-3">
                     <button
                       type="submit"
                       disabled={confirmingPayment}
-                      className="w-full py-4 px-8 rounded-lg bg-[#581C87] hover:bg-[#6B21A8] text-white font-black text-sm sm:text-base shadow-xl shadow-purple-900/30 transition-all flex items-center justify-center gap-2.5 cursor-pointer transform hover:-translate-y-0.5 disabled:opacity-50"
+                      className="w-full py-4 px-8 rounded-full bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] border-2 border-[#F8BE40] font-black text-sm sm:text-base shadow-xl shadow-[#F8BE40]/25 transition-all flex items-center justify-center gap-2.5 cursor-pointer transform hover:-translate-y-0.5 disabled:opacity-50"
                     >
                       {confirmingPayment ? (
                         <>
-                          <Loader2 size={18} className="animate-spin text-white" />
+                          <Loader2 size={18} className="animate-spin text-[#2B1204]" />
                           <span>Validation en cours...</span>
                         </>
                       ) : (
@@ -829,7 +853,7 @@ export function Payment() {
                       type="button"
                       onClick={handleOpenOtherPayment}
                       disabled={openingOtherPay}
-                      className="w-full py-3.5 px-6 rounded-lg border-2 border-purple-200 bg-purple-50/70 hover:bg-purple-100 text-[#581C87] font-extrabold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                      className="w-full py-3.5 px-6 rounded-full border-2 border-[#F8BE40] bg-white hover:bg-[#FDF8F2] text-[#2B1204] font-extrabold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                     >
                       <Share2 size={16} />
                       <span>
@@ -853,15 +877,15 @@ export function Payment() {
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
-              className="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden"
+              className="bg-white rounded-3xl shadow-2xl border-2 border-[#F8BE40] overflow-hidden font-fredoka"
             >
-              {/* En-tête épuré (sans "Finalisez votre règlement" et sans "Temps restant") */}
-              <div className="bg-gradient-to-r from-purple-950 via-[#581C87] to-purple-900 text-white p-6 sm:p-8">
+              {/* En-tête épuré Charte Brun Cacao & Or */}
+              <div className="bg-[#2B1204] text-[#FDF8F2] p-6 sm:p-8 border-b-2 border-[#F8BE40]">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <div className="text-xs sm:text-sm text-purple-200">
+                  <div className="text-xs sm:text-sm text-[#F6C58E]">
                     Commande <span className="font-mono font-bold text-white">{order.id}</span>
                   </div>
-                  <div className="text-2xl font-black text-amber-300">
+                  <div className="font-adapt text-2xl font-black text-[#F8BE40]">
                     {amount.toLocaleString('fr-FR')} FCFA
                   </div>
                 </div>
@@ -870,10 +894,10 @@ export function Payment() {
               {/* Corps de la page d'attente */}
               <div className="p-6 sm:p-8 space-y-8">
                 {/* Rappel des coordonnées de transfert saisies + Bouton Payer avec un autre numéro */}
-                <div className="bg-purple-50/70 p-4 rounded-2xl border border-purple-100 flex flex-col gap-3 text-xs sm:text-sm">
+                <div className="bg-[#FDF8F2] p-4 rounded-2xl border border-[#F6C58E] flex flex-col gap-3 text-xs sm:text-sm">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 p-1 rounded-lg bg-white border border-purple-100 flex items-center justify-center shadow-xs shrink-0 overflow-hidden">
+                      <div className="w-10 h-10 p-1 rounded-lg bg-white border border-[#F6C58E] flex items-center justify-center shadow-xs shrink-0 overflow-hidden">
                         {selectedOperator === 'orange' && (
                           <img src="/img/Orange.jpg" alt="Orange Money" className="w-full h-full object-contain" />
                         )}
@@ -906,15 +930,15 @@ export function Payment() {
                     </button>
                   </div>
 
-                  <div className="pt-3 border-t border-purple-200/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <span className="text-xs text-gray-600">
+                  <div className="pt-3 border-t border-[#F6C58E]/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <span className="text-xs text-[#2B1204]/75">
                       Solde insuffisant ou paiement par un proche ?
                     </span>
                     <button
                       type="button"
                       onClick={handleOpenOtherPayment}
                       disabled={openingOtherPay}
-                      className="px-4 py-2 rounded-lg bg-[#581C87] hover:bg-[#6B21A8] text-white font-bold text-xs inline-flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer disabled:opacity-50"
+                      className="px-4 py-2 rounded-full bg-white hover:bg-[#FDF8F2] text-[#2B1204] border-2 border-[#F8BE40] font-bold text-xs inline-flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer disabled:opacity-50"
                     >
                       <Share2 size={13} />
                       <span>{openingOtherPay ? 'Ouverture...' : 'Payer avec un autre numéro'}</span>

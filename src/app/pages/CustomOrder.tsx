@@ -1051,14 +1051,32 @@ export function CustomOrder() {
                     type="text"
                     value={customFlavorText}
                     onChange={(e) => {
-                      setCustomFlavorText(e.target.value);
-                      clearFieldError('customFlavorText');
+                      const val = e.target.value;
+                      setCustomFlavorText(val);
+                      if (!val.trim()) {
+                        setFieldErrors((prev) => ({
+                          ...prev,
+                          customFlavorText: 'Veuillez préciser la saveur personnalisée souhaitée.'
+                        }));
+                      } else {
+                        clearFieldError('customFlavorText');
+                      }
+                    }}
+                    onBlur={() => {
+                      if (!customFlavorText.trim()) {
+                        setFieldErrors((prev) => ({
+                          ...prev,
+                          customFlavorText: 'Veuillez préciser la saveur personnalisée souhaitée.'
+                        }));
+                      }
                     }}
                     placeholder="Ex: Chocolat blanc & fruits de la passion, Noisette gianduja..."
-                    className={`w-full px-4 py-3 rounded-2xl border outline-none text-sm transition ${
+                    className={`w-full px-4 py-3 rounded-2xl outline-none text-sm transition ${
                       fieldErrors.customFlavorText
-                        ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200'
-                        : 'border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
+                        ? 'border-2 border-[#C20A0A] bg-red-50/20 ring-2 ring-red-200'
+                        : customFlavorText.trim()
+                          ? 'border-2 border-[#5DBA68] bg-emerald-50/20'
+                          : 'border border-gray-200 focus:border-[#F8BE40]'
                     }`}
                   />
                   {fieldErrors.customFlavorText && (

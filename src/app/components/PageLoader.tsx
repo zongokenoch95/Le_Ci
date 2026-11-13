@@ -17,9 +17,7 @@ export const PageLoader: React.FC<PageLoaderProps> = ({ onComplete }) => {
       videoEl.volume = 0;
       const playPromise = videoEl.play();
       if (playPromise && typeof playPromise.catch === 'function') {
-        playPromise.catch(() => {
-          // Lecture silencieuse gérée en fallback par le timer ci-dessous
-        });
+        playPromise.catch(() => {});
       }
     }
 
@@ -42,29 +40,21 @@ export const PageLoader: React.FC<PageLoaderProps> = ({ onComplete }) => {
 
   return (
     <div
-      aria-label="Chargement Les Douceurs de Lê-Ci"
-      className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#FDF8F2] transition-opacity duration-500 ${
+      aria-label="Chargement"
+      className={`fixed inset-0 z-[9999] flex items-center justify-center bg-[#FDF8F2] transition-opacity duration-500 ${
         fadingOut ? 'opacity-0 pointer-events-none' : 'opacity-100'
       }`}
     >
-      <div className="w-full max-w-sm sm:max-w-md px-6 flex flex-col items-center">
-        <div className="w-64 h-64 sm:w-80 sm:h-80 rounded-3xl overflow-hidden border-2 border-[#F8BE40] bg-white shadow-2xl flex items-center justify-center">
-          <video
-            ref={videoRef}
-            src="/img/loader.mp4"
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="auto"
-            className="w-full h-full object-cover"
-          />
-        </div>
-        <p className="mt-5 font-fredoka text-xs sm:text-sm font-medium tracking-[0.2em] uppercase text-[#2B1204]/80">
-          Les Douceurs de Lê-Ci
-        </p>
-      </div>
+      <video
+        ref={videoRef}
+        src="/img/loader.mp4"
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="auto"
+        className="w-56 h-56 sm:w-72 sm:h-72 object-contain pointer-events-none select-none"
+      />
     </div>
   );
 };
-

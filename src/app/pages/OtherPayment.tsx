@@ -321,7 +321,7 @@ export function OtherPayment() {
               </div>
               <button
                 onClick={() => navigate('/catalogue')}
-                className="px-8 py-3.5 bg-[#581C87] hover:bg-[#6B21A8] text-white font-bold rounded-full shadow-md transition cursor-pointer"
+                className="px-8 py-3.5 bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] border-2 border-[#F8BE40] font-extrabold rounded-full shadow-md transition cursor-pointer"
               >
                 Retour au catalogue
               </button>
@@ -336,43 +336,43 @@ export function OtherPayment() {
               key="other_active"
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-3xl shadow-2xl border border-purple-100 overflow-hidden"
+              className="bg-white rounded-3xl shadow-2xl border-2 border-[#F8BE40] overflow-hidden font-fredoka"
             >
-              {/* En-tête minimal sans données personnelles */}
-              <div className="bg-gradient-to-r from-purple-950 via-[#581C87] to-purple-900 text-white p-6 sm:p-8">
+              {/* En-tête Charte Brun Cacao & Or */}
+              <div className="bg-[#2B1204] text-[#FDF8F2] p-6 sm:p-8 border-b-2 border-[#F8BE40]">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
-                    <span className="text-xs uppercase tracking-wider text-purple-200 font-semibold flex items-center gap-1.5 mb-1">
-                      <ShieldCheck size={15} className="text-amber-300" /> {info.shopName} • Lien sécurisé
+                    <span className="font-adapt text-xs uppercase tracking-wider text-[#F8BE40] font-semibold flex items-center gap-1.5 mb-1">
+                      <ShieldCheck size={15} className="text-[#F8BE40]" /> {info.shopName} • Lien sécurisé
                     </span>
-                    <h1 className="text-xl sm:text-2xl font-extrabold">
+                    <h1 className="font-adapt text-xl sm:text-2xl font-extrabold text-[#FDF8F2]">
                       Payer avec un autre numéro
                     </h1>
                   </div>
 
                   {/* Compte à rebours */}
-                  <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/15 self-start sm:self-auto">
-                    <Clock size={18} className="text-amber-300 animate-pulse" />
+                  <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-[#F8BE40]/40 self-start sm:self-auto">
+                    <Clock size={18} className="text-[#F8BE40] animate-pulse" />
                     <div>
-                      <div className="text-[10px] uppercase text-purple-200 font-semibold tracking-wider">Expiration</div>
+                      <div className="text-[10px] uppercase text-[#F6C58E] font-semibold tracking-wider">Expiration</div>
                       <div className="text-base font-mono font-bold text-white">{formatTimer(remainingSeconds)}</div>
                     </div>
                   </div>
                 </div>
 
                 {/* Récapitulatif minimal : référence & montant */}
-                <div className="mt-6 pt-4 border-t border-purple-800/80 flex flex-wrap items-center justify-between gap-3">
+                <div className="mt-6 pt-4 border-t border-[#F8BE40]/25 flex flex-wrap items-center justify-between gap-3">
                   <div className="space-y-0.5">
-                    <div className="text-xs text-purple-200">
+                    <div className="text-xs text-[#F6C58E]">
                       Référence : <span className="font-mono font-bold text-white">{info.reference}</span>
                       {info.codeReference && (
-                        <span className="ml-2 px-2 py-0.5 rounded bg-white/15 text-amber-300 font-mono text-xs font-bold">
+                        <span className="ml-2 px-2 py-0.5 rounded bg-white/15 text-[#F8BE40] font-mono text-xs font-bold">
                           Code {info.codeReference}
                         </span>
                       )}
                     </div>
                   </div>
-                  <div className="text-2xl sm:text-3xl font-black text-amber-300">
+                  <div className="font-adapt text-2xl sm:text-3xl font-black text-[#F8BE40]">
                     {info.amount.toLocaleString('fr-FR')} FCFA
                   </div>
                 </div>
@@ -420,21 +420,21 @@ export function OtherPayment() {
                   </div>
                 </div>
 
-                {/* Étape 1 : Saisie du nouveau numéro payeur */}
-                <form onSubmit={handleAddPhone} className="space-y-4 bg-gray-50/90 p-5 sm:p-6 rounded-3xl border border-gray-200">
+                {/* Étape 1 : Saisie du nouveau numéro payeur (validation temps réel vert / rouge) */}
+                <form onSubmit={handleAddPhone} className="space-y-4 bg-[#FDF8F2] p-5 sm:p-6 rounded-3xl border border-[#F6C58E] font-fredoka">
                   <div className="flex items-center justify-between gap-2">
-                    <label className="text-xs font-extrabold uppercase tracking-wider text-gray-700 flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-full bg-[#581C87] text-white text-[11px] font-black flex items-center justify-center">
+                    <label className="font-adapt text-xs font-extrabold uppercase tracking-wider text-[#2B1204] flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-[#F8BE40] text-[#2B1204] text-[11px] font-black flex items-center justify-center">
                         1
                       </span>
                       Enregistrer le numéro qui va effectuer le transfert
                     </label>
-                    <span className="text-[11px] font-semibold text-gray-500">
+                    <span className="text-[11px] font-semibold text-[#2B1204]/70">
                       {info.payerNumbersCount}/{info.maxPayerNumbers} numéros autorisés
                     </span>
                   </div>
 
-                  <p className="text-xs text-gray-500 font-light">
+                  <p className="text-xs text-[#2B1204]/75 font-light">
                     Ce numéro s'ajoute aux numéros autorisés pour la commande (sans écraser le premier). Si vous avez déjà envoyé les fonds dans les <strong>30 dernières minutes</strong>, la commande sera validée immédiatement.
                   </p>
 
@@ -444,17 +444,31 @@ export function OtherPayment() {
                       required
                       value={newPhone}
                       onChange={(e) => {
-                        setNewPhone(e.target.value);
-                        setPhoneError('');
+                        const val = e.target.value;
+                        setNewPhone(val);
+                        if (!val.trim()) {
+                          setPhoneError('');
+                        } else {
+                          const res = validateBurkinaPhone(val);
+                          setPhoneError(
+                            res.isValid ? '' : res.error || 'Numéro invalide (8 chiffres du Burkina Faso requis).'
+                          );
+                        }
                       }}
                       placeholder="Ex: 76 00 00 00 ou 70 00 00 00"
                       disabled={info.payerNumbersCount >= info.maxPayerNumbers}
-                      className="flex-1 px-4 py-3.5 rounded-2xl border border-gray-200 bg-white focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 outline-none text-sm font-semibold disabled:opacity-50"
+                      className={`flex-1 px-4 py-3.5 rounded-2xl bg-white outline-none text-sm font-semibold disabled:opacity-50 transition ${
+                        phoneError
+                          ? 'border-2 border-[#C20A0A] bg-red-50/20 ring-2 ring-red-200'
+                          : newPhone.trim() && validateBurkinaPhone(newPhone).isValid
+                            ? 'border-2 border-[#5DBA68] bg-emerald-50/20'
+                            : 'border border-[#F6C58E] focus:border-[#F8BE40]'
+                      }`}
                     />
                     <button
                       type="submit"
                       disabled={submittingPhone || info.payerNumbersCount >= info.maxPayerNumbers}
-                      className="px-6 py-3.5 rounded-2xl bg-[#581C87] hover:bg-[#6B21A8] text-white font-extrabold text-xs sm:text-sm shadow-md transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                      className="px-6 py-3.5 rounded-full bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] border-2 border-[#F8BE40] font-extrabold text-xs sm:text-sm shadow-md transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                     >
                       {submittingPhone ? (
                         <>

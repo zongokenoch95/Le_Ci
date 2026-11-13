@@ -530,7 +530,8 @@ export function Catalogue() {
                           <button
                             type="button"
                             onClick={() => updateQuantity(cartItemId, -1)}
-                            className="w-6 h-6 rounded-full flex items-center justify-center text-[#2B1204] hover:text-[#C20A0A] font-bold transition cursor-pointer"
+                            disabled={cartQty <= 1}
+                            className="w-6 h-6 rounded-full flex items-center justify-center text-[#2B1204] hover:text-[#C20A0A] disabled:opacity-35 disabled:cursor-not-allowed font-bold transition cursor-pointer"
                             title="Diminuer la quantité"
                           >
                             <Minus size={12} strokeWidth={2.5} />

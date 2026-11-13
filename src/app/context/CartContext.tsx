@@ -120,15 +120,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateQuantity = (id: number | string, delta: number) => {
     setItems((prev) => {
-      return prev
-        .map((item) => {
-          if (String(item.id) === String(id)) {
-            const newQty = item.quantity + delta;
-            return newQty > 0 ? { ...item, quantity: newQty } : null;
-          }
-          return item;
-        })
-        .filter(Boolean) as CartItem[];
+      return prev.map((item) => {
+        if (String(item.id) === String(id)) {
+          const newQty = Math.max(1, item.quantity + delta);
+          return { ...item, quantity: newQty };
+        }
+        return item;
+      });
     });
   };
 

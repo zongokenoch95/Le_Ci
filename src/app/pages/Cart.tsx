@@ -648,7 +648,8 @@ export const Cart: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => updateQuantity(item.id, -1)}
-                              className="w-6 h-6 rounded-full text-[#2B1204] hover:text-[#5DBA68] font-bold flex items-center justify-center transition cursor-pointer"
+                              disabled={safeQty <= 1}
+                              className="w-6 h-6 rounded-full text-[#2B1204] hover:text-[#5DBA68] disabled:opacity-35 disabled:cursor-not-allowed font-bold flex items-center justify-center transition cursor-pointer"
                               title="Diminuer la quantité"
                             >
                               <Minus size={12} strokeWidth={2.5} />
@@ -728,14 +729,32 @@ export const Cart: React.FC = () => {
                       rows={2}
                       value={cardMessage}
                       onChange={(e) => {
-                        setCardMessage(e.target.value);
-                        clearFieldError('cardMessage');
+                        const val = e.target.value;
+                        setCardMessage(val);
+                        if (!val.trim()) {
+                          setFieldErrors((prev) => ({
+                            ...prev,
+                            cardMessage: 'Veuillez rédiger le mot à inscrire sur la carte de vœux.'
+                          }));
+                        } else {
+                          clearFieldError('cardMessage');
+                        }
+                      }}
+                      onBlur={() => {
+                        if (!cardMessage.trim()) {
+                          setFieldErrors((prev) => ({
+                            ...prev,
+                            cardMessage: 'Veuillez rédiger le mot à inscrire sur la carte de vœux.'
+                          }));
+                        }
                       }}
                       placeholder="Ex: Joyeux anniversaire ! De la part de toute la famille..."
                       className={`w-full p-3.5 rounded-2xl outline-none text-sm transition ${
                         fieldErrors.cardMessage
-                          ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200'
-                          : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
+                          ? 'border-2 border-[#C20A0A] bg-red-50/20 ring-2 ring-red-200'
+                          : cardMessage.trim()
+                            ? 'border-2 border-[#5DBA68] bg-emerald-50/20 focus:ring-2 focus:ring-[#5DBA68]/25'
+                            : 'border border-gray-200 focus:border-[#F8BE40] focus:ring-2 focus:ring-[#F8BE40]/25'
                       }`}
                     />
                     {fieldErrors.cardMessage && (
@@ -824,10 +843,10 @@ export const Cart: React.FC = () => {
                         }}
                         className={`w-full py-3.5 px-4 rounded-2xl flex items-center justify-between text-xs sm:text-sm font-bold transition cursor-pointer shadow-sm ${
                           fieldErrors.deliveryDate
-                            ? 'border-2 border-red-500 bg-red-50/20 text-red-700 ring-2 ring-red-200'
-                            : deliveryDate
-                              ? 'border-2 border-[#581C87] bg-purple-50/80 text-[#581C87]'
-                              : 'border border-gray-200 bg-white text-gray-700 hover:border-purple-300 hover:bg-purple-50/40'
+                            ? 'border-2 border-[#C20A0A] bg-red-50/20 text-[#C20A0A] ring-2 ring-red-200'
+                            : deliveryDate && deliveryDate >= minDate
+                              ? 'border-2 border-[#5DBA68] bg-emerald-50/20 text-[#2B1204]'
+                              : 'border border-gray-200 bg-white text-gray-700 hover:border-[#F8BE40]'
                         }`}
                       >
                         <div className="flex items-center gap-2.5 truncate">
@@ -857,8 +876,16 @@ export const Cart: React.FC = () => {
                         min={minDate}
                         value={deliveryDate}
                         onChange={(e) => {
-                          setDeliveryDate(e.target.value);
-                          clearFieldError('deliveryDate');
+                          const val = e.target.value;
+                          setDeliveryDate(val);
+                          if (!val || val < minDate) {
+                            setFieldErrors((prev) => ({
+                              ...prev,
+                              deliveryDate: 'Veuillez choisir une date valide à partir d’aujourd’hui.'
+                            }));
+                          } else {
+                            clearFieldError('deliveryDate');
+                          }
                         }}
                         className="absolute bottom-0 left-0 w-0 h-0 opacity-0 pointer-events-none"
                       />
@@ -891,13 +918,32 @@ export const Cart: React.FC = () => {
                       max={maxAllowedTimeForSelectedDate}
                       value={deliveryTimeSlot}
                       onChange={(e) => {
-                        setDeliveryTimeSlot(e.target.value);
-                        clearFieldError('deliveryTimeSlot');
+                        const val = e.target.value;
+                        setDeliveryTimeSlot(val);
+                        const match = val.trim().match(/^(\d{1,2}):(\d{2})$/);
+                        if (!match) {
+                          setFieldErrors((prev) => ({
+                            ...prev,
+                            deliveryTimeSlot: 'Format d’heure invalide.'
+                          }));
+                          return;
+                        }
+                        const mins = parseInt(match[1], 10) * 60 + parseInt(match[2], 10);
+                        if (mins < selectedDateWindow.minDeliveryMinutes || mins > selectedDateWindow.maxDeliveryMinutes) {
+                          setFieldErrors((prev) => ({
+                            ...prev,
+                            deliveryTimeSlot: `Livraison ${selectedDateWindow.dayLabel} possible de ${selectedDateWindow.openTimeDisplay} à ${selectedDateWindow.closeTimeDisplay}.`
+                          }));
+                        } else {
+                          clearFieldError('deliveryTimeSlot');
+                        }
                       }}
                       className={`w-full px-4 py-3.5 rounded-2xl outline-none text-sm font-bold bg-white transition ${
                         fieldErrors.deliveryTimeSlot
-                          ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200 text-red-700'
-                          : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200 text-gray-900'
+                          ? 'border-2 border-[#C20A0A] bg-red-50/20 ring-2 ring-red-200 text-[#C20A0A]'
+                          : deliveryTimeSlot && /^\d{1,2}:\d{2}$/.test(deliveryTimeSlot)
+                            ? 'border-2 border-[#5DBA68] bg-emerald-50/20 text-[#2B1204]'
+                            : 'border border-gray-200 focus:border-[#F8BE40] text-gray-900'
                       }`}
                     />
                     {fieldErrors.deliveryTimeSlot && (
@@ -937,14 +983,36 @@ export const Cart: React.FC = () => {
                         type="tel"
                         value={recipientPhone}
                         onChange={(e) => {
-                          setRecipientPhone(e.target.value);
-                          clearFieldError('recipientPhone');
+                          const val = e.target.value;
+                          setRecipientPhone(val);
+                          const res = validateBurkinaPhone(val);
+                          if (!val.trim()) {
+                            clearFieldError('recipientPhone');
+                          } else if (!res.isValid) {
+                            setFieldErrors((prev) => ({
+                              ...prev,
+                              recipientPhone: res.error || 'Numéro invalide (8 chiffres du Burkina Faso requis).'
+                            }));
+                          } else {
+                            clearFieldError('recipientPhone');
+                          }
+                        }}
+                        onBlur={() => {
+                          const res = validateBurkinaPhone(recipientPhone);
+                          if (!res.isValid) {
+                            setFieldErrors((prev) => ({
+                              ...prev,
+                              recipientPhone: res.error || 'Veuillez saisir un numéro valide du Burkina Faso (8 chiffres).'
+                            }));
+                          }
                         }}
                         placeholder="Ex: 70 00 00 00 ou +226 70 12 34 56"
                         className={`w-full px-4 py-3.5 rounded-2xl outline-none text-sm transition ${
                           fieldErrors.recipientPhone
-                            ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200'
-                            : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
+                            ? 'border-2 border-[#C20A0A] bg-red-50/20 ring-2 ring-red-200'
+                            : recipientPhone.trim() && validateBurkinaPhone(recipientPhone).isValid
+                              ? 'border-2 border-[#5DBA68] bg-emerald-50/20'
+                              : 'border border-gray-200 focus:border-[#F8BE40]'
                         }`}
                       />
                       {fieldErrors.recipientPhone && (
@@ -969,14 +1037,29 @@ export const Cart: React.FC = () => {
                         type="tel"
                         value={backupPhone}
                         onChange={(e) => {
-                          setBackupPhone(e.target.value);
-                          clearFieldError('backupPhone');
+                          const val = e.target.value;
+                          setBackupPhone(val);
+                          if (!val.trim()) {
+                            clearFieldError('backupPhone');
+                          } else {
+                            const res = validateBurkinaPhone(val, true);
+                            if (!res.isValid) {
+                              setFieldErrors((prev) => ({
+                                ...prev,
+                                backupPhone: res.error || 'Numéro de secours invalide (8 chiffres requis).'
+                              }));
+                            } else {
+                              clearFieldError('backupPhone');
+                            }
+                          }
                         }}
                         placeholder="Ex: 76 00 00 00 (famille, conjoint...)"
-                        className={`w-full px-4 py-3.5 rounded-2xl border outline-none text-sm bg-white transition ${
+                        className={`w-full px-4 py-3.5 rounded-2xl outline-none text-sm bg-white transition ${
                           fieldErrors.backupPhone
-                            ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200'
-                            : 'border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
+                            ? 'border-2 border-[#C20A0A] bg-red-50/20 ring-2 ring-red-200'
+                            : backupPhone.trim() && validateBurkinaPhone(backupPhone, true).isValid
+                              ? 'border-2 border-[#5DBA68] bg-emerald-50/20'
+                              : 'border border-gray-200 focus:border-[#F8BE40]'
                         }`}
                       />
                       {fieldErrors.backupPhone && (

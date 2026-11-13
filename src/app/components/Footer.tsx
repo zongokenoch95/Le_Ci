@@ -92,12 +92,17 @@ export function Footer() {
 
         </div>
 
-        {/* Ligne Copyright & Espace Gestionnaire */}
+        {/* Ligne Copyright, Mentions légales & Espace Gestionnaire */}
         <div className="border-t border-[#F6C58E]/20 mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left text-xs text-[#F6C58E]/60 font-light">
           <p>© 2026 Les Douceurs de Lê-Ci. Tous droits réservés.</p>
-          <Link to="/admin/login" className="text-[#F6C58E]/50 hover:text-[#F8BE40] transition text-[11px]">
-            Espace Gestionnaire
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link to="/mentions-legales" className="text-[#F6C58E]/80 hover:text-[#F8BE40] transition text-[11px] font-medium">
+              Mentions légales
+            </Link>
+            <Link to="/admin/login" className="text-[#F6C58E]/50 hover:text-[#F8BE40] transition text-[11px]">
+              Espace Gestionnaire
+            </Link>
+          </div>
         </div>
       </div>
     </footer>

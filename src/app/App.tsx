@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Header } from './components/Header';
+import { PageNavigator } from './components/PageNavigator';
 import { ScrollToTop } from './components/ScrollToTop';
 import { Footer } from './components/Footer';
 import { PageLoader } from './components/PageLoader';
@@ -14,6 +15,7 @@ import { Payment } from './pages/Payment';
 import { OtherPayment } from './pages/OtherPayment';
 import { Loyalty } from './pages/Loyalty';
 import { About } from './pages/About';
+import { LegalMentions } from './pages/LegalMentions';
 import { Cart } from './pages/Cart';
 import '../styles/index.css';
 
@@ -25,6 +27,7 @@ export default function App() {
         <ScrollToTop />
         <div className="flex flex-col min-h-screen">
           <Header />
+          <PageNavigator />
           <main className="flex-1">
             <Routes>
               <Route path="/" element={<Home />} />
@@ -45,8 +48,9 @@ export default function App() {
               <Route path="/paiement/:orderId" element={<Payment />} />
               <Route path="/pay/:token" element={<OtherPayment />} />
 
-              {/* Redirections des anciennes pages supprimées */}
+              {/* Redirections et pages légales */}
               <Route path="/a-propos" element={<About />} />
+              <Route path="/mentions-legales" element={<LegalMentions />} />
               <Route path="/contact" element={<Navigate to="/" replace />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
