@@ -367,7 +367,7 @@ export function Home() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.45, delay: idx * 0.08 }}
-                  className="bg-white text-[#2B1204] p-3 sm:p-5 rounded-xl border-2 border-[#F8BE40] shadow-2xl transition-all duration-300 flex flex-col justify-between group hover:-translate-y-1"
+                  className="bg-white text-[#2B1204] p-1.5 sm:p-2.5 rounded-xl border-2 border-[#F8BE40] shadow-2xl transition-all duration-300 flex flex-col justify-between group hover:-translate-y-1"
                 >
                   <div>
                     {/* 1. Photo */}
@@ -520,10 +520,10 @@ export function Home() {
               >
                 <Link
                   to={targetUrl}
-                  className="group relative bg-white p-3 sm:p-5 rounded-2xl border-2 border-[#F8BE40] overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 flex flex-col justify-between h-full cursor-pointer block transform hover:-translate-y-1.5"
+                  className="group relative bg-white p-1.5 sm:p-2.5 rounded-xl border-2 border-[#F8BE40] overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 flex flex-col justify-between h-full cursor-pointer block transform hover:-translate-y-1.5"
                 >
                   {/* Photo encadrée de blanc */}
-                  <div className="relative aspect-[4/5] rounded-xl overflow-hidden bg-[#FDF6EC]">
+                  <div className="relative aspect-[4/5] rounded-lg overflow-hidden bg-[#FDF6EC]">
                     <ImageWithFallback
                       src={cat.image}
                       alt={cat.title}
