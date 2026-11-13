@@ -570,13 +570,13 @@ export const Cart: React.FC = () => {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link
                 to="/catalogue"
-                className="w-full sm:w-auto px-6 py-3 rounded-lg bg-[#581C87] text-white text-xs font-bold shadow-md hover:bg-[#6B21A8] transition text-center"
+                className="w-full sm:w-auto px-6 py-3 rounded-full bg-[#5DBA68] hover:bg-[#4CA857] text-white text-xs font-extrabold shadow-md transition text-center"
               >
                 Explorer nos douceurs
               </Link>
               <Link
                 to="/sur-commande"
-                className="w-full sm:w-auto px-6 py-3 rounded-lg bg-purple-50 text-[#581C87] text-xs font-bold hover:bg-purple-100 transition text-center border border-purple-200"
+                className="w-full sm:w-auto px-6 py-3 rounded-full border-2 border-[#5DBA68] text-[#2B1204] hover:bg-[#5DBA68]/10 text-xs font-bold transition text-center"
               >
                 Créer un gâteau sur-mesure
               </Link>
@@ -642,27 +642,27 @@ export const Cart: React.FC = () => {
                           </div>
                         </div>
 
-                        {/* 3. QUANTITÉ & SUPPRIMER */}
+                        {/* 3. QUANTITÉ SIMPLE & SUPPRIMER */}
                         <div className="flex items-center gap-2 shrink-0">
-                          <div className="py-1 px-1.5 rounded-full bg-[#FDECE8] border border-[#EE7362]/30 flex items-center gap-1.5">
+                          <div className="py-1 px-2.5 rounded-full border border-[#F8BE40] bg-white flex items-center gap-2">
                             <button
                               type="button"
                               onClick={() => updateQuantity(item.id, -1)}
-                              className="w-7 h-7 rounded-full bg-white text-[#2B1204] font-black flex items-center justify-center shadow-xs hover:bg-[#2B1204] hover:text-white transition cursor-pointer"
+                              className="w-6 h-6 rounded-full text-[#2B1204] hover:text-[#5DBA68] font-bold flex items-center justify-center transition cursor-pointer"
                               title="Diminuer la quantité"
                             >
-                              <Minus size={12} strokeWidth={3} />
+                              <Minus size={12} strokeWidth={2.5} />
                             </button>
-                            <span className="text-xs sm:text-sm font-black text-[#2B1204] min-w-[18px] text-center">
+                            <span className="font-adapt text-xs sm:text-sm font-black text-[#2B1204] min-w-[16px] text-center">
                               {safeQty}
                             </span>
                             <button
                               type="button"
                               onClick={() => updateQuantity(item.id, 1)}
-                              className="w-7 h-7 rounded-full bg-white text-[#2B1204] font-black flex items-center justify-center shadow-xs hover:bg-[#2B1204] hover:text-white transition cursor-pointer"
+                              className="w-6 h-6 rounded-full text-[#2B1204] hover:text-[#5DBA68] font-bold flex items-center justify-center transition cursor-pointer"
                               title="Augmenter la quantité"
                             >
-                              <Plus size={12} strokeWidth={3} />
+                              <Plus size={12} strokeWidth={2.5} />
                             </button>
                           </div>
                           <button
@@ -693,50 +693,26 @@ export const Cart: React.FC = () => {
                   Glissez une délicate attention manuscrite avec votre commande si besoin.
                 </p>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                  <label
-                    onClick={() => setHasGreetingCard(false)}
-                    className={`p-3.5 px-4 rounded-xl border transition-all cursor-pointer flex items-center gap-3 ${
-                      !hasGreetingCard
-                        ? 'border-[#581C87] bg-purple-50/60 shadow-xs'
-                        : 'border-gray-200 hover:border-purple-200 bg-white'
-                    }`}
-                  >
+                <label
+                  className={`p-3.5 px-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                    hasGreetingCard
+                      ? 'border-[#5DBA68] bg-[#5DBA68]/10 shadow-xs'
+                      : 'border-gray-200 hover:border-[#F8BE40] bg-white'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
                     <input
-                      type="radio"
-                      name="greetingCardOption"
-                      checked={!hasGreetingCard}
-                      onChange={() => setHasGreetingCard(false)}
-                      className="w-4 h-4 accent-[#581C87] cursor-pointer"
+                      type="checkbox"
+                      checked={hasGreetingCard}
+                      onChange={(e) => setHasGreetingCard(e.target.checked)}
+                      className="w-4 h-4 accent-[#5DBA68] rounded cursor-pointer"
                     />
                     <span className="text-xs sm:text-sm font-bold text-gray-900">
-                      Sans carte de vœux
+                      Ajouter une carte de vœux manuscrite
                     </span>
-                  </label>
-
-                  <label
-                    onClick={() => setHasGreetingCard(true)}
-                    className={`p-3.5 px-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                      hasGreetingCard
-                        ? 'border-[#581C87] bg-purple-50/60 shadow-xs'
-                        : 'border-gray-200 hover:border-purple-200 bg-white'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="radio"
-                        name="greetingCardOption"
-                        checked={hasGreetingCard}
-                        onChange={() => setHasGreetingCard(true)}
-                        className="w-4 h-4 accent-[#581C87] cursor-pointer"
-                      />
-                      <span className="text-xs sm:text-sm font-bold text-gray-900">
-                        Ajouter une carte de vœux
-                      </span>
-                    </div>
-                    <span className="text-xs font-extrabold text-[#C20A0A] shrink-0">+200 FCFA</span>
-                  </label>
-                </div>
+                  </div>
+                  <span className="text-xs font-extrabold text-[#C20A0A] shrink-0">+200 FCFA</span>
+                </label>
 
                 {hasGreetingCard && (
                   <motion.div
@@ -1139,16 +1115,16 @@ export const Cart: React.FC = () => {
                   </div>
                 )}
 
-                {/* Bouton doré Passer au paiement */}
+                {/* Bouton vert moringa Passer au paiement (forme pilule) */}
                 <button
                   type="button"
                   onClick={handleProceedToPayment}
                   disabled={isSubmitting}
-                  className="w-full py-4 px-6 rounded-lg bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] font-extrabold text-sm shadow-xl shadow-[#F8BE40]/30 transition-all flex items-center justify-center gap-2.5 cursor-pointer transform hover:-translate-y-0.5 disabled:opacity-50"
+                  className="w-full py-4 px-6 rounded-full bg-[#5DBA68] hover:bg-[#4CA857] text-white font-extrabold text-sm shadow-xl shadow-[#5DBA68]/25 transition-all flex items-center justify-center gap-2.5 cursor-pointer transform hover:-translate-y-0.5 disabled:opacity-50"
                 >
                   {isSubmitting ? (
                     <>
-                      <Loader2 size={18} className="animate-spin text-[#2B1204]" />
+                      <Loader2 size={18} className="animate-spin text-white" />
                       <span>Génération de votre commande...</span>
                     </>
                   ) : (

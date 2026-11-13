@@ -155,7 +155,7 @@ export function Promotions() {
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30">
                   <button
                     onClick={() => handlePreOrder(product.name)}
-                    className="px-6 py-3 bg-[var(--beige-gold)] text-white rounded-lg hover:opacity-90 transition-opacity"
+                    className="px-6 py-3 bg-[#5DBA68] hover:bg-[#4CA857] text-white rounded-full font-bold transition-all cursor-pointer"
                   >
                     Précommander
                   </button>
@@ -188,7 +188,7 @@ export function Promotions() {
             href="https://wa.me/21671123456"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-block px-8 py-4 bg-[var(--beige-gold)] text-white rounded-lg hover:opacity-90 transition-opacity"
+            className="inline-block px-8 py-4 bg-[#5DBA68] hover:bg-[#4CA857] text-white rounded-full font-bold transition-all"
           >
             Commander via WhatsApp
           </a>

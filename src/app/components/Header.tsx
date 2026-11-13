@@ -202,13 +202,13 @@ export function Header() {
                 ))}
               </nav>
 
-              {/* Bouton Panier Jaune doré #F8BE40 & Brun cacao #2B1204 */}
+              {/* Bouton Panier Vert moringa #5DBA68 & pilule */}
               <button
                 onClick={() => navigate('/panier')}
-                className="relative flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-extrabold transition-all shadow-md cursor-pointer bg-[#F8BE40] hover:bg-[#f5b120] text-[#2B1204] border border-[#F8BE40] active:scale-95"
+                className="relative flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-extrabold transition-all shadow-md cursor-pointer bg-[#5DBA68] hover:bg-[#4CA857] text-white border border-[#5DBA68] active:scale-95"
                 aria-label="Voir mon panier"
               >
-                <ShoppingBag size={16} className="text-[#2B1204]" />
+                <ShoppingBag size={16} className="text-white" />
                 <span>Panier</span>
                 {totalItems > 0 && (
                   <span className="ml-1 bg-[#C20A0A] text-white text-[11px] font-black rounded-full h-5 min-w-5 px-1.5 flex items-center justify-center animate-bounce">
@@ -243,9 +243,9 @@ export function Header() {
                     setMobileMenuOpen(false);
                     navigate('/panier');
                   }}
-                  className="w-full text-center py-3 rounded-lg bg-[#F8BE40] text-[#2B1204] font-extrabold text-sm flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full text-center py-3 rounded-full bg-[#5DBA68] hover:bg-[#4CA857] text-white font-extrabold text-sm flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  <ShoppingBag size={18} className="text-[#2B1204]" />
+                  <ShoppingBag size={18} className="text-white" />
                   <span>Mon Panier ({totalItems} articles)</span>
                 </button>
               </div>

@@ -320,7 +320,7 @@ export function Loyalty() {
               <button
                 type="submit"
                 disabled={authLoading}
-                className="w-full py-3.5 px-4 rounded-xl bg-[#D4AF37] hover:bg-[#c29d2b] text-white font-black text-xs shadow-lg transition flex items-center justify-center gap-2"
+                className="w-full py-3.5 px-4 rounded-full bg-[#5DBA68] hover:bg-[#4CA857] text-white font-black text-xs shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
               >
                 {authLoading ? (
                   <span>Vérification...</span>
@@ -356,14 +356,14 @@ export function Loyalty() {
               <div className="flex items-center gap-3 w-full sm:w-auto">
                 <button
                   onClick={() => navigate('/panier')}
-                  className="flex-1 sm:flex-none px-4 py-2.5 bg-[#D4AF37] hover:bg-[#c29d2b] text-white font-bold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-1.5"
+                  className="flex-1 sm:flex-none px-5 py-2.5 bg-[#5DBA68] hover:bg-[#4CA857] text-white font-bold text-xs rounded-full shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <ShoppingBag size={15} />
                   <span>Mon Panier</span>
                 </button>
                 <button
                   onClick={handleLogout}
-                  className="px-3 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:text-red-600 hover:bg-red-50 text-xs font-bold transition flex items-center gap-1.5"
+                  className="px-4 py-2.5 rounded-full border border-gray-200 text-gray-600 hover:text-red-600 hover:bg-red-50 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
                 >
                   <LogOut size={14} />
                   <span>Déconnexion</span>

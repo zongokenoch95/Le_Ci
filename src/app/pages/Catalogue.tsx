@@ -456,11 +456,11 @@ export function Catalogue() {
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
                     key={product.id}
-                    className="bg-white text-[#2B1204] p-3 sm:p-6 rounded-none border border-[#F6C58E]/50 shadow-md hover:shadow-2xl transition-all duration-300 flex flex-col justify-between group hover:-translate-y-1"
+                    className="bg-white text-[#2B1204] p-3 sm:p-5 rounded-2xl border-2 border-[#F8BE40] shadow-md hover:shadow-2xl transition-all duration-300 flex flex-col justify-between group hover:-translate-y-1"
                   >
                     <div>
-                      {/* 1. Image du produit encadrée de blanc (format portrait comme sur le modèle) */}
-                      <div className="relative aspect-[4/5] overflow-hidden bg-[#FDF6EC]">
+                      {/* 1. Image du produit */}
+                      <div className="relative aspect-[4/5] rounded-xl overflow-hidden bg-[#FDF6EC]">
                         <ImageWithFallback
                           src={product.image}
                           alt={product.name}
@@ -468,24 +468,18 @@ export function Catalogue() {
                         />
                       </div>
 
-                      {/* 2. Titre centré en majuscules espacées */}
-                      <h3
-                        className="text-center text-xs sm:text-base font-medium uppercase tracking-[0.12em] text-[#2B1204] mt-4 sm:mt-6 mb-2.5 line-clamp-2 min-h-[2.2rem] sm:min-h-[2.6rem] flex items-center justify-center"
-                        style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
-                      >
+                      {/* 2. Nom */}
+                      <h3 className="font-adapt text-center text-xs sm:text-base font-extrabold text-[#2B1204] mt-4 mb-1.5 line-clamp-2 min-h-[2.2rem] sm:min-h-[2.6rem] flex items-center justify-center">
                         {product.name}
                       </h3>
 
-                      {/* 3. Ligne Format / Catégorie | Prix séparée par un trait vertical */}
-                      <div className="flex items-center justify-center gap-2.5 sm:gap-4 text-[11px] sm:text-xs text-[#2B1204]/75 mb-3">
-                        <span className="truncate max-w-[110px]">{formatInfo}</span>
-                        <span className="h-4 w-px bg-[#2B1204]/30 shrink-0" />
-                        <span className="font-semibold text-[#2B1204] shrink-0">
-                          {displayPrice.toLocaleString('fr-FR')} F
-                        </span>
+                      {/* 3. Prix */}
+                      <div className="font-adapt text-center text-sm sm:text-base font-black text-[#C20A0A] mb-2">
+                        {displayPrice.toLocaleString('fr-FR')} FCFA
                       </div>
 
-                      <p className="text-[11px] sm:text-xs text-center text-[#2B1204]/60 font-normal mb-3 line-clamp-2 leading-relaxed">
+                      {/* 4. Description */}
+                      <p className="font-fredoka text-[11px] sm:text-xs text-center text-[#2B1204]/75 font-normal mb-3 line-clamp-2 leading-relaxed">
                         {product.description || 'Création artisanale raffinée préparée à la commande.'}
                       </p>
 
@@ -529,35 +523,35 @@ export function Catalogue() {
                       )}
                     </div>
 
-                    {/* 4. Zone d'action en bas (ancienne version conservée) : Bouton Ajouter / Sélecteur [ -  2  + ] + Bouton Commander */}
+                    {/* 5. Boutons pilules : Ajouter / compteur simple + Commander (vert moringa) */}
                     <div className="pt-2 space-y-2">
                       {cartQty > 0 ? (
-                        <div className="w-full rounded-full bg-[#FDECE8] p-1 flex items-center justify-between shadow-2xs">
+                        <div className="w-full py-1 px-3 rounded-full border border-[#F8BE40] bg-[#FDF8F2] flex items-center justify-between">
                           <button
                             type="button"
                             onClick={() => updateQuantity(cartItemId, -1)}
-                            className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white text-[#2B1204] hover:bg-[#2B1204] hover:text-white font-black flex items-center justify-center shadow-xs transition cursor-pointer"
+                            className="w-7 h-7 rounded-full flex items-center justify-center text-[#2B1204] hover:text-[#5DBA68] font-bold transition cursor-pointer"
                             title="Diminuer la quantité"
                           >
-                            <Minus size={15} strokeWidth={3} />
+                            <Minus size={14} strokeWidth={2.5} />
                           </button>
-                          <span className="text-sm sm:text-base font-black text-[#2B1204]">
+                          <span className="font-adapt text-sm font-black text-[#2B1204]">
                             {cartQty}
                           </span>
                           <button
                             type="button"
                             onClick={() => updateQuantity(cartItemId, 1)}
-                            className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white text-[#2B1204] hover:bg-[#2B1204] hover:text-white font-black flex items-center justify-center shadow-xs transition cursor-pointer"
+                            className="w-7 h-7 rounded-full flex items-center justify-center text-[#2B1204] hover:text-[#5DBA68] font-bold transition cursor-pointer"
                             title="Augmenter la quantité"
                           >
-                            <Plus size={15} strokeWidth={3} />
+                            <Plus size={14} strokeWidth={2.5} />
                           </button>
                         </div>
                       ) : (
                         <button
                           type="button"
                           onClick={() => handleAddToCart(product, false)}
-                          className="w-full py-2.5 sm:py-3 px-4 rounded-full bg-[#C20A0A] hover:bg-[#a50808] text-white font-extrabold text-xs sm:text-sm shadow-sm transition-all cursor-pointer text-center active:scale-95"
+                          className="w-full py-2.5 sm:py-3 px-4 rounded-full border-2 border-[#5DBA68] text-[#2B1204] hover:bg-[#5DBA68]/10 font-bold text-xs sm:text-sm transition-all cursor-pointer text-center active:scale-95"
                         >
                           Ajouter
                         </button>
@@ -572,7 +566,7 @@ export function Catalogue() {
                             handleAddToCart(product, true);
                           }
                         }}
-                        className="w-full py-2 sm:py-2.5 px-4 rounded-full bg-[#2B1204] hover:bg-[#F8BE40] text-[#F8BE40] hover:text-[#2B1204] font-extrabold text-xs sm:text-sm shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                        className="w-full py-2.5 sm:py-3 px-4 rounded-full bg-[#5DBA68] hover:bg-[#4CA857] text-white font-extrabold text-xs sm:text-sm shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
                       >
                         <span>Commander</span>
                         <ArrowRight size={14} />
@@ -590,7 +584,7 @@ export function Catalogue() {
             <p className="text-[#2B1204]/70 font-medium mb-4">Aucune douceur ne correspond à votre recherche.</p>
             <button
               onClick={() => setSelectedCategory('Tous')}
-              className="px-7 py-3 bg-[#2B1204] text-[#F8BE40] rounded-lg text-xs font-extrabold hover:bg-[#431E09] transition cursor-pointer shadow-md"
+              className="px-7 py-3 bg-[#5DBA68] hover:bg-[#4CA857] text-white rounded-full text-xs font-extrabold transition cursor-pointer shadow-md"
             >
               Réinitialiser les filtres
             </button>

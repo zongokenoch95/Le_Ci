@@ -308,16 +308,16 @@ export function CustomOrder() {
   const [selectedCatalogCake, setSelectedCatalogCake] = useState<string>(fallbackCatalogCakes[0].name);
   const [uploadedImagePreview, setUploadedImagePreview] = useState<string | null>(null);
 
-  // Point 3 : Taille & Saveur
-  const [selectedFlavorKey, setSelectedFlavorKey] = useState<string>(BIRTHDAY_CAKE_FAMILIES[0].key);
+  // Point 3 : Taille & Saveur (aucune option cochée par défaut)
+  const [selectedFlavorKey, setSelectedFlavorKey] = useState<string>('');
   const [customFlavorText, setCustomFlavorText] = useState('');
-  const [selectedPortionId, setSelectedPortionId] = useState<string>('6');
+  const [selectedPortionId, setSelectedPortionId] = useState<string>('');
 
   // Configuration spécifique Mariage (Pièce montée vs Gâteaux séparés)
   const [weddingFormat, setWeddingFormat] = useState<'piece_montee' | 'gateaux_separes'>('piece_montee');
-  const [selectedWeddingTierOptionId, setSelectedWeddingTierOptionId] = useState<string>(WEDDING_TIERED_OPTIONS[0].id);
+  const [selectedWeddingTierOptionId, setSelectedWeddingTierOptionId] = useState<string>('');
   const [separateCakesCount, setSeparateCakesCount] = useState<number>(3); // Minimum 3 gâteaux
-  const [separateCakePortionId, setSeparateCakePortionId] = useState<string>('8'); // À partir de 8 parts par gâteau
+  const [separateCakePortionId, setSeparateCakePortionId] = useState<string>(''); // À partir de 8 parts par gâteau
   const [weddingTieredPartsForSugarPaste, setWeddingTieredPartsForSugarPaste] = useState<number>(15);
 
   // Point 4 : Supplément (optionnel)
@@ -488,20 +488,25 @@ export function CustomOrder() {
 
   // Options de parts pour Anniversaire / Autres (6, 8, 10, 12, 15, 20 et + de 20 parts)
   const birthdayPortionsOptions = buildPortionsFromFamily(activeFamily);
-  const currentBirthdayPortion =
-    birthdayPortionsOptions.find((p) => p.id === selectedPortionId) || birthdayPortionsOptions[0];
+  const currentBirthdayPortion = selectedPortionId
+    ? birthdayPortionsOptions.find((p) => p.id === selectedPortionId)
+    : undefined;
 
   // Options de parts pour Gâteaux séparés de Mariage (à partir de 8 parts par gâteau, min 3 gâteaux)
   const separateWeddingPortionOptions = birthdayPortionsOptions.filter((p) => p.partsCount >= 8);
-  const currentSeparateWeddingPortion =
-    separateWeddingPortionOptions.find((p) => p.id === separateCakePortionId) || separateWeddingPortionOptions[0];
+  const currentSeparateWeddingPortion = separateCakePortionId
+    ? separateWeddingPortionOptions.find((p) => p.id === separateCakePortionId)
+    : undefined;
 
   // Option sélectionnée pour Pièce montée de Mariage (2 à 5 étages)
-  const currentWeddingTierOption =
-    WEDDING_TIERED_OPTIONS.find((o) => o.id === selectedWeddingTierOptionId) || WEDDING_TIERED_OPTIONS[0];
+  const currentWeddingTierOption = selectedWeddingTierOptionId
+    ? WEDDING_TIERED_OPTIONS.find((o) => o.id === selectedWeddingTierOptionId)
+    : undefined;
 
   useEffect(() => {
-    setWeddingTieredPartsForSugarPaste(currentWeddingTierOption.defaultParts);
+    if (currentWeddingTierOption) {
+      setWeddingTieredPartsForSugarPaste(currentWeddingTierOption.defaultParts);
+    }
   }, [selectedWeddingTierOptionId]);
 
   // Est-ce que l'option "+ de 20 parts" est sélectionnée ?
@@ -545,15 +550,15 @@ export function CustomOrder() {
   // ============================================================================
   const baseCakePrice = isWeddingCategory
     ? weddingFormat === 'piece_montee'
-      ? currentWeddingTierOption.price
-      : currentSeparateWeddingPortion.price * Math.max(3, separateCakesCount)
-    : currentBirthdayPortion.price;
+      ? (currentWeddingTierOption?.price || 0)
+      : (currentSeparateWeddingPortion?.price || 0) * Math.max(3, separateCakesCount)
+    : (currentBirthdayPortion?.price || 0);
 
   const effectivePartsCount = isWeddingCategory
     ? weddingFormat === 'piece_montee'
       ? Math.max(6, weddingTieredPartsForSugarPaste)
-      : currentSeparateWeddingPortion.partsCount * Math.max(3, separateCakesCount)
-    : currentBirthdayPortion.partsCount;
+      : (currentSeparateWeddingPortion?.partsCount || 8) * Math.max(3, separateCakesCount)
+    : (currentBirthdayPortion?.partsCount || 6);
 
   const edibleImageCost = suppEdibleImage ? SUPPLEMENT_PRICES.edibleImage : 0;
   const nonEdibleImageCost = suppNonEdibleImage ? SUPPLEMENT_PRICES.nonEdibleImage : 0;
@@ -613,6 +618,15 @@ export function CustomOrder() {
 
   // Validation & Ajout au panier avec redirection vers /panier
   const handleAddToCartAndProceed = () => {
+    if (!selectedFlavorKey) {
+      setSingleError(
+        'flavorSelection',
+        'Veuillez sélectionner la saveur de votre gâteau.',
+        'field-customFlavorSection'
+      );
+      return;
+    }
+
     if (selectedFlavorKey === 'custom' && !customFlavorText.trim()) {
       setSingleError(
         'customFlavorText',
@@ -622,14 +636,40 @@ export function CustomOrder() {
       return;
     }
 
+    if (isWeddingCategory) {
+      if (weddingFormat === 'piece_montee' && !currentWeddingTierOption) {
+        setSingleError(
+          'portionSelection',
+          'Veuillez choisir le nombre d’étages et la taille de votre pièce montée.',
+          'field-customPortionSection'
+        );
+        return;
+      }
+      if (weddingFormat === 'gateaux_separes' && !currentSeparateWeddingPortion) {
+        setSingleError(
+          'portionSelection',
+          'Veuillez choisir le nombre de parts par gâteau.',
+          'field-customPortionSection'
+        );
+        return;
+      }
+    } else if (!currentBirthdayPortion) {
+      setSingleError(
+        'portionSelection',
+        'Veuillez sélectionner la taille (nombre de parts) de votre gâteau.',
+        'field-customPortionSection'
+      );
+      return;
+    }
+
     setFieldErrors({});
     setIsSubmitting(true);
 
     const portionLabel = isWeddingCategory
       ? weddingFormat === 'piece_montee'
-        ? `Pièce montée ${currentWeddingTierOption.tierLabel} (${currentWeddingTierOption.optionLabel})`
-        : `${Math.max(3, separateCakesCount)} gâteaux séparés × ${currentSeparateWeddingPortion.label}`
-      : currentBirthdayPortion.label;
+        ? `Pièce montée ${currentWeddingTierOption?.tierLabel} (${currentWeddingTierOption?.optionLabel})`
+        : `${Math.max(3, separateCakesCount)} gâteaux séparés × ${currentSeparateWeddingPortion?.label}`
+      : (currentBirthdayPortion?.label || '');
 
     const chosenSupplementsList = [
       suppEdibleImage ? `Image comestible (+${SUPPLEMENT_PRICES.edibleImage.toLocaleString('fr-FR')} F)` : '',
@@ -932,9 +972,15 @@ export function CustomOrder() {
             {/* 3A. SAVEUR DU GÂTEAU (PUCES RADIO, UNIQUEMENT LE NOM SANS PARTS/PRIX) */}
             {/* --------------------------------------------------------------------- */}
             <div>
-              <h4 className="text-sm sm:text-base font-extrabold text-gray-900 mb-3">
+              <h4 id="field-customFlavorSection" className="text-sm sm:text-base font-extrabold text-gray-900 mb-3">
                 Saveur du gâteau *
               </h4>
+              {fieldErrors.flavorSelection && (
+                <p className="text-xs text-red-600 font-bold mb-2.5 flex items-center gap-1.5">
+                  <AlertCircle size={13} className="shrink-0" />
+                  <span>{fieldErrors.flavorSelection}</span>
+                </p>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {BIRTHDAY_CAKE_FAMILIES.map((fam) => {
@@ -944,6 +990,7 @@ export function CustomOrder() {
                       key={fam.key}
                       onClick={() => {
                         setSelectedFlavorKey(fam.key);
+                        clearFieldError('flavorSelection');
                         clearFieldError('customFlavorText');
                       }}
                       className={`p-3.5 px-4 rounded-xl border transition-all cursor-pointer flex items-center gap-3 ${
@@ -1027,7 +1074,13 @@ export function CustomOrder() {
             {/* --------------------------------------------------------------------- */}
             {/* 3B. TAILLE DU GÂTEAU (AVEC PUCES RADIO & ASSISTANCE POUR + DE 20 PARTS) */}
             {/* --------------------------------------------------------------------- */}
-            <div className="pt-6 border-t border-purple-100">
+            <div id="field-customPortionSection" className="pt-6 border-t border-purple-100">
+              {fieldErrors.portionSelection && (
+                <p className="text-xs text-red-600 font-bold mb-3 flex items-center gap-1.5">
+                  <AlertCircle size={13} className="shrink-0" />
+                  <span>{fieldErrors.portionSelection}</span>
+                </p>
+              )}
               {isWeddingCategory ? (
                 <div className="space-y-6">
                   <div>
@@ -1094,7 +1147,10 @@ export function CustomOrder() {
                                   return (
                                     <label
                                       key={opt.id}
-                                      onClick={() => setSelectedWeddingTierOptionId(opt.id)}
+                                      onClick={() => {
+                                    setSelectedWeddingTierOptionId(opt.id);
+                                    clearFieldError('portionSelection');
+                                  }}
                                       className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2 ${
                                         isSelected
                                           ? 'border-[#581C87] bg-white shadow-sm ring-2 ring-[#581C87]/20'
@@ -1133,7 +1189,7 @@ export function CustomOrder() {
                               Nous prenons à partir de 8 parts pour chaque gâteau et 3 gâteaux minimum.
                             </span>
                           </div>
-                          <div className="flex items-center gap-2 bg-white border border-purple-200 rounded-xl px-3 py-1.5 self-start sm:self-center">
+                          <div className="flex items-center gap-2 bg-white border border-[#F8BE40] rounded-full px-3 py-1 self-start sm:self-center">
                             <button
                               type="button"
                               onClick={() => setSeparateCakesCount((c) => Math.max(3, c - 1))}
@@ -1161,13 +1217,16 @@ export function CustomOrder() {
                           </label>
                           <div className="space-y-2">
                             {separateWeddingPortionOptions.map((opt) => {
-                              const isSelected = currentSeparateWeddingPortion.id === opt.id;
+                              const isSelected = currentSeparateWeddingPortion?.id === opt.id;
                               const isOptPlus20 = opt.id === 'plus-20';
                               const totalForAllCakes = opt.price * Math.max(3, separateCakesCount);
                               return (
                                 <label
                                   key={opt.id}
-                                  onClick={() => setSeparateCakePortionId(opt.id)}
+                                  onClick={() => {
+                                    setSeparateCakePortionId(opt.id);
+                                    clearFieldError('portionSelection');
+                                  }}
                                   className={`p-3.5 px-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
                                     isSelected
                                       ? 'border-[#581C87] bg-white shadow-xs ring-2 ring-[#581C87]/15'
@@ -1223,12 +1282,15 @@ export function CustomOrder() {
 
                   <div className="space-y-2.5">
                     {birthdayPortionsOptions.map((opt) => {
-                      const isSelected = currentBirthdayPortion.id === opt.id;
+                      const isSelected = currentBirthdayPortion?.id === opt.id;
                       const isOptPlus20 = opt.id === 'plus-20';
                       return (
                         <label
                           key={opt.id}
-                          onClick={() => setSelectedPortionId(opt.id)}
+                          onClick={() => {
+                            setSelectedPortionId(opt.id);
+                            clearFieldError('portionSelection');
+                          }}
                           className={`p-3.5 px-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
                             isSelected
                               ? 'border-[#581C87] bg-purple-50/60 shadow-xs'
@@ -1524,7 +1586,7 @@ export function CustomOrder() {
                   type="button"
                   onClick={handleAddToCartAndProceed}
                   disabled={isSubmitting}
-                  className="w-full md:w-auto px-8 py-4 rounded-lg bg-[#581C87] text-white hover:bg-[#6B21A8] font-black text-sm shadow-xl transition cursor-pointer flex items-center justify-center gap-3 transform hover:scale-[1.01] active:scale-95 shrink-0 disabled:opacity-50"
+                  className="w-full md:w-auto px-8 py-4 rounded-full bg-[#5DBA68] hover:bg-[#4CA857] text-white font-black text-sm shadow-xl transition cursor-pointer flex items-center justify-center gap-3 transform hover:scale-[1.01] active:scale-95 shrink-0 disabled:opacity-50"
                 >
                   <ShoppingBag size={18} />
                   <span>Ajouter au panier ({cakeItemPriceForCart.toLocaleString('fr-FR')} FCFA)</span>

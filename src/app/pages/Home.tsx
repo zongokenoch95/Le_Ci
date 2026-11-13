@@ -437,7 +437,7 @@ export function Home() {
           <div className="flex justify-center items-center">
             <button
               onClick={() => scrollToSection('nos-produits')}
-              className="px-10 py-4 bg-[#F8BE40] hover:bg-[#f5b120] text-[#2B1204] font-extrabold rounded-full shadow-2xl transition-all inline-flex items-center justify-center gap-2.5 transform hover:-translate-y-0.5 text-sm cursor-pointer border border-[#F8BE40]"
+              className="px-10 py-4 bg-[#5DBA68] hover:bg-[#4CA857] text-white font-extrabold rounded-full shadow-2xl transition-all inline-flex items-center justify-center gap-2.5 transform hover:-translate-y-0.5 text-sm cursor-pointer border border-[#5DBA68]"
             >
               <span>Commander</span>
               <ArrowRight size={18} />
@@ -501,10 +501,10 @@ export function Home() {
               >
                 <Link
                   to={targetUrl}
-                  className="group relative bg-white p-3 sm:p-5 rounded-none overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 flex flex-col justify-between h-full cursor-pointer block transform hover:-translate-y-1.5"
+                  className="group relative bg-white p-3 sm:p-5 rounded-2xl border-2 border-[#F8BE40] overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 flex flex-col justify-between h-full cursor-pointer block transform hover:-translate-y-1.5"
                 >
                   {/* Photo encadrée de blanc */}
-                  <div className="relative aspect-[4/5] overflow-hidden bg-[#FDF6EC]">
+                  <div className="relative aspect-[4/5] rounded-xl overflow-hidden bg-[#FDF6EC]">
                     <ImageWithFallback
                       src={cat.image}
                       alt={cat.title}
@@ -512,9 +512,9 @@ export function Home() {
                     />
                   </div>
 
-                  {/* Titre centré en majuscules élégantes */}
+                  {/* Titre centré */}
                   <div className="pt-4 pb-1 text-center">
-                    <h3 className="text-xs sm:text-sm font-semibold uppercase tracking-[0.14em] text-[#2B1204] group-hover:text-[#C20A0A] transition">
+                    <h3 className="font-adapt text-xs sm:text-sm font-bold uppercase tracking-[0.1em] text-[#2B1204] group-hover:text-[#5DBA68] transition">
                       {cat.title}
                     </h3>
                   </div>
@@ -540,23 +540,15 @@ export function Home() {
             viewport={{ once: true }}
             className="text-center mb-12 sm:mb-16"
           >
-            <h2
-              className="text-2xl sm:text-4xl font-light uppercase tracking-[0.22em] text-[#FDF8F2]"
-              style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
-            >
+            <h2 className="font-adapt text-2xl sm:text-4xl font-extrabold uppercase tracking-[0.14em] text-[#FDF8F2]">
               Signature de la maison
             </h2>
           </motion.div>
 
-          {/* Grille des cartes produits selon le modèle de présentation demandé */}
+          {/* Grille des cartes produits : contour doré, Nom -> Prix -> Description -> Boutons pilules verts */}
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-7">
             {signatureCreations.map((item, idx) => {
               const cartQty = getSignatureCartQuantity(item.id);
-              const formatLabel = item.isCake
-                ? '6 parts'
-                : item.category === 'Paquets'
-                  ? 'Coffret'
-                  : '44 pièces';
               return (
                 <motion.div
                   key={item.id}
@@ -564,11 +556,11 @@ export function Home() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.45, delay: idx * 0.08 }}
-                  className="bg-white text-[#2B1204] p-3 sm:p-6 rounded-none shadow-2xl transition-all duration-300 flex flex-col justify-between group hover:-translate-y-1"
+                  className="bg-white text-[#2B1204] p-3 sm:p-5 rounded-2xl border-2 border-[#F8BE40] shadow-2xl transition-all duration-300 flex flex-col justify-between group hover:-translate-y-1"
                 >
                   <div>
-                    {/* 1. Photo encadrée de blanc (format portrait comme sur l'image) */}
-                    <div className="relative aspect-[4/5] overflow-hidden bg-[#FDF8F2]">
+                    {/* 1. Photo */}
+                    <div className="relative aspect-[4/5] rounded-xl overflow-hidden bg-[#FDF8F2]">
                       <ImageWithFallback
                         src={item.image}
                         alt={item.name}
@@ -576,31 +568,29 @@ export function Home() {
                       />
                     </div>
 
-                    {/* 2. Titre centré en majuscules espacées */}
-                    <h3
-                      className="text-center text-xs sm:text-base font-medium uppercase tracking-[0.12em] text-[#2B1204] mt-4 sm:mt-6 mb-3 line-clamp-2 min-h-[2.2rem] sm:min-h-[2.6rem] flex items-center justify-center"
-                      style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
-                    >
+                    {/* 2. Nom */}
+                    <h3 className="font-adapt text-center text-xs sm:text-base font-extrabold text-[#2B1204] mt-4 mb-1.5 line-clamp-2 min-h-[2.2rem] sm:min-h-[2.6rem] flex items-center justify-center">
                       {item.name}
                     </h3>
 
-                    {/* 3. Ligne Format | Prix séparée par un trait vertical */}
-                    <div className="flex items-center justify-center gap-2.5 sm:gap-4 text-[11px] sm:text-xs text-[#2B1204]/75 mb-4 sm:mb-6">
-                      <span>{formatLabel}</span>
-                      <span className="h-4 w-px bg-[#2B1204]/30" />
-                      <span className="font-semibold text-[#2B1204]">
-                        {item.numericPrice.toLocaleString('fr-FR')} F
-                      </span>
+                    {/* 3. Prix */}
+                    <div className="font-adapt text-center text-sm sm:text-base font-black text-[#C20A0A] mb-2">
+                      {item.numericPrice.toLocaleString('fr-FR')} FCFA
                     </div>
+
+                    {/* 4. Description */}
+                    <p className="font-fredoka text-[11px] sm:text-xs text-center text-[#2B1204]/75 font-normal mb-4 line-clamp-2 leading-relaxed">
+                      {item.description}
+                    </p>
                   </div>
 
-                  {/* 4. Boutons d'action (ancienne version conservée : Ajouter / Sélecteur [- qty +] + Commander) */}
-                  <div className="pt-2 flex flex-col gap-2">
+                  {/* 5. Boutons pilules (Ajouter / compteur simple + Commander vert moringa) */}
+                  <div className="pt-1 flex flex-col gap-2">
                     {item.isCake ? (
                       <>
                         <Link
                           to="/sur-commande"
-                          className="w-full py-2.5 sm:py-3 px-4 rounded-full font-black text-xs sm:text-sm bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center"
+                          className="w-full py-2.5 sm:py-3 px-4 rounded-full font-bold text-xs sm:text-sm border-2 border-[#5DBA68] text-[#2B1204] hover:bg-[#5DBA68]/10 transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center"
                         >
                           <Cake size={15} />
                           <span>Personnaliser</span>
@@ -608,7 +598,7 @@ export function Home() {
                         <button
                           type="button"
                           onClick={() => handleAddSignatureToCart(item, true)}
-                          className="w-full py-2.5 sm:py-3 px-4 rounded-full font-black text-xs sm:text-sm bg-[#2B1204] hover:bg-[#431E09] text-[#F8BE40] shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                          className="w-full py-2.5 sm:py-3 px-4 rounded-full font-extrabold text-xs sm:text-sm bg-[#5DBA68] hover:bg-[#4CA857] text-white shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                         >
                           <ShoppingBag size={14} />
                           <span>Commander</span>
@@ -617,32 +607,32 @@ export function Home() {
                     ) : (
                       <>
                         {cartQty > 0 ? (
-                          <div className="w-full py-1.5 px-2 rounded-full bg-[#FDECE8] border border-[#EE7362]/30 flex items-center justify-between">
+                          <div className="w-full py-1 px-3 rounded-full border border-[#F8BE40] bg-[#FDF8F2] flex items-center justify-between">
                             <button
                               type="button"
                               onClick={() => updateQuantity(`prod-${item.id}`, -1)}
-                              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white text-[#2B1204] font-black flex items-center justify-center shadow-xs hover:bg-[#2B1204] hover:text-white transition cursor-pointer"
+                              className="w-7 h-7 rounded-full flex items-center justify-center text-[#2B1204] hover:text-[#5DBA68] font-bold transition cursor-pointer"
                               aria-label="Diminuer la quantité"
                             >
-                              <Minus size={15} strokeWidth={3} />
+                              <Minus size={14} strokeWidth={2.5} />
                             </button>
-                            <span className="text-sm sm:text-base font-black text-[#2B1204]">
+                            <span className="font-adapt text-sm font-black text-[#2B1204]">
                               {cartQty}
                             </span>
                             <button
                               type="button"
                               onClick={() => updateQuantity(`prod-${item.id}`, 1)}
-                              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white text-[#2B1204] font-black flex items-center justify-center shadow-xs hover:bg-[#2B1204] hover:text-white transition cursor-pointer"
+                              className="w-7 h-7 rounded-full flex items-center justify-center text-[#2B1204] hover:text-[#5DBA68] font-bold transition cursor-pointer"
                               aria-label="Augmenter la quantité"
                             >
-                              <Plus size={15} strokeWidth={3} />
+                              <Plus size={14} strokeWidth={2.5} />
                             </button>
                           </div>
                         ) : (
                           <button
                             type="button"
                             onClick={() => handleAddSignatureToCart(item, false)}
-                            className="w-full py-2.5 sm:py-3 px-4 rounded-full font-black text-xs sm:text-sm bg-[#C20A0A] hover:bg-[#a10808] text-white shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                            className="w-full py-2.5 sm:py-3 px-4 rounded-full font-bold text-xs sm:text-sm border-2 border-[#5DBA68] text-[#2B1204] hover:bg-[#5DBA68]/10 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                           >
                             <span>Ajouter</span>
                           </button>
@@ -651,7 +641,7 @@ export function Home() {
                         <button
                           type="button"
                           onClick={() => handleAddSignatureToCart(item, true)}
-                          className="w-full py-2.5 sm:py-3 px-4 rounded-full font-black text-xs sm:text-sm bg-[#2B1204] hover:bg-[#431E09] text-[#F8BE40] shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                          className="w-full py-2.5 sm:py-3 px-4 rounded-full font-extrabold text-xs sm:text-sm bg-[#5DBA68] hover:bg-[#4CA857] text-white shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                         >
                           <ShoppingBag size={14} />
                           <span>Commander</span>
@@ -668,9 +658,9 @@ export function Home() {
           <div className="mt-12 text-center">
             <Link
               to="/catalogue?category=Signature"
-              className="inline-flex items-center gap-2 px-8 py-3.5 rounded-lg bg-[#F8BE40] hover:bg-[#f5b120] text-[#2B1204] font-extrabold text-xs shadow-lg transition cursor-pointer hover:scale-105"
+              className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-[#5DBA68] hover:bg-[#4CA857] text-white font-extrabold text-xs shadow-lg transition cursor-pointer hover:scale-105"
             >
-              <Crown size={15} className="text-[#2B1204]" />
+              <Crown size={15} className="text-white" />
               <span>Découvrir plus</span>
               <ArrowRight size={14} />
             </Link>
@@ -709,7 +699,7 @@ export function Home() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: idx * 0.1 }}
-                className="bg-white rounded-2xl p-6 sm:p-7 border-2 border-[#F6C58E]/60 shadow-md hover:shadow-xl transition-all duration-300 flex flex-col sm:flex-row gap-5 items-center"
+                className="bg-white rounded-2xl p-6 sm:p-7 border-2 border-[#F8BE40] shadow-md hover:shadow-xl transition-all duration-300 flex flex-col sm:flex-row gap-5 items-center"
               >
                 {/* Image miniature */}
                 <div className="w-full sm:w-40 h-40 rounded-xl overflow-hidden shrink-0 relative shadow-xs">
@@ -761,7 +751,7 @@ export function Home() {
                   {/* Bouton */}
                   <Link
                     to={item.actionLink}
-                    className="w-full sm:w-auto self-start px-5 py-2.5 rounded-lg bg-[#2B1204] hover:bg-[#F8BE40] text-[#F8BE40] hover:text-[#2B1204] text-xs font-extrabold shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full sm:w-auto self-start px-6 py-2.5 rounded-full bg-[#5DBA68] hover:bg-[#4CA857] text-white text-xs font-extrabold shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <span>{item.actionText}</span>
                     <ChevronRight size={14} />
