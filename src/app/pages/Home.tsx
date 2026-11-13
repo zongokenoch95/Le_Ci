@@ -412,27 +412,40 @@ export function Home() {
 
       {/* ========================================================================= */}
       {/* 2.BIS SECTION SIGNATURE DE LA MAISON — PRÉSENTATION DE CARTE ÉDITORIALE    */}
-      {/* Fond Brun Cacao #2B1204 & Cartes blanches encadrées (Modèle de référence)  */}
+      {/* Background h3.jpg & 2 produits phares                                     */}
       {/* ========================================================================= */}
       <section
         id="signature-maison"
-        className="bg-[#2B1204] py-16 sm:py-24 text-[#FDF8F2] relative overflow-hidden"
+        className="py-16 sm:py-24 text-[#2B1204] relative overflow-hidden"
       >
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-10 relative z-10">
+        {/* Image de fond (h3.jpg) */}
+        <div className="absolute inset-0 z-0 pointer-events-none">
+          <img
+            src="/img/h3.jpg"
+            alt=""
+            aria-hidden="true"
+            className="w-full h-full object-cover object-center"
+          />
+        </div>
+
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-10 relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             className="text-center mb-12 sm:mb-16"
           >
-            <h2 className="font-adapt text-2xl sm:text-4xl font-extrabold uppercase tracking-[0.14em] text-[#FDF8F2]">
+            <h2 className="font-adapt text-3xl sm:text-5xl font-extrabold text-[#2B1204] tracking-tight drop-shadow-[0_2px_12px_rgba(255,255,255,0.9)]">
               Signature de la maison
             </h2>
+            <p className="font-barcelony text-2xl sm:text-3xl text-[#C20A0A] max-w-2xl mx-auto mt-3 leading-relaxed drop-shadow-[0_2px_10px_rgba(255,255,255,0.95)]">
+              L’excellence artisanale de nos créations emblématiques, pensées pour éveiller vos sens.
+            </p>
           </motion.div>
 
-          {/* Grille des cartes produits : contour doré, Nom -> Prix -> Description -> Boutons pilules verts */}
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-7">
-            {signatureCreations.map((item, idx) => {
+          {/* Grille des 2 produits phares */}
+          <div className="grid grid-cols-2 gap-4 sm:gap-7 max-w-2xl mx-auto">
+            {signatureCreations.slice(0, 2).map((item, idx) => {
               const cartQty = getSignatureCartQuantity(item.id);
               return (
                 <motion.div
@@ -569,7 +582,7 @@ export function Home() {
             viewport={{ once: true }}
             className="text-center mb-12 sm:mb-16"
           >
-            <h2 className="text-3xl sm:text-5xl font-black text-[#2B1204] tracking-tight">
+            <h2 className="font-adapt text-3xl sm:text-5xl font-extrabold text-[#2B1204] tracking-tight">
               Promotions et Événements
             </h2>
             <p className="font-barcelony text-2xl sm:text-3xl text-[#C20A0A] max-w-2xl mx-auto mt-3 leading-relaxed">
@@ -577,8 +590,8 @@ export function Home() {
             </p>
           </motion.div>
 
-          {/* Grille des Promotions & Événements en 2 colonnes */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+          {/* Grille des Promotions & Événements en 2 colonnes (même design que la section précédente) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-7 max-w-3xl mx-auto">
             {promoEvents.map((item, idx) => (
               <motion.div
                 key={item.id}
@@ -586,30 +599,30 @@ export function Home() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: idx * 0.1 }}
-                className="bg-white rounded-2xl p-6 sm:p-7 border-2 border-[#F8BE40] shadow-md hover:shadow-xl transition-all duration-300 flex flex-col sm:flex-row gap-5 items-center"
+                className="bg-white text-[#2B1204] p-1 rounded-xl shadow-[0_4px_16px_rgba(43,18,4,0.08)] hover:shadow-[0_8px_24px_rgba(43,18,4,0.14)] transition-all duration-300 flex flex-col justify-between group hover:-translate-y-1"
               >
-                {/* Image miniature */}
-                <div className="w-full sm:w-40 h-40 rounded-xl overflow-hidden shrink-0 relative shadow-xs">
-                  <ImageWithFallback
-                    src={item.image}
-                    alt={item.title}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
+                <div>
+                  {/* Image */}
+                  <div className="relative aspect-[16/10] rounded-lg overflow-hidden bg-[#FDF8F2]">
+                    <ImageWithFallback
+                      src={item.image}
+                      alt={item.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                    />
+                  </div>
 
-                {/* Contenu */}
-                <div className="flex-1 flex flex-col justify-between w-full">
-                  <div>
+                  {/* Contenu */}
+                  <div className="px-3 pt-4 text-center">
                     <span
                       className={`inline-block px-3 py-1 rounded-md text-[10px] font-black border uppercase tracking-wider mb-2.5 ${item.badgeColor}`}
                     >
                       {item.badge}
                     </span>
-                    <h3 className="text-lg sm:text-xl font-black text-[#2B1204] mb-1 leading-snug">
+                    <h3 className="font-adapt text-sm sm:text-base font-extrabold text-[#2B1204] mb-1 leading-snug">
                       {item.title}
                     </h3>
                     <p className="text-xs font-bold text-[#C20A0A] mb-2">{item.subtitle}</p>
-                    <p className="text-xs text-[#2B1204]/75 font-normal leading-relaxed mb-4">
+                    <p className="font-fredoka text-[11px] sm:text-xs text-[#2B1204]/75 font-normal leading-relaxed mb-4">
                       {item.description}
                     </p>
 
@@ -634,11 +647,13 @@ export function Home() {
                       </div>
                     )}
                   </div>
+                </div>
 
-                  {/* Bouton */}
+                {/* Bouton rectangulaire à coins légèrement arrondis */}
+                <div className="p-2 pt-1">
                   <Link
                     to={item.actionLink}
-                    className="w-full sm:w-auto self-start px-6 py-2.5 rounded-full bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] border-2 border-[#F8BE40] text-xs font-extrabold shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full py-2 px-3 rounded-md bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] border border-[#F8BE40] text-xs font-extrabold shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <span>{item.actionText}</span>
                     <ChevronRight size={14} />

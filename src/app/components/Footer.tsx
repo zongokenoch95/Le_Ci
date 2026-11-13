@@ -4,26 +4,16 @@ import { Link } from 'react-router-dom';
 export function Footer() {
   return (
     <footer className="bg-[#2B1204] text-[#FDF8F2] mt-20 border-t-4 border-[#F8BE40] shadow-2xl">
-      {/* Liseré chromatique de la Charte Graphique Les Douceurs de Lê-Ci */}
-      <div className="h-1.5 w-full flex">
-        <div className="flex-1 bg-[#2B1204]" />
-        <div className="flex-1 bg-[#F8BE40]" />
-        <div className="flex-1 bg-[#C20A0A]" />
-        <div className="flex-1 bg-[#EE7362]" />
-        <div className="flex-1 bg-[#F6C58E]" />
-        <div className="flex-1 bg-[#5DBA68]" />
-      </div>
-
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
-        {/* Partie Contact & Commandes avec les 3 réseaux sociaux au même niveau et même aspect */}
+        {/* Partie Contact & Commandes alignée verticalement */}
         <div className="flex flex-col items-center text-center space-y-6">
           
           <h4 className="text-sm uppercase tracking-widest font-extrabold text-[#F8BE40]">
             Contact & Commandes
           </h4>
 
-          {/* Coordonnées de contact directes */}
-          <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-8 text-xs text-[#F6C58E]">
+          {/* Coordonnées de contact directes alignées verticalement */}
+          <div className="flex flex-col items-center justify-center gap-3.5 text-xs text-[#F6C58E]">
             <a
               href="tel:+22670000001"
               className="flex items-center gap-2 hover:text-[#F8BE40] transition font-medium"
