@@ -76,6 +76,32 @@ const signatureCreations = [
     description:
       'Coffret généreux réunissant nos meilleures douceurs artisanales dans un écrin chaleureux.',
     isCake: false
+  },
+  {
+    id: 14,
+    name: 'Orsia — Gâteau Riz Local & Teedo',
+    category: 'Gâteaux',
+    tag: 'Saveur Locale',
+    tagBg: 'bg-[#F8BE40] text-[#2B1204]',
+    price: '10 500 FCFA',
+    numericPrice: 10500,
+    image: '/products/gateau_8.jpeg',
+    description:
+      'Alliance délicate du riz local et de la poudre de pain de singe (teedo) pour un moelleux incomparable.',
+    isCake: true
+  },
+  {
+    id: 5,
+    name: 'Assortiment Choux & Tartelettes Fines',
+    category: 'Douceurs sucrées',
+    tag: 'Pâtisserie Fine',
+    tagBg: 'bg-[#EE7362] text-white',
+    price: '6 000 FCFA',
+    numericPrice: 6000,
+    image: '/products/sucree_3.jpeg',
+    description:
+      'Choux craquelins garnis de crème légère et tartelettes dorées aux fruits frais.',
+    isCake: false
   }
 ];
 
@@ -457,8 +483,8 @@ export function Home() {
           </p>
         </motion.div>
 
-        {/* Grille des 4 Catégories (constituées uniquement d'une image et d'un titre) */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8">
+        {/* Grille des 4 Catégories (présentation encadrée blanc : Image + Titre) */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-7">
           {productCategories.map((cat, idx) => {
             const targetUrl =
               cat.id === 'gateaux'
@@ -475,10 +501,10 @@ export function Home() {
               >
                 <Link
                   to={targetUrl}
-                  className="group relative bg-white rounded-none overflow-hidden border border-[#F6C58E] shadow-md hover:shadow-2xl hover:border-[#2B1204] transition-all duration-300 flex flex-col justify-between h-full cursor-pointer block transform hover:-translate-y-1.5"
+                  className="group relative bg-white p-3 sm:p-5 rounded-none overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 flex flex-col justify-between h-full cursor-pointer block transform hover:-translate-y-1.5"
                 >
-                  {/* Photo représentative de la catégorie */}
-                  <div className="relative aspect-[4/3] overflow-hidden bg-[#FDF6EC]">
+                  {/* Photo encadrée de blanc */}
+                  <div className="relative aspect-[4/5] overflow-hidden bg-[#FDF6EC]">
                     <ImageWithFallback
                       src={cat.image}
                       alt={cat.title}
@@ -486,9 +512,9 @@ export function Home() {
                     />
                   </div>
 
-                  {/* Titre uniquement */}
-                  <div className="p-4 sm:p-6 text-center">
-                    <h3 className="text-sm sm:text-lg font-extrabold text-[#2B1204] group-hover:text-[#C20A0A] transition">
+                  {/* Titre centré en majuscules élégantes */}
+                  <div className="pt-4 pb-1 text-center">
+                    <h3 className="text-xs sm:text-sm font-semibold uppercase tracking-[0.14em] text-[#2B1204] group-hover:text-[#C20A0A] transition">
                       {cat.title}
                     </h3>
                   </div>
@@ -500,17 +526,13 @@ export function Home() {
       </section>
 
       {/* ========================================================================= */}
-      {/* 2.BIS SECTION SIGNATURE DE LA MAISON — PRODUITS AFFICHÉS EN 2 COLONNES     */}
-      {/* Fond Brun Cacao #2B1204 & Accents Jaune Doré #F8BE40 (Charte Page 5)       */}
+      {/* 2.BIS SECTION SIGNATURE DE LA MAISON — PRÉSENTATION DE CARTE ÉDITORIALE    */}
+      {/* Fond Brun Cacao #2B1204 & Cartes blanches encadrées (Modèle de référence)  */}
       {/* ========================================================================= */}
       <section
         id="signature-maison"
-        className="bg-[#2B1204] py-16 sm:py-24 text-[#FDF8F2] relative overflow-hidden border-y-4 border-[#F8BE40]"
+        className="bg-[#2B1204] py-16 sm:py-24 text-[#FDF8F2] relative overflow-hidden"
       >
-        {/* Lueurs d'ambiance Jaune doré & Vert moringa */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-[#F8BE40]/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-[#5DBA68]/10 rounded-full blur-3xl pointer-events-none" />
-
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-10 relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -518,21 +540,23 @@ export function Home() {
             viewport={{ once: true }}
             className="text-center mb-12 sm:mb-16"
           >
-            <span className="inline-block px-3.5 py-1 rounded-full bg-[#F8BE40] text-[#2B1204] text-xs font-black uppercase tracking-wider mb-3">
-              Fierté locale & Gourmandise
-            </span>
-            <h2 className="text-3xl sm:text-5xl font-black text-[#F8BE40] tracking-tight">
+            <h2
+              className="text-2xl sm:text-4xl font-light uppercase tracking-[0.22em] text-[#FDF8F2]"
+              style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
+            >
               Signature de la maison
             </h2>
-            <p className="font-barcelony text-2xl sm:text-3xl text-[#F6C58E] max-w-2xl mx-auto mt-3 leading-relaxed">
-              Découvrez les créations emblématiques de la pâtisserie Lê-Ci
-            </p>
           </motion.div>
 
-          {/* Grille des produits phares en 2 COLONNES (grid-cols-2) - Modèle de carte de référence */}
-          <div className="grid grid-cols-2 gap-3.5 sm:gap-7">
+          {/* Grille des cartes produits selon le modèle de présentation demandé */}
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-7">
             {signatureCreations.map((item, idx) => {
               const cartQty = getSignatureCartQuantity(item.id);
+              const formatLabel = item.isCake
+                ? '6 parts'
+                : item.category === 'Paquets'
+                  ? 'Coffret'
+                  : '44 pièces';
               return (
                 <motion.div
                   key={item.id}
@@ -540,95 +564,91 @@ export function Home() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.45, delay: idx * 0.08 }}
-                  className="bg-white text-[#2B1204] rounded-3xl overflow-hidden border border-[#F6C58E]/50 hover:border-[#F8BE40] shadow-md hover:shadow-xl transition-all duration-300 flex flex-col justify-between group"
+                  className="bg-white text-[#2B1204] p-3 sm:p-6 rounded-none shadow-2xl transition-all duration-300 flex flex-col justify-between group hover:-translate-y-1"
                 >
                   <div>
-                    {/* Photo carrée en haut */}
-                    <div className="relative aspect-square overflow-hidden bg-[#FDF8F2]">
+                    {/* 1. Photo encadrée de blanc (format portrait comme sur l'image) */}
+                    <div className="relative aspect-[4/5] overflow-hidden bg-[#FDF8F2]">
                       <ImageWithFallback
                         src={item.image}
                         alt={item.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                       />
                     </div>
 
-                    {/* Titre -> Prix -> Description (conforme au modèle de carte) */}
-                    <div className="p-3.5 sm:p-5 pb-2 sm:pb-3">
-                      <h3 className="text-sm sm:text-lg font-black text-[#2B1204] leading-snug line-clamp-2">
-                        {item.name}
-                      </h3>
-                      <div className="text-[#C20A0A] text-sm sm:text-lg font-black mt-1">
+                    {/* 2. Titre centré en majuscules espacées */}
+                    <h3
+                      className="text-center text-xs sm:text-base font-medium uppercase tracking-[0.12em] text-[#2B1204] mt-4 sm:mt-6 mb-3 line-clamp-2 min-h-[2.2rem] sm:min-h-[2.6rem] flex items-center justify-center"
+                      style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
+                    >
+                      {item.name}
+                    </h3>
+
+                    {/* 3. Ligne Format | Prix séparée par un trait vertical */}
+                    <div className="flex items-center justify-center gap-2.5 sm:gap-4 text-[11px] sm:text-xs text-[#2B1204]/75 mb-4 sm:mb-6">
+                      <span>{formatLabel}</span>
+                      <span className="h-4 w-px bg-[#2B1204]/30" />
+                      <span className="font-semibold text-[#2B1204]">
                         {item.numericPrice.toLocaleString('fr-FR')} F
-                      </div>
-                      <p className="text-xs sm:text-sm text-[#2B1204]/65 font-normal leading-relaxed line-clamp-2 mt-1.5">
-                        {item.description}
-                      </p>
+                      </span>
                     </div>
                   </div>
 
-                  {/* Zone d'actions en bas : Sélecteur [- 2 +] / Ajouter + Bouton Commander direct vers Panier */}
-                  <div className="p-3.5 sm:p-5 pt-2 flex flex-col gap-2">
-                    {item.isCake ? (
-                      <>
-                        <Link
-                          to="/sur-commande"
-                          className="w-full py-2.5 sm:py-3 px-4 rounded-full font-black text-xs sm:text-sm bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center"
-                        >
-                          <Cake size={15} />
-                          <span>Personnaliser</span>
-                        </Link>
+                  {/* 4. Zone d'action éditoriale : "Commander ────•◯" (et sélecteur -/+ si déjà ajouté) */}
+                  <div className="pt-1 flex flex-col gap-2.5">
+                    {!item.isCake && cartQty > 0 && (
+                      <div className="w-full py-1 px-2 rounded-full bg-[#FDF8F2] border border-[#2B1204]/20 flex items-center justify-between">
                         <button
                           type="button"
-                          onClick={() => handleAddSignatureToCart(item, true)}
-                          className="w-full py-2.5 sm:py-3 px-4 rounded-full font-black text-xs sm:text-sm bg-[#2B1204] hover:bg-[#431E09] text-[#F8BE40] shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                          onClick={() => updateQuantity(`prod-${item.id}`, -1)}
+                          className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white text-[#2B1204] flex items-center justify-center border border-[#2B1204]/20 hover:bg-[#2B1204] hover:text-white transition cursor-pointer"
+                          aria-label="Diminuer la quantité"
                         >
-                          <ShoppingBag size={14} />
-                          <span>Commander</span>
+                          <Minus size={12} strokeWidth={2.5} />
                         </button>
-                      </>
-                    ) : (
-                      <>
-                        {cartQty > 0 ? (
-                          <div className="w-full py-1.5 px-2 rounded-full bg-[#FDECE8] border border-[#EE7362]/30 flex items-center justify-between">
-                            <button
-                              type="button"
-                              onClick={() => updateQuantity(`prod-${item.id}`, -1)}
-                              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white text-[#2B1204] font-black flex items-center justify-center shadow-xs hover:bg-[#2B1204] hover:text-white transition cursor-pointer"
-                              aria-label="Diminuer la quantité"
-                            >
-                              <Minus size={15} strokeWidth={3} />
-                            </button>
-                            <span className="text-sm sm:text-base font-black text-[#2B1204]">
-                              {cartQty}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => updateQuantity(`prod-${item.id}`, 1)}
-                              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white text-[#2B1204] font-black flex items-center justify-center shadow-xs hover:bg-[#2B1204] hover:text-white transition cursor-pointer"
-                              aria-label="Augmenter la quantité"
-                            >
-                              <Plus size={15} strokeWidth={3} />
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => handleAddSignatureToCart(item, false)}
-                            className="w-full py-2.5 sm:py-3 px-4 rounded-full font-black text-xs sm:text-sm bg-[#C20A0A] hover:bg-[#a10808] text-white shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                          >
-                            <span>Ajouter</span>
-                          </button>
-                        )}
+                        <span className="text-xs sm:text-sm font-bold text-[#2B1204]">
+                          {cartQty}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => updateQuantity(`prod-${item.id}`, 1)}
+                          className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white text-[#2B1204] flex items-center justify-center border border-[#2B1204]/20 hover:bg-[#2B1204] hover:text-white transition cursor-pointer"
+                          aria-label="Augmenter la quantité"
+                        >
+                          <Plus size={12} strokeWidth={2.5} />
+                        </button>
+                      </div>
+                    )}
 
-                        <button
-                          type="button"
-                          onClick={() => handleAddSignatureToCart(item, true)}
-                          className="w-full py-2.5 sm:py-3 px-4 rounded-full font-black text-xs sm:text-sm bg-[#2B1204] hover:bg-[#431E09] text-[#F8BE40] shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                        >
-                          <ShoppingBag size={14} />
-                          <span>Commander</span>
-                        </button>
-                      </>
+                    {item.isCake ? (
+                      <Link
+                        to="/sur-commande"
+                        className="w-full flex items-center justify-center gap-2 sm:gap-3 py-1 text-[#2B1204] hover:text-[#C20A0A] transition group/btn cursor-pointer"
+                      >
+                        <span className="text-[11px] sm:text-xs font-medium tracking-wide">
+                          Choisir ce gâteau
+                        </span>
+                        <div className="relative flex items-center">
+                          <span className="w-6 sm:w-10 h-px bg-[#2B1204] group-hover/btn:bg-[#C20A0A] transition-all" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#2B1204] group-hover/btn:bg-[#C20A0A] -ml-0.5 z-10 transition-all" />
+                          <span className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-[#2B1204]/50 group-hover/btn:border-[#C20A0A] -ml-4 sm:-ml-5 transition-all" />
+                        </div>
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleAddSignatureToCart(item, true)}
+                        className="w-full flex items-center justify-center gap-2 sm:gap-3 py-1 text-[#2B1204] hover:text-[#C20A0A] transition group/btn cursor-pointer"
+                      >
+                        <span className="text-[11px] sm:text-xs font-medium tracking-wide">
+                          Commander
+                        </span>
+                        <div className="relative flex items-center">
+                          <span className="w-6 sm:w-10 h-px bg-[#2B1204] group-hover/btn:bg-[#C20A0A] transition-all" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#2B1204] group-hover/btn:bg-[#C20A0A] -ml-0.5 z-10 transition-all" />
+                          <span className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-[#2B1204]/50 group-hover/btn:border-[#C20A0A] -ml-4 sm:-ml-5 transition-all" />
+                        </div>
+                      </button>
                     )}
                   </div>
                 </motion.div>
@@ -636,15 +656,18 @@ export function Home() {
             })}
           </div>
 
-          {/* Lien vers la catégorie Signature du catalogue */}
-          <div className="mt-12 text-center">
+          {/* Bouton "Découvrir plus ────•◯" en bas de la section, identique au bas de l'image */}
+          <div className="mt-14 text-center flex justify-center">
             <Link
-              to="/catalogue?category=Signature"
-              className="inline-flex items-center gap-2 px-8 py-3.5 rounded-lg bg-[#F8BE40] hover:bg-[#f5b120] text-[#2B1204] font-extrabold text-xs shadow-lg transition cursor-pointer hover:scale-105"
+              to="/catalogue"
+              className="inline-flex items-center gap-3 text-[#FDF8F2]/90 hover:text-[#F8BE40] transition group/more cursor-pointer"
             >
-              <Crown size={15} className="text-[#2B1204]" />
-              <span>Découvrir plus</span>
-              <ArrowRight size={14} />
+              <span className="text-xs sm:text-sm tracking-widest uppercase">Découvrir plus</span>
+              <div className="relative flex items-center">
+                <span className="w-8 sm:w-12 h-px bg-[#FDF8F2]/80 group-hover/more:bg-[#F8BE40] transition-all" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[#FDF8F2] group-hover/more:bg-[#F8BE40] -ml-0.5 z-10 transition-all" />
+                <span className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border border-[#FDF8F2]/50 group-hover/more:border-[#F8BE40] -ml-5 sm:-ml-6 transition-all" />
+              </div>
             </Link>
           </div>
         </div>

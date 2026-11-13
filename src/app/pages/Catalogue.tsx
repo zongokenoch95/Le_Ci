@@ -430,7 +430,7 @@ export function Catalogue() {
             <span className="text-sm font-medium">Chargement de nos douceurs artisanales...</span>
           </div>
         ) : (
-          <motion.div layout className="grid grid-cols-2 gap-3.5 sm:gap-6">
+          <motion.div layout className="grid grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-7">
             <AnimatePresence>
               {filteredProducts.map((product) => {
                 const isPaquetProduct = Boolean(product.category && /paquet/i.test(product.category));
@@ -445,6 +445,9 @@ export function Catalogue() {
                   : product.numericPrice;
                 const displayPrice =
                   cartQty > 1 ? unitComputedPrice * cartQty : unitComputedPrice;
+                const formatInfo = isPaquetProduct
+                  ? `${currentPcs} pcs`
+                  : product.category || 'Artisanal';
 
                 return (
                   <motion.div
@@ -453,109 +456,110 @@ export function Catalogue() {
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
                     key={product.id}
-                    className="bg-white rounded-3xl overflow-hidden shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between group"
+                    className="bg-white text-[#2B1204] p-3 sm:p-6 rounded-none border border-[#F6C58E]/50 shadow-md hover:shadow-2xl transition-all duration-300 flex flex-col justify-between group hover:-translate-y-1"
                   >
                     <div>
-                      {/* 1. Image du produit en haut */}
-                      <div className="relative aspect-square overflow-hidden bg-[#FDF6EC]">
+                      {/* 1. Image du produit encadrée de blanc (format portrait comme sur le modèle) */}
+                      <div className="relative aspect-[4/5] overflow-hidden bg-[#FDF6EC]">
                         <ImageWithFallback
                           src={product.image}
                           alt={product.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                         />
                       </div>
 
-                      {/* 2. Titre -> Prix -> Description */}
-                      <div className="p-3.5 sm:p-5 pb-2">
-                        <h3 className="font-fredoka font-bold text-[#2B1204] text-base sm:text-xl leading-snug mb-1 line-clamp-2">
-                          {product.name}
-                        </h3>
+                      {/* 2. Titre centré en majuscules espacées */}
+                      <h3
+                        className="text-center text-xs sm:text-base font-medium uppercase tracking-[0.12em] text-[#2B1204] mt-4 sm:mt-6 mb-2.5 line-clamp-2 min-h-[2.2rem] sm:min-h-[2.6rem] flex items-center justify-center"
+                        style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
+                      >
+                        {product.name}
+                      </h3>
 
-                        <div className="text-sm sm:text-lg font-extrabold text-[#C20A0A] mb-1.5">
+                      {/* 3. Ligne Format / Catégorie | Prix séparée par un trait vertical */}
+                      <div className="flex items-center justify-center gap-2.5 sm:gap-4 text-[11px] sm:text-xs text-[#2B1204]/75 mb-3">
+                        <span className="truncate max-w-[110px]">{formatInfo}</span>
+                        <span className="h-4 w-px bg-[#2B1204]/30 shrink-0" />
+                        <span className="font-semibold text-[#2B1204] shrink-0">
                           {displayPrice.toLocaleString('fr-FR')} F
-                          {isPaquetProduct && (
-                            <span className="text-[11px] font-medium text-[#2B1204]/60 ml-1">
-                              ({currentPcs} pcs)
-                            </span>
-                          )}
-                        </div>
-
-                        <p className="text-xs sm:text-sm text-[#2B1204]/65 font-normal mb-2.5 line-clamp-2 leading-snug">
-                          {product.description || 'Création artisanale raffinée préparée à la commande.'}
-                        </p>
-
-                        {/* Configurateur de pièces si catégorie Paquets */}
-                        {isPaquetProduct && (
-                          <div className="mt-2 pt-2 border-t border-[#F6C58E]/40 flex items-center justify-between gap-1 text-[11px]">
-                            <span className="font-semibold text-[#2B1204]/75">
-                              Pièces (min. {minPcs}) :
-                            </span>
-                            <div className="flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setSelectedPaquetPieces((prev) => ({
-                                    ...prev,
-                                    [product.id]: Math.max(minPcs, currentPcs - 1)
-                                  }))
-                                }
-                                disabled={currentPcs <= minPcs}
-                                className="w-6 h-6 rounded-full border border-[#F6C58E] bg-[#FDF6EC] text-[#2B1204] flex items-center justify-center disabled:opacity-40 cursor-pointer"
-                              >
-                                <Minus size={11} />
-                              </button>
-                              <span className="w-8 text-center text-xs font-extrabold text-[#2B1204]">
-                                {currentPcs}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setSelectedPaquetPieces((prev) => ({
-                                    ...prev,
-                                    [product.id]: currentPcs + 1
-                                  }))
-                                }
-                                className="w-6 h-6 rounded-full border border-[#F6C58E] bg-[#FDF6EC] text-[#2B1204] flex items-center justify-center cursor-pointer"
-                              >
-                                <Plus size={11} />
-                              </button>
-                            </div>
-                          </div>
-                        )}
+                        </span>
                       </div>
+
+                      <p className="text-[11px] sm:text-xs text-center text-[#2B1204]/60 font-normal mb-3 line-clamp-2 leading-relaxed">
+                        {product.description || 'Création artisanale raffinée préparée à la commande.'}
+                      </p>
+
+                      {/* Configurateur de pièces si catégorie Paquets */}
+                      {isPaquetProduct && (
+                        <div className="mb-3 pt-2 border-t border-[#F6C58E]/40 flex items-center justify-between gap-1 text-[11px]">
+                          <span className="font-semibold text-[#2B1204]/75">
+                            Pièces (min. {minPcs}) :
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setSelectedPaquetPieces((prev) => ({
+                                  ...prev,
+                                  [product.id]: Math.max(minPcs, currentPcs - 1)
+                                }))
+                              }
+                              disabled={currentPcs <= minPcs}
+                              className="w-6 h-6 rounded-full border border-[#F6C58E] bg-[#FDF6EC] text-[#2B1204] flex items-center justify-center disabled:opacity-40 cursor-pointer"
+                            >
+                              <Minus size={11} />
+                            </button>
+                            <span className="w-8 text-center text-xs font-extrabold text-[#2B1204]">
+                              {currentPcs}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setSelectedPaquetPieces((prev) => ({
+                                  ...prev,
+                                  [product.id]: currentPcs + 1
+                                }))
+                              }
+                              className="w-6 h-6 rounded-full border border-[#F6C58E] bg-[#FDF6EC] text-[#2B1204] flex items-center justify-center cursor-pointer"
+                            >
+                              <Plus size={11} />
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
-                    {/* 3. Zone d'action en bas : Bouton Ajouter / Sélecteur [ -  2  + ] + Bouton Commander direct vers Panier */}
-                    <div className="p-3.5 sm:p-5 pt-2 space-y-2">
+                    {/* 4. Zone d'action en bas : Sélecteur [- 2 +] / Ajouter + Bouton éditorial "Commander ────•◯" */}
+                    <div className="pt-2 space-y-2.5">
                       {cartQty > 0 ? (
                         <div className="w-full rounded-full bg-[#FDECE8] p-1 flex items-center justify-between shadow-2xs">
                           <button
                             type="button"
                             onClick={() => updateQuantity(cartItemId, -1)}
-                            className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white text-[#2B1204] hover:bg-[#2B1204] hover:text-white font-black flex items-center justify-center shadow-xs transition cursor-pointer"
+                            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white text-[#2B1204] hover:bg-[#2B1204] hover:text-white font-black flex items-center justify-center shadow-xs transition cursor-pointer"
                             title="Diminuer la quantité"
                           >
-                            <Minus size={15} strokeWidth={3} />
+                            <Minus size={13} strokeWidth={3} />
                           </button>
-                          <span className="text-sm sm:text-base font-black text-[#2B1204]">
+                          <span className="text-xs sm:text-sm font-black text-[#2B1204]">
                             {cartQty}
                           </span>
                           <button
                             type="button"
                             onClick={() => updateQuantity(cartItemId, 1)}
-                            className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white text-[#2B1204] hover:bg-[#2B1204] hover:text-white font-black flex items-center justify-center shadow-xs transition cursor-pointer"
+                            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white text-[#2B1204] hover:bg-[#2B1204] hover:text-white font-black flex items-center justify-center shadow-xs transition cursor-pointer"
                             title="Augmenter la quantité"
                           >
-                            <Plus size={15} strokeWidth={3} />
+                            <Plus size={13} strokeWidth={3} />
                           </button>
                         </div>
                       ) : (
                         <button
                           type="button"
                           onClick={() => handleAddToCart(product, false)}
-                          className="w-full py-2.5 sm:py-3 px-4 rounded-full bg-[#C20A0A] hover:bg-[#a50808] text-white font-extrabold text-xs sm:text-sm shadow-sm transition-all cursor-pointer text-center active:scale-95"
+                          className="w-full py-1.5 px-3 rounded-full border border-[#2B1204]/20 hover:border-[#2B1204] text-[#2B1204] text-[11px] sm:text-xs font-semibold transition cursor-pointer"
                         >
-                          Ajouter
+                          + Ajouter au panier
                         </button>
                       )}
 
@@ -568,10 +572,16 @@ export function Catalogue() {
                             handleAddToCart(product, true);
                           }
                         }}
-                        className="w-full py-2 sm:py-2.5 px-4 rounded-full bg-[#2B1204] hover:bg-[#F8BE40] text-[#F8BE40] hover:text-[#2B1204] font-extrabold text-xs sm:text-sm shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                        className="w-full flex items-center justify-center gap-2 sm:gap-3 py-1 text-[#2B1204] hover:text-[#C20A0A] transition group/btn cursor-pointer"
                       >
-                        <span>Commander</span>
-                        <ArrowRight size={14} />
+                        <span className="text-[11px] sm:text-xs font-medium tracking-wide">
+                          Commander
+                        </span>
+                        <div className="relative flex items-center">
+                          <span className="w-6 sm:w-10 h-px bg-[#2B1204] group-hover/btn:bg-[#C20A0A] transition-all" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#2B1204] group-hover/btn:bg-[#C20A0A] -ml-0.5 z-10 transition-all" />
+                          <span className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-[#2B1204]/50 group-hover/btn:border-[#C20A0A] -ml-4 sm:-ml-5 transition-all" />
+                        </div>
                       </button>
                     </div>
                   </motion.div>
