@@ -374,14 +374,14 @@ export function Home() {
       {/* 1. HERO SECTION (Ancienne configuration avec Charte Graphique)            */}
       {/* ========================================================================= */}
       <section className="relative min-h-[92vh] sm:min-h-screen pt-32 sm:pt-40 pb-20 flex items-center justify-center overflow-hidden">
-        {/* Photo de couverture */}
+        {/* Photo de couverture (baniere1) */}
         <div className="absolute inset-0 z-0">
           <img
-            src="/tarte-cover.png"
+            src="/img/baniere1.jpg"
             alt="Création signature Les Douceurs de Lê Ci"
             className="w-full h-full object-cover object-center scale-105 transform animate-fade-in"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#2B1204]/85 via-[#2B1204]/60 to-[#2B1204]/90" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#2B1204]/75 via-[#2B1204]/50 to-[#2B1204]/85" />
         </div>
 
         <motion.div
