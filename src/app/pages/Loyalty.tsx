@@ -320,7 +320,7 @@ export function Loyalty() {
               <button
                 type="submit"
                 disabled={authLoading}
-                className="w-full py-3.5 px-4 rounded-full bg-[#5DBA68] hover:bg-[#4CA857] text-white font-black text-xs shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-3.5 px-4 rounded-full bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] border-2 border-[#F8BE40] font-black text-xs shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
               >
                 {authLoading ? (
                   <span>Vérification...</span>
@@ -356,7 +356,7 @@ export function Loyalty() {
               <div className="flex items-center gap-3 w-full sm:w-auto">
                 <button
                   onClick={() => navigate('/panier')}
-                  className="flex-1 sm:flex-none px-5 py-2.5 bg-[#5DBA68] hover:bg-[#4CA857] text-white font-bold text-xs rounded-full shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="flex-1 sm:flex-none px-5 py-2.5 bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] border-2 border-[#F8BE40] font-bold text-xs rounded-full shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <ShoppingBag size={15} />
                   <span>Mon Panier</span>

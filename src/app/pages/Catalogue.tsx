@@ -523,35 +523,35 @@ export function Catalogue() {
                       )}
                     </div>
 
-                    {/* 5. Boutons pilules : Ajouter / compteur simple + Commander (vert moringa) */}
-                    <div className="pt-2 space-y-2">
+                    {/* 5. Boutons pilules compacts : Ajouter / compteur simple + Commander (doré + bordure dorée) */}
+                    <div className="pt-2 space-y-1.5">
                       {cartQty > 0 ? (
-                        <div className="w-full py-1 px-3 rounded-full border border-[#F8BE40] bg-[#FDF8F2] flex items-center justify-between">
+                        <div className="w-full py-0.5 px-2.5 rounded-full border border-[#F8BE40] bg-[#FDF8F2] flex items-center justify-between">
                           <button
                             type="button"
                             onClick={() => updateQuantity(cartItemId, -1)}
-                            className="w-7 h-7 rounded-full flex items-center justify-center text-[#2B1204] hover:text-[#5DBA68] font-bold transition cursor-pointer"
+                            className="w-6 h-6 rounded-full flex items-center justify-center text-[#2B1204] hover:text-[#C20A0A] font-bold transition cursor-pointer"
                             title="Diminuer la quantité"
                           >
-                            <Minus size={14} strokeWidth={2.5} />
+                            <Minus size={12} strokeWidth={2.5} />
                           </button>
-                          <span className="font-adapt text-sm font-black text-[#2B1204]">
+                          <span className="font-adapt text-xs sm:text-sm font-black text-[#2B1204]">
                             {cartQty}
                           </span>
                           <button
                             type="button"
                             onClick={() => updateQuantity(cartItemId, 1)}
-                            className="w-7 h-7 rounded-full flex items-center justify-center text-[#2B1204] hover:text-[#5DBA68] font-bold transition cursor-pointer"
+                            className="w-6 h-6 rounded-full flex items-center justify-center text-[#2B1204] hover:text-[#C20A0A] font-bold transition cursor-pointer"
                             title="Augmenter la quantité"
                           >
-                            <Plus size={14} strokeWidth={2.5} />
+                            <Plus size={12} strokeWidth={2.5} />
                           </button>
                         </div>
                       ) : (
                         <button
                           type="button"
                           onClick={() => handleAddToCart(product, false)}
-                          className="w-full py-2.5 sm:py-3 px-4 rounded-full border-2 border-[#5DBA68] text-[#2B1204] hover:bg-[#5DBA68]/10 font-bold text-xs sm:text-sm transition-all cursor-pointer text-center active:scale-95"
+                          className="w-full py-1.5 sm:py-2 px-3 rounded-full border border-[#F8BE40] text-[#2B1204] hover:bg-[#F8BE40]/15 font-bold text-[11px] sm:text-xs transition-all cursor-pointer text-center active:scale-95"
                         >
                           Ajouter
                         </button>
@@ -566,10 +566,10 @@ export function Catalogue() {
                             handleAddToCart(product, true);
                           }
                         }}
-                        className="w-full py-2.5 sm:py-3 px-4 rounded-full bg-[#5DBA68] hover:bg-[#4CA857] text-white font-extrabold text-xs sm:text-sm shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                        className="w-full py-1.5 sm:py-2 px-3 rounded-full bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] border border-[#F8BE40] font-extrabold text-[11px] sm:text-xs shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
                       >
                         <span>Commander</span>
-                        <ArrowRight size={14} />
+                        <ArrowRight size={13} />
                       </button>
                     </div>
                   </motion.div>
@@ -584,7 +584,7 @@ export function Catalogue() {
             <p className="text-[#2B1204]/70 font-medium mb-4">Aucune douceur ne correspond à votre recherche.</p>
             <button
               onClick={() => setSelectedCategory('Tous')}
-              className="px-7 py-3 bg-[#5DBA68] hover:bg-[#4CA857] text-white rounded-full text-xs font-extrabold transition cursor-pointer shadow-md"
+              className="px-7 py-3 bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] border-2 border-[#F8BE40] rounded-full text-xs font-extrabold transition cursor-pointer shadow-md"
             >
               Réinitialiser les filtres
             </button>

@@ -593,49 +593,49 @@ export function Home() {
                       <>
                         <Link
                           to="/sur-commande"
-                          className="w-full py-2.5 sm:py-3 px-4 rounded-full font-bold text-xs sm:text-sm border-2 border-[#5DBA68] text-[#2B1204] hover:bg-[#5DBA68]/10 transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center"
+                          className="w-full py-1.5 sm:py-2 px-3 rounded-full font-bold text-[11px] sm:text-xs border border-[#F8BE40] text-[#2B1204] hover:bg-[#F8BE40]/15 transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center"
                         >
-                          <Cake size={15} />
+                          <Cake size={13} />
                           <span>Personnaliser</span>
                         </Link>
                         <button
                           type="button"
                           onClick={() => handleAddSignatureToCart(item, true)}
-                          className="w-full py-2.5 sm:py-3 px-4 rounded-full font-extrabold text-xs sm:text-sm bg-[#5DBA68] hover:bg-[#4CA857] text-white shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                          className="w-full py-1.5 sm:py-2 px-3 rounded-full font-extrabold text-[11px] sm:text-xs bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] border border-[#F8BE40] shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                         >
-                          <ShoppingBag size={14} />
+                          <ShoppingBag size={13} />
                           <span>Commander</span>
                         </button>
                       </>
                     ) : (
                       <>
                         {cartQty > 0 ? (
-                          <div className="w-full py-1 px-3 rounded-full border border-[#F8BE40] bg-[#FDF8F2] flex items-center justify-between">
+                          <div className="w-full py-0.5 px-2.5 rounded-full border border-[#F8BE40] bg-[#FDF8F2] flex items-center justify-between">
                             <button
                               type="button"
                               onClick={() => updateQuantity(`prod-${item.id}`, -1)}
-                              className="w-7 h-7 rounded-full flex items-center justify-center text-[#2B1204] hover:text-[#5DBA68] font-bold transition cursor-pointer"
+                              className="w-6 h-6 rounded-full flex items-center justify-center text-[#2B1204] hover:text-[#C20A0A] font-bold transition cursor-pointer"
                               aria-label="Diminuer la quantité"
                             >
-                              <Minus size={14} strokeWidth={2.5} />
+                              <Minus size={12} strokeWidth={2.5} />
                             </button>
-                            <span className="font-adapt text-sm font-black text-[#2B1204]">
+                            <span className="font-adapt text-xs sm:text-sm font-black text-[#2B1204]">
                               {cartQty}
                             </span>
                             <button
                               type="button"
                               onClick={() => updateQuantity(`prod-${item.id}`, 1)}
-                              className="w-7 h-7 rounded-full flex items-center justify-center text-[#2B1204] hover:text-[#5DBA68] font-bold transition cursor-pointer"
+                              className="w-6 h-6 rounded-full flex items-center justify-center text-[#2B1204] hover:text-[#C20A0A] font-bold transition cursor-pointer"
                               aria-label="Augmenter la quantité"
                             >
-                              <Plus size={14} strokeWidth={2.5} />
+                              <Plus size={12} strokeWidth={2.5} />
                             </button>
                           </div>
                         ) : (
                           <button
                             type="button"
                             onClick={() => handleAddSignatureToCart(item, false)}
-                            className="w-full py-2.5 sm:py-3 px-4 rounded-full font-bold text-xs sm:text-sm border-2 border-[#5DBA68] text-[#2B1204] hover:bg-[#5DBA68]/10 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                            className="w-full py-1.5 sm:py-2 px-3 rounded-full font-bold text-[11px] sm:text-xs border border-[#F8BE40] text-[#2B1204] hover:bg-[#F8BE40]/15 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                           >
                             <span>Ajouter</span>
                           </button>
@@ -644,9 +644,9 @@ export function Home() {
                         <button
                           type="button"
                           onClick={() => handleAddSignatureToCart(item, true)}
-                          className="w-full py-2.5 sm:py-3 px-4 rounded-full font-extrabold text-xs sm:text-sm bg-[#5DBA68] hover:bg-[#4CA857] text-white shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                          className="w-full py-1.5 sm:py-2 px-3 rounded-full font-extrabold text-[11px] sm:text-xs bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] border border-[#F8BE40] shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                         >
-                          <ShoppingBag size={14} />
+                          <ShoppingBag size={13} />
                           <span>Commander</span>
                         </button>
                       </>
@@ -661,9 +661,9 @@ export function Home() {
           <div className="mt-12 text-center">
             <Link
               to="/catalogue?category=Signature"
-              className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-[#5DBA68] hover:bg-[#4CA857] text-white font-extrabold text-xs shadow-lg transition cursor-pointer hover:scale-105"
+              className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] border-2 border-[#F8BE40] font-extrabold text-xs shadow-lg transition cursor-pointer hover:scale-105"
             >
-              <Crown size={15} className="text-white" />
+              <Crown size={15} className="text-[#2B1204]" />
               <span>Découvrir plus</span>
               <ArrowRight size={14} />
             </Link>
@@ -754,7 +754,7 @@ export function Home() {
                   {/* Bouton */}
                   <Link
                     to={item.actionLink}
-                    className="w-full sm:w-auto self-start px-6 py-2.5 rounded-full bg-[#5DBA68] hover:bg-[#4CA857] text-white text-xs font-extrabold shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full sm:w-auto self-start px-6 py-2.5 rounded-full bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] border-2 border-[#F8BE40] text-xs font-extrabold shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <span>{item.actionText}</span>
                     <ChevronRight size={14} />

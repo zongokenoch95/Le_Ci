@@ -67,3 +67,4 @@ export const PageLoader: React.FC<PageLoaderProps> = ({ onComplete }) => {
     </div>
   );
 };
+

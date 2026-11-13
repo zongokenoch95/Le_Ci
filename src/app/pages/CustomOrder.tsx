@@ -1586,7 +1586,7 @@ export function CustomOrder() {
                   type="button"
                   onClick={handleAddToCartAndProceed}
                   disabled={isSubmitting}
-                  className="w-full md:w-auto px-8 py-4 rounded-full bg-[#5DBA68] hover:bg-[#4CA857] text-white font-black text-sm shadow-xl transition cursor-pointer flex items-center justify-center gap-3 transform hover:scale-[1.01] active:scale-95 shrink-0 disabled:opacity-50"
+                  className="w-full md:w-auto px-8 py-4 rounded-full bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] border-2 border-[#F8BE40] font-black text-sm shadow-xl transition cursor-pointer flex items-center justify-center gap-3 transform hover:scale-[1.01] active:scale-95 shrink-0 disabled:opacity-50"
                 >
                   <ShoppingBag size={18} />
                   <span>Ajouter au panier ({cakeItemPriceForCart.toLocaleString('fr-FR')} FCFA)</span>

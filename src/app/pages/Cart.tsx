@@ -570,13 +570,13 @@ export const Cart: React.FC = () => {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link
                 to="/catalogue"
-                className="w-full sm:w-auto px-6 py-3 rounded-full bg-[#5DBA68] hover:bg-[#4CA857] text-white text-xs font-extrabold shadow-md transition text-center"
+                className="w-full sm:w-auto px-6 py-3 rounded-full bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] border-2 border-[#F8BE40] text-xs font-extrabold shadow-md transition text-center"
               >
                 Explorer nos douceurs
               </Link>
               <Link
                 to="/sur-commande"
-                className="w-full sm:w-auto px-6 py-3 rounded-full border-2 border-[#5DBA68] text-[#2B1204] hover:bg-[#5DBA68]/10 text-xs font-bold transition text-center"
+                className="w-full sm:w-auto px-6 py-3 rounded-full border-2 border-[#F8BE40] text-[#2B1204] hover:bg-[#F8BE40]/15 text-xs font-bold transition text-center"
               >
                 Créer un gâteau sur-mesure
               </Link>
@@ -1115,16 +1115,16 @@ export const Cart: React.FC = () => {
                   </div>
                 )}
 
-                {/* Bouton vert moringa Passer au paiement (forme pilule) */}
+                {/* Bouton doré Passer au paiement avec bordure dorée (forme pilule) */}
                 <button
                   type="button"
                   onClick={handleProceedToPayment}
                   disabled={isSubmitting}
-                  className="w-full py-4 px-6 rounded-full bg-[#5DBA68] hover:bg-[#4CA857] text-white font-extrabold text-sm shadow-xl shadow-[#5DBA68]/25 transition-all flex items-center justify-center gap-2.5 cursor-pointer transform hover:-translate-y-0.5 disabled:opacity-50"
+                  className="w-full py-4 px-6 rounded-full bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] border-2 border-[#F8BE40] font-extrabold text-sm shadow-xl shadow-[#F8BE40]/25 transition-all flex items-center justify-center gap-2.5 cursor-pointer transform hover:-translate-y-0.5 disabled:opacity-50"
                 >
                   {isSubmitting ? (
                     <>
-                      <Loader2 size={18} className="animate-spin text-white" />
+                      <Loader2 size={18} className="animate-spin text-[#2B1204]" />
                       <span>Génération de votre commande...</span>
                     </>
                   ) : (
