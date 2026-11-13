@@ -390,15 +390,15 @@ export function Home() {
           transition={{ duration: 0.9 }}
           className="relative z-10 text-center max-w-4xl px-4 sm:px-6"
         >
-          {/* Titre Hero : Bienvenue chez Les Douceurs de Lê-Ci (avec le design exact de Lê-Ci) */}
-          <h1 className="flex flex-col items-center justify-center mb-4">
-            <span className="font-barcelony text-5xl sm:text-7xl md:text-8xl text-[#FDF8F2] tracking-wide leading-tight drop-shadow-2xl">
+          {/* Titre Hero : Bienvenue chez Les Douceurs de (Gotham Pro) + Lê-Ci agrandi et épaissi */}
+          <h1 className="flex flex-col items-center justify-center mb-5">
+            <span className="font-gotham-pro text-2xl sm:text-4xl md:text-5xl font-bold text-[#FDF8F2] tracking-wide leading-tight drop-shadow-2xl">
               Bienvenue chez Les Douceurs de
             </span>
             <img
               src="/img/le-ci-signature.png"
               alt="Lê-Ci"
-              className="h-24 sm:h-36 md:h-44 w-auto object-contain mt-1 drop-shadow-[0_4px_24px_rgba(248,190,64,0.55)] select-none"
+              className="h-44 sm:h-64 md:h-80 w-auto object-contain mt-2 drop-shadow-[0_6px_28px_rgba(248,190,64,0.65)] select-none"
             />
             <span className="sr-only">Lê-Ci</span>
           </h1>

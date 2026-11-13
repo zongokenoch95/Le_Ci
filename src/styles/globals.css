@@ -101,8 +101,8 @@
   font-family: 'Adapt Var', 'Montserrat', 'Fredoka', sans-serif !important;
 }
 
-.font-gotham {
-  font-family: 'Fredoka', 'Gotham Pro', 'Montserrat', sans-serif !important;
+.font-gotham, .font-gotham-pro {
+  font-family: 'Gotham Pro', 'Montserrat', sans-serif !important;
 }
 
 /* Surcharges globales des anciennes classes violettes vers le Brun Cacao (#2B1204) de la Charte */
