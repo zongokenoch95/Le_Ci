@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { useState } from 'react';
+import { motion } from 'motion/react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowRight,
@@ -214,49 +214,12 @@ const promoEvents = [
   }
 ];
 
-// Mémoire de navigation SPA : s'affiche à chaque ouverture du lien / rechargement du site,
-// sans bloquer les retours internes vers l'accueil durant la navigation.
-let hasShownSplashInMemory = false;
-
 export function Home() {
   const [copiedCode, setCopiedCode] = useState(false);
   const [addedProductId, setAddedProductId] = useState<number | null>(null);
 
-  // 1. État de la page de chargement (Splash Screen) pour atterrir sur la page d'accueil
-  const [showSplash, setShowSplash] = useState<boolean>(() => !hasShownSplashInMemory);
-  const [loadingProgress, setLoadingProgress] = useState<number>(0);
-
   const { items: cartItems, addToCart, updateQuantity } = useCart();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!showSplash) return;
-
-    const interval = setInterval(() => {
-      setLoadingProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          return 100;
-        }
-        return prev + 4;
-      });
-    }, 65);
-
-    const timer = setTimeout(() => {
-      hasShownSplashInMemory = true;
-      setShowSplash(false);
-    }, 2100);
-
-    return () => {
-      clearInterval(interval);
-      clearTimeout(timer);
-    };
-  }, [showSplash]);
-
-  const handleDismissSplash = () => {
-    hasShownSplashInMemory = true;
-    setShowSplash(false);
-  };
 
   const getSignatureCartQuantity = (productId: number) => {
     const found = cartItems.find((c) => c.id === `prod-${productId}`);
@@ -303,99 +266,6 @@ export function Home() {
 
   return (
     <div className="min-h-screen bg-[#FDF8F2] text-[#2B1204]">
-      {/* ========================================================================= */}
-      {/* 0. PAGE DE CHARGEMENT DU SITE (SPLASH SCREEN CHARTE GRAPHIQUE 2026)       */}
-      {/* ========================================================================= */}
-      <AnimatePresence>
-        {showSplash && (
-          <motion.div
-            key="le-ci-splash"
-            initial={{ opacity: 1 }}
-            exit={{ opacity: 0, scale: 1.03 }}
-            transition={{ duration: 0.55, ease: 'easeInOut' }}
-            className="fixed inset-0 z-[100] bg-[#2B1204] flex flex-col items-center justify-between p-6 sm:p-10 overflow-hidden select-none"
-          >
-            {/* Liseré supérieur aux 6 couleurs officielles de la Charte */}
-            <div className="w-full max-w-md h-2 rounded-full overflow-hidden flex shadow-lg">
-              <div className="flex-1 bg-[#F8BE40]" />
-              <div className="flex-1 bg-[#C20A0A]" />
-              <div className="flex-1 bg-[#EE7362]" />
-              <div className="flex-1 bg-[#F6C58E]" />
-              <div className="flex-1 bg-[#FFFFFF]" />
-              <div className="flex-1 bg-[#5DBA68]" />
-            </div>
-
-            {/* Halos lumineux d'arrière-plan (Jaune doré, Vert moringa, Rouge gourmand) */}
-            <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-[#F8BE40]/15 blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-24 -right-24 w-96 h-96 rounded-full bg-[#5DBA68]/15 blur-3xl pointer-events-none" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[28rem] h-[28rem] rounded-full bg-[#C20A0A]/10 blur-3xl pointer-events-none" />
-
-            {/* Contenu central : Logo, Signature & Barre de progression */}
-            <div className="relative z-10 flex flex-col items-center text-center max-w-lg my-auto">
-              <motion.div
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 0.6 }}
-                className="relative mb-6"
-              >
-                <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full bg-[#FDF8F2]/10 border-2 border-[#F8BE40] p-3 flex items-center justify-center shadow-[0_0_40px_rgba(248,190,64,0.3)]">
-                  <img
-                    src="/logo.png"
-                    alt="Les Douceurs de Lê-Ci"
-                    className="w-full h-full object-contain drop-shadow-xl"
-                  />
-                </div>
-              </motion.div>
-
-              <motion.h1
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2, duration: 0.5 }}
-                className="font-barcelony text-5xl sm:text-7xl text-[#F8BE40] mb-3 drop-shadow-lg"
-              >
-                Les Douceurs de Lê-Ci
-              </motion.h1>
-
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.35, duration: 0.5 }}
-                className="font-fredoka text-xs sm:text-sm text-[#F6C58E] tracking-wide max-w-md mb-8 leading-relaxed"
-              >
-                Artisanat pâtissier • Moringa, Bissap & Saveurs authentiques du Burkina Faso
-              </motion.p>
-
-              {/* Barre de chargement dorée */}
-              <div className="w-64 sm:w-80 bg-white/10 h-2.5 rounded-full overflow-hidden border border-[#F8BE40]/30 p-0.5 mb-3">
-                <motion.div
-                  className="h-full rounded-full bg-gradient-to-r from-[#F8BE40] via-[#EE7362] to-[#5DBA68]"
-                  style={{ width: `${Math.min(100, loadingProgress)}%` }}
-                />
-              </div>
-
-              <div className="flex items-center gap-3 text-[11px] font-bold text-[#FDF8F2]/80 tracking-widest uppercase">
-                <span>Préparation de vos douceurs...</span>
-                <span className="text-[#F8BE40]">{Math.min(100, loadingProgress)}%</span>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleDismissSplash}
-                className="mt-7 px-6 py-2.5 rounded-lg bg-[#F8BE40] hover:bg-[#f5b120] text-[#2B1204] font-extrabold text-xs tracking-wide transition shadow-lg cursor-pointer inline-flex items-center gap-2"
-              >
-                <span>Entrer dans la pâtisserie</span>
-                <ArrowRight size={14} />
-              </button>
-            </div>
-
-            {/* Pied du Splash Screen */}
-            <div className="relative z-10 text-[11px] text-[#F6C58E]/70 font-corsiva italic text-center">
-              « La croisée entre la santé consciente, le plaisir gourmand et la fierté locale »
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* ========================================================================= */}
       {/* 1. HERO SECTION (Ancienne configuration avec Charte Graphique)            */}
       {/* ========================================================================= */}
