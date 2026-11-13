@@ -340,8 +340,20 @@ export function Home() {
       {/* ========================================================================= */}
       <section
         id="nos-produits"
-        className="max-w-7xl lg:max-w-5xl xl:max-w-6xl mx-auto px-4 sm:px-6 lg:px-14 xl:px-20 py-20 sm:py-24"
+        className="relative overflow-hidden py-20 sm:py-24"
       >
+        {/* Image de fond (h1.jpg) avec voile crème léger pour la lisibilité */}
+        <div className="absolute inset-0 z-0 pointer-events-none">
+          <img
+            src="/img/h1.jpg"
+            alt=""
+            aria-hidden="true"
+            className="w-full h-full object-cover object-center"
+          />
+          <div className="absolute inset-0 bg-[#FDF8F2]/75" />
+        </div>
+
+        <div className="relative z-10 max-w-7xl lg:max-w-5xl xl:max-w-6xl mx-auto px-4 sm:px-6 lg:px-14 xl:px-20">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -395,6 +407,7 @@ export function Home() {
               </motion.div>
             );
           })}
+        </div>
         </div>
       </section>
 
