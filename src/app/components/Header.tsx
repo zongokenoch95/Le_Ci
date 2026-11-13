@@ -61,7 +61,7 @@ export function Header() {
   const bannerText = banner?.message || '✦ OFFRE DOUCEURS : -10% sur votre commande avec le code « DOUCEUR10 » ✦ Pâtisserie saine au Moringa & Bissap ✦ Livraison soignée à domicile ✦';
   const bannerTextColor = banner?.text_color || '#2B1204';
   const bannerBgColor = banner?.bg_color && banner.bg_color !== '#3B0764' ? banner.bg_color : '#F8BE40';
-  const showBanner = banner ? (banner.is_currently_visible !== false && banner.is_active !== false) : true;
+  const showBanner = false;
 
   return (
     <>
@@ -99,7 +99,7 @@ export function Header() {
         isHome
           ? (scrolled 
               ? 'sticky top-0 bg-[#2B1204] shadow-xl text-white border-b border-[#F8BE40]/30 backdrop-blur-md' 
-              : 'absolute top-9 left-0 bg-gradient-to-b from-[#2B1204]/90 via-[#2B1204]/50 to-transparent text-white')
+              : `absolute ${showBanner ? 'top-9' : 'top-0'} left-0 bg-gradient-to-b from-[#2B1204]/90 via-[#2B1204]/50 to-transparent text-white`)
           : (scrolled
               ? 'sticky top-0 bg-[#2B1204] shadow-xl text-white border-b border-[#F8BE40]/30'
               : 'sticky top-0 bg-[#2B1204] shadow-md text-white border-b border-[#F8BE40]/25')
