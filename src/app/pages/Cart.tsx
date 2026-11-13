@@ -131,6 +131,29 @@ export const Cart: React.FC = () => {
     [deliveryDate, minDate]
   );
 
+  // Liste des créneaux horaires fixes selon le jour (Lun-Sam: 09h..18h, Dimanche: 10h30, 11h, 12h)
+  const baseTimeOptionsForSelectedDate = useMemo(() => {
+    if (selectedDateWindow.isSunday) {
+      return [
+        { value: '10:30', label: '10h30' },
+        { value: '11:00', label: '11h00' },
+        { value: '12:00', label: '12h00' }
+      ];
+    }
+    return [
+      { value: '09:00', label: '09h00' },
+      { value: '10:00', label: '10h00' },
+      { value: '11:00', label: '11h00' },
+      { value: '12:00', label: '12h00' },
+      { value: '13:00', label: '13h00' },
+      { value: '14:00', label: '14h00' },
+      { value: '15:00', label: '15h00' },
+      { value: '16:00', label: '16h00' },
+      { value: '17:00', label: '17h00' },
+      { value: '18:00', label: '18h00' }
+    ];
+  }, [selectedDateWindow.isSunday]);
+
   // Heure minimale et maximale autorisées pour la date actuellement sélectionnée
   const { minAllowedTimeForSelectedDate, maxAllowedTimeForSelectedDate } = useMemo(() => {
     const maxTime = selectedDateWindow.maxDeliveryTime;
@@ -155,6 +178,17 @@ export const Cart: React.FC = () => {
     };
   }, [deliveryDate, todayDateStr, selectedDateWindow]);
 
+  const availableTimeOptions = useMemo(() => {
+    if (deliveryDate !== todayDateStr) return baseTimeOptionsForSelectedDate;
+    const [minH, minM] = minAllowedTimeForSelectedDate.split(':').map(Number);
+    const minMins = minH * 60 + minM;
+    const filtered = baseTimeOptionsForSelectedDate.filter((opt) => {
+      const [h, m] = opt.value.split(':').map(Number);
+      return h * 60 + m >= minMins;
+    });
+    return filtered.length > 0 ? filtered : baseTimeOptionsForSelectedDate;
+  }, [deliveryDate, todayDateStr, baseTimeOptionsForSelectedDate, minAllowedTimeForSelectedDate]);
+
   const [deliveryTimeSlot, setDeliveryTimeSlot] = useState<string>(() => {
     if (savedPref?.deliveryTimeSlot && /^\d{2}:\d{2}$/.test(savedPref.deliveryTimeSlot)) {
       const [h, m] = savedPref.deliveryTimeSlot.split(':').map(Number);
@@ -169,21 +203,13 @@ export const Cart: React.FC = () => {
     return defaultTimeForMinDate;
   });
 
-  // Ajuster automatiquement l'heure si le client change de jour (ex: passe d'un jour de semaine au dimanche)
+  // Ajuster automatiquement l'heure sur un créneau valide de la liste déroulante
   useEffect(() => {
-    const match = deliveryTimeSlot.trim().match(/^(\d{1,2}):(\d{2})$/);
-    if (!match) return;
-    const currentMins = parseInt(match[1], 10) * 60 + parseInt(match[2], 10);
-    const [minH, minM] = minAllowedTimeForSelectedDate.split(':').map(Number);
-    const [maxH, maxM] = maxAllowedTimeForSelectedDate.split(':').map(Number);
-    const minMins = minH * 60 + minM;
-    const maxMins = maxH * 60 + maxM;
-    if (currentMins < minMins) {
-      setDeliveryTimeSlot(minAllowedTimeForSelectedDate);
-    } else if (currentMins > maxMins) {
-      setDeliveryTimeSlot(maxAllowedTimeForSelectedDate);
+    const isValidOption = availableTimeOptions.some((opt) => opt.value === deliveryTimeSlot);
+    if (!isValidOption && availableTimeOptions.length > 0) {
+      setDeliveryTimeSlot(availableTimeOptions[0].value);
     }
-  }, [deliveryDate, minAllowedTimeForSelectedDate, maxAllowedTimeForSelectedDate]);
+  }, [deliveryDate, availableTimeOptions, deliveryTimeSlot]);
 
   // 3. Coordonnées de la personne qui reçoit le colis
   const [recipientPhone, setRecipientPhone] = useState<string>(savedPref?.customerPhone || '');
@@ -464,8 +490,8 @@ export const Cart: React.FC = () => {
         items: items.map((item) => {
           const isCakeItem = Boolean(
             item.isCake ||
-              item.category === 'Gâteaux' ||
-              /g[aâ]teau|layer|fraisier/i.test(item.name || '')
+            item.category === 'Gâteaux' ||
+            /g[aâ]teau|layer|fraisier/i.test(item.name || '')
           );
           const isCustomCakeItem = String(item.id).startsWith('custom-cake') || !!item.description;
           const safePrice = Number.isFinite(Number(item.numericPrice)) ? Number(item.numericPrice) : 0;
@@ -685,21 +711,18 @@ export const Cart: React.FC = () => {
               <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <h2 className="text-base sm:text-lg font-extrabold text-gray-900 flex items-center gap-2">
-                    <Gift size={18} className="text-[#C20A0A]" />
-                    <span>Petit mot / Carte de vœux</span>
-                    <span className="text-[#C20A0A] font-black text-sm">(+200 FCFA)</span>
+
+                    <span>Associer avec  une carte </span>
+                    <span className="text-[#C20A0A] font-black text-sm"></span>
                   </h2>
                 </div>
-                <p className="text-xs text-gray-500 mb-4 font-light">
-                  Glissez une délicate attention manuscrite avec votre commande si besoin.
-                </p>
+
 
                 <label
-                  className={`p-3.5 px-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                    hasGreetingCard
-                      ? 'border-[#5DBA68] bg-[#5DBA68]/10 shadow-xs'
-                      : 'border-gray-200 hover:border-[#F8BE40] bg-white'
-                  }`}
+                  className={`p-3.5 px-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${hasGreetingCard
+                    ? 'border-[#5DBA68] bg-[#5DBA68]/10 shadow-xs'
+                    : 'border-gray-200 hover:border-[#F8BE40] bg-white'
+                    }`}
                 >
                   <div className="flex items-center gap-3">
                     <input
@@ -709,7 +732,7 @@ export const Cart: React.FC = () => {
                       className="w-4 h-4 accent-[#5DBA68] rounded cursor-pointer"
                     />
                     <span className="text-xs sm:text-sm font-bold text-gray-900">
-                      Ajouter une carte de vœux manuscrite
+                      Ajouter une carte
                     </span>
                   </div>
                   <span className="text-xs font-extrabold text-[#C20A0A] shrink-0">+200 FCFA</span>
@@ -749,13 +772,12 @@ export const Cart: React.FC = () => {
                         }
                       }}
                       placeholder="Ex: Joyeux anniversaire ! De la part de toute la famille..."
-                      className={`w-full p-3.5 rounded-2xl outline-none text-sm transition ${
-                        fieldErrors.cardMessage
-                          ? 'border-2 border-[#C20A0A] bg-red-50/20 ring-2 ring-red-200'
-                          : cardMessage.trim()
-                            ? 'border-2 border-[#5DBA68] bg-emerald-50/20 focus:ring-2 focus:ring-[#5DBA68]/25'
-                            : 'border border-gray-200 focus:border-[#F8BE40] focus:ring-2 focus:ring-[#F8BE40]/25'
-                      }`}
+                      className={`w-full p-3.5 rounded-2xl outline-none text-sm transition ${fieldErrors.cardMessage
+                        ? 'border-2 border-[#C20A0A] bg-red-50/20 ring-2 ring-red-200'
+                        : cardMessage.trim()
+                          ? 'border-2 border-[#5DBA68] bg-emerald-50/20 focus:ring-2 focus:ring-[#5DBA68]/25'
+                          : 'border border-gray-200 focus:border-[#F8BE40] focus:ring-2 focus:ring-[#F8BE40]/25'
+                        }`}
                     />
                     {fieldErrors.cardMessage && (
                       <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
@@ -770,9 +792,6 @@ export const Cart: React.FC = () => {
               {/* POINT 1 : MODE DE RÉCEPTION */}
               <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
                 <h2 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">
-                    1
-                  </span>
                   Mode de réception
                 </h2>
 
@@ -780,36 +799,30 @@ export const Cart: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setDeliveryType('livraison')}
-                    className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center gap-3 ${
-                      deliveryType === 'livraison'
-                        ? 'border-[#581C87] bg-purple-50/70 shadow-sm ring-2 ring-[#581C87]/20 text-[#581C87]'
-                        : 'border-gray-200 hover:border-purple-200 text-gray-700 bg-white'
-                    }`}
+                    className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center gap-3 ${deliveryType === 'livraison'
+                      ? 'border-[#581C87] bg-purple-50/70 shadow-sm ring-2 ring-[#581C87]/20 text-[#581C87]'
+                      : 'border-gray-200 hover:border-purple-200 text-gray-700 bg-white'
+                      }`}
                   >
                     <Truck size={22} className="shrink-0 text-[#581C87]" />
                     <div>
                       <div className="font-extrabold text-xs sm:text-sm">Avec livraison</div>
-                      <div className="text-[11px] text-gray-500 font-light mt-0.5">
-                        A discuter avec le livreur
-                      </div>
+
                     </div>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setDeliveryType('sur_place')}
-                    className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center gap-3 ${
-                      deliveryType === 'sur_place'
-                        ? 'border-[#581C87] bg-purple-50/70 shadow-sm ring-2 ring-[#581C87]/20 text-[#581C87]'
-                        : 'border-gray-200 hover:border-purple-200 text-gray-700 bg-white'
-                    }`}
+                    className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center gap-3 ${deliveryType === 'sur_place'
+                      ? 'border-[#581C87] bg-purple-50/70 shadow-sm ring-2 ring-[#581C87]/20 text-[#581C87]'
+                      : 'border-gray-200 hover:border-purple-200 text-gray-700 bg-white'
+                      }`}
                   >
                     <Store size={22} className="shrink-0 text-[#581C87]" />
                     <div>
-                      <div className="font-extrabold text-xs sm:text-sm">Sans livraison</div>
-                      <div className="text-[11px] text-gray-500 font-light mt-0.5">
-                        Passer retirer à la boutique
-                      </div>
+                      <div className="font-extrabold text-xs sm:text-sm">Retrait à la boutique</div>
+
                     </div>
                   </button>
                 </div>
@@ -818,9 +831,7 @@ export const Cart: React.FC = () => {
               {/* POINT 2 : DATE & HEURE */}
               <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
                 <h2 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">
-                    2
-                  </span>
+
                   Date & Heure
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -841,13 +852,12 @@ export const Cart: React.FC = () => {
                             }
                           }
                         }}
-                        className={`w-full py-3.5 px-4 rounded-2xl flex items-center justify-between text-xs sm:text-sm font-bold transition cursor-pointer shadow-sm ${
-                          fieldErrors.deliveryDate
-                            ? 'border-2 border-[#C20A0A] bg-red-50/20 text-[#C20A0A] ring-2 ring-red-200'
-                            : deliveryDate && deliveryDate >= minDate
-                              ? 'border-2 border-[#5DBA68] bg-emerald-50/20 text-[#2B1204]'
-                              : 'border border-gray-200 bg-white text-gray-700 hover:border-[#F8BE40]'
-                        }`}
+                        className={`w-full py-3.5 px-4 rounded-2xl flex items-center justify-between text-xs sm:text-sm font-bold transition cursor-pointer shadow-sm ${fieldErrors.deliveryDate
+                          ? 'border-2 border-[#C20A0A] bg-red-50/20 text-[#C20A0A] ring-2 ring-red-200'
+                          : deliveryDate && deliveryDate >= minDate
+                            ? 'border-2 border-[#5DBA68] bg-emerald-50/20 text-[#2B1204]'
+                            : 'border border-gray-200 bg-white text-gray-700 hover:border-[#F8BE40]'
+                          }`}
                       >
                         <div className="flex items-center gap-2.5 truncate">
                           <Calendar
@@ -857,11 +867,11 @@ export const Cart: React.FC = () => {
                           <span className="truncate">
                             {deliveryDate
                               ? `Date : ${new Date(deliveryDate + 'T00:00:00').toLocaleDateString('fr-FR', {
-                                  weekday: 'short',
-                                  day: 'numeric',
-                                  month: 'long',
-                                  year: 'numeric'
-                                })}`
+                                weekday: 'short',
+                                day: 'numeric',
+                                month: 'long',
+                                year: 'numeric'
+                              })}`
                               : 'Sélectionner votre date de réception'}
                           </span>
                         </div>
@@ -898,54 +908,48 @@ export const Cart: React.FC = () => {
                       </p>
                     )}
                     <span className="block text-[11px] text-gray-500 mt-1">
-                      Livraison ({selectedDateWindow.dayLabel}) :{' '}
-                      <strong className="text-[#581C87]">
-                        {selectedDateWindow.openTimeDisplay} à {selectedDateWindow.closeTimeDisplay}
-                      </strong>
+
+
                     </span>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
+                    <label
+                      htmlFor="field-cart-time"
+                      className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5"
+                    >
                       <Clock size={14} className="text-[#581C87]" />
-                      Heure souhaitée ({minAllowedTimeForSelectedDate.replace(':', 'h')} à{' '}
-                      {maxAllowedTimeForSelectedDate.replace(':', 'h')}) *
+                      Heure souhaitée ({selectedDateWindow.openTimeDisplay} à{' '}
+                      {selectedDateWindow.closeTimeDisplay}) *
                     </label>
-                    <input
+                    <select
                       id="field-cart-time"
-                      type="time"
-                      min={minAllowedTimeForSelectedDate}
-                      max={maxAllowedTimeForSelectedDate}
                       value={deliveryTimeSlot}
                       onChange={(e) => {
                         const val = e.target.value;
                         setDeliveryTimeSlot(val);
-                        const match = val.trim().match(/^(\d{1,2}):(\d{2})$/);
-                        if (!match) {
+                        if (!val) {
                           setFieldErrors((prev) => ({
                             ...prev,
-                            deliveryTimeSlot: 'Format d’heure invalide.'
-                          }));
-                          return;
-                        }
-                        const mins = parseInt(match[1], 10) * 60 + parseInt(match[2], 10);
-                        if (mins < selectedDateWindow.minDeliveryMinutes || mins > selectedDateWindow.maxDeliveryMinutes) {
-                          setFieldErrors((prev) => ({
-                            ...prev,
-                            deliveryTimeSlot: `Livraison ${selectedDateWindow.dayLabel} possible de ${selectedDateWindow.openTimeDisplay} à ${selectedDateWindow.closeTimeDisplay}.`
+                            deliveryTimeSlot: 'Veuillez sélectionner une heure.'
                           }));
                         } else {
                           clearFieldError('deliveryTimeSlot');
                         }
                       }}
-                      className={`w-full px-4 py-3.5 rounded-2xl outline-none text-sm font-bold bg-white transition ${
-                        fieldErrors.deliveryTimeSlot
-                          ? 'border-2 border-[#C20A0A] bg-red-50/20 ring-2 ring-red-200 text-[#C20A0A]'
-                          : deliveryTimeSlot && /^\d{1,2}:\d{2}$/.test(deliveryTimeSlot)
-                            ? 'border-2 border-[#5DBA68] bg-emerald-50/20 text-[#2B1204]'
-                            : 'border border-gray-200 focus:border-[#F8BE40] text-gray-900'
-                      }`}
-                    />
+                      className={`w-full px-4 py-3.5 rounded-2xl outline-none text-sm font-bold bg-white transition cursor-pointer ${fieldErrors.deliveryTimeSlot
+                        ? 'border-2 border-[#C20A0A] bg-red-50/20 ring-2 ring-red-200 text-[#C20A0A]'
+                        : deliveryTimeSlot
+                          ? 'border-2 border-[#5DBA68] bg-emerald-50/20 text-[#2B1204]'
+                          : 'border border-gray-200 focus:border-[#F8BE40] text-gray-900'
+                        }`}
+                    >
+                      {availableTimeOptions.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
                     {fieldErrors.deliveryTimeSlot && (
                       <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
                         <AlertCircle size={13} className="text-red-500 shrink-0" />
@@ -953,7 +957,7 @@ export const Cart: React.FC = () => {
                       </p>
                     )}
                     <span className="block text-[11px] text-gray-500 mt-1">
-                      ⏱️ Du lundi au samedi de <strong className="text-gray-700">09h00 à 18h00</strong> · Le dimanche de <strong className="text-gray-700">10h30 à 12h00</strong>.
+                      ⏱️ Du lundi au samedi : <strong className="text-gray-700">09h à 18h</strong> · Le dimanche : <strong className="text-gray-700">10h30, 11h, 12h</strong>.
                     </span>
                   </div>
                 </div>
@@ -1007,13 +1011,12 @@ export const Cart: React.FC = () => {
                           }
                         }}
                         placeholder="Ex: 70 00 00 00 ou +226 70 12 34 56"
-                        className={`w-full px-4 py-3.5 rounded-2xl outline-none text-sm transition ${
-                          fieldErrors.recipientPhone
-                            ? 'border-2 border-[#C20A0A] bg-red-50/20 ring-2 ring-red-200'
-                            : recipientPhone.trim() && validateBurkinaPhone(recipientPhone).isValid
-                              ? 'border-2 border-[#5DBA68] bg-emerald-50/20'
-                              : 'border border-gray-200 focus:border-[#F8BE40]'
-                        }`}
+                        className={`w-full px-4 py-3.5 rounded-2xl outline-none text-sm transition ${fieldErrors.recipientPhone
+                          ? 'border-2 border-[#C20A0A] bg-red-50/20 ring-2 ring-red-200'
+                          : recipientPhone.trim() && validateBurkinaPhone(recipientPhone).isValid
+                            ? 'border-2 border-[#5DBA68] bg-emerald-50/20'
+                            : 'border border-gray-200 focus:border-[#F8BE40]'
+                          }`}
                       />
                       {fieldErrors.recipientPhone && (
                         <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
@@ -1054,13 +1057,12 @@ export const Cart: React.FC = () => {
                           }
                         }}
                         placeholder="Ex: 76 00 00 00 (famille, conjoint...)"
-                        className={`w-full px-4 py-3.5 rounded-2xl outline-none text-sm bg-white transition ${
-                          fieldErrors.backupPhone
-                            ? 'border-2 border-[#C20A0A] bg-red-50/20 ring-2 ring-red-200'
-                            : backupPhone.trim() && validateBurkinaPhone(backupPhone, true).isValid
-                              ? 'border-2 border-[#5DBA68] bg-emerald-50/20'
-                              : 'border border-gray-200 focus:border-[#F8BE40]'
-                        }`}
+                        className={`w-full px-4 py-3.5 rounded-2xl outline-none text-sm bg-white transition ${fieldErrors.backupPhone
+                          ? 'border-2 border-[#C20A0A] bg-red-50/20 ring-2 ring-red-200'
+                          : backupPhone.trim() && validateBurkinaPhone(backupPhone, true).isValid
+                            ? 'border-2 border-[#5DBA68] bg-emerald-50/20'
+                            : 'border border-gray-200 focus:border-[#F8BE40]'
+                          }`}
                       />
                       {fieldErrors.backupPhone && (
                         <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
