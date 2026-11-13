@@ -359,7 +359,7 @@ export function Home() {
           viewport={{ once: true }}
           className="text-center mb-16"
         >
-          <h2 className="text-3xl sm:text-5xl font-extrabold text-[#2B1204] tracking-tight">
+          <h2 className="font-fredoka text-3xl sm:text-5xl font-extrabold text-[#2B1204] tracking-tight">
             Nos Douceurs
           </h2>
           <p className="font-barcelony text-2xl sm:text-3xl text-[#C20A0A] max-w-2xl mx-auto mt-3 leading-relaxed">
@@ -398,7 +398,7 @@ export function Home() {
 
                   {/* Titre centré */}
                   <div className="pt-4 pb-1 text-center">
-                    <h3 className="font-adapt text-xs sm:text-sm font-bold uppercase tracking-[0.1em] text-[#2B1204] group-hover:text-[#5DBA68] transition">
+                    <h3 className="font-fredoka text-xs sm:text-sm font-bold uppercase tracking-[0.1em] text-[#2B1204] group-hover:text-[#5DBA68] transition">
                       {cat.title}
                     </h3>
                   </div>
@@ -425,7 +425,7 @@ export function Home() {
             viewport={{ once: true }}
             className="text-center mb-12 sm:mb-16"
           >
-            <h2 className="font-adapt text-3xl sm:text-5xl font-extrabold text-[#FDF8F2] tracking-tight">
+            <h2 className="font-fredoka text-3xl sm:text-5xl font-extrabold text-[#FDF8F2] tracking-tight">
               Signature de la maison
             </h2>
             <p className="font-barcelony text-2xl sm:text-3xl text-[#F8BE40] max-w-2xl mx-auto mt-3 leading-relaxed">
@@ -457,7 +457,7 @@ export function Home() {
                     </div>
 
                     {/* 2. Nom */}
-                    <h3 className="font-adapt text-center text-xs sm:text-base font-extrabold text-[#2B1204] mt-4 mb-1.5 line-clamp-2 min-h-[2.2rem] sm:min-h-[2.6rem] flex items-center justify-center">
+                    <h3 className="font-fredoka text-center text-xs sm:text-base font-extrabold text-[#2B1204] mt-4 mb-1.5 line-clamp-2 min-h-[2.2rem] sm:min-h-[2.6rem] flex items-center justify-center">
                       {item.name}
                     </h3>
 
@@ -572,7 +572,7 @@ export function Home() {
             viewport={{ once: true }}
             className="text-center mb-12 sm:mb-16"
           >
-            <h2 className="font-adapt text-3xl sm:text-5xl font-extrabold text-[#2B1204] tracking-tight">
+            <h2 className="font-fredoka text-3xl sm:text-5xl font-extrabold text-[#2B1204] tracking-tight">
               Promotions et Événements
             </h2>
             <p className="font-barcelony text-2xl sm:text-3xl text-[#C20A0A] max-w-2xl mx-auto mt-3 leading-relaxed">
@@ -608,7 +608,7 @@ export function Home() {
                     >
                       {item.badge}
                     </span>
-                    <h3 className="font-adapt text-sm sm:text-base font-extrabold text-[#2B1204] mb-1 leading-snug">
+                    <h3 className="font-fredoka text-sm sm:text-base font-extrabold text-[#2B1204] mb-1 leading-snug">
                       {item.title}
                     </h3>
                     <p className="text-xs font-bold text-[#C20A0A] mb-2">{item.subtitle}</p>

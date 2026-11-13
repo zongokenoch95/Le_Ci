@@ -469,7 +469,7 @@ export function Catalogue() {
                       </div>
 
                       {/* 2. Nom */}
-                      <h3 className="font-adapt text-center text-xs sm:text-base font-extrabold text-[#2B1204] mt-4 mb-1.5 line-clamp-2 min-h-[2.2rem] sm:min-h-[2.6rem] flex items-center justify-center">
+                      <h3 className="font-fredoka text-center text-xs sm:text-base font-extrabold text-[#2B1204] mt-4 mb-1.5 line-clamp-2 min-h-[2.2rem] sm:min-h-[2.6rem] flex items-center justify-center">
                         {product.name}
                       </h3>
 
