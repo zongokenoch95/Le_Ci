@@ -844,8 +844,9 @@ export async function checkAndExpireOrders() {
   return rows ? rows.map(r => r.id) : [];
 }
 
-export async function createOrder(data) {
-  const id = `CMD-${Date.now()}`;
+export async function createOrder(data = {}) {
+  const suffix = Math.floor(100 + Math.random() * 900);
+  const id = `CMD-${Date.now()}-${suffix}`;
   let codeReference = generateCodeReference();
   let existing = await get('SELECT id FROM orders WHERE code_reference = ?', [codeReference]);
   while (existing) {
@@ -856,21 +857,31 @@ export async function createOrder(data) {
   const now = new Date();
   const expiresAt = new Date(now.getTime() + 10 * 60 * 1000); // TTL 10 minutes
 
-  const items = data.items || [];
+  const rawItems = Array.isArray(data.items)
+    ? data.items
+    : (typeof data.items === 'string'
+        ? (() => { try { const parsed = JSON.parse(data.items); return Array.isArray(parsed) ? parsed : []; } catch { return []; } })()
+        : []);
+  const items = rawItems.map((it) => ({
+    ...(it || {}),
+    price: Number.isFinite(Number(it?.price)) ? Number(it.price) : 0,
+    quantity: Math.max(1, Number.isFinite(Number(it?.quantity)) ? Math.round(Number(it.quantity)) : 1),
+  }));
   const itemsJson = JSON.stringify(items);
-  
+
   // Les frais de livraison sont supprimés de la facture (discutés directement entre le client et le livreur)
-  const itemsTotal = items.reduce((acc, it) => acc + (Number(it.price) || 0) * (Number(it.quantity) || 1), 0);
+  const itemsTotal = items.reduce((acc, it) => acc + it.price * it.quantity, 0);
   const serverDeliveryFee = 0;
 
   const cardSupplement = data.hasGreetingCard ? 200 : 0;
-  const discountAmount = Math.max(0, Number(data.discountAmount || 0));
-  
-  // Garantir que le montant total correspond aux articles + carte de vœux - remise fidélité (sans frais de livraison)
-  let finalAmount = parseInt(data.montantTotal || data.amount || 0, 10);
+  const rawDiscount = Number(data.discountAmount);
+  const discountAmount = Math.max(0, Number.isFinite(rawDiscount) ? Math.round(rawDiscount) : 0);
+
+  // Garantir un montant total entier valide (jamais NaN/null)
+  const rawSubmitted = Number(data.montantTotal ?? data.amount ?? 0);
+  let finalAmount = Number.isFinite(rawSubmitted) ? Math.max(0, Math.round(rawSubmitted)) : 0;
   if (itemsTotal > 0) {
-    const verifiedTotal = Math.max(0, itemsTotal + cardSupplement - discountAmount);
-    finalAmount = verifiedTotal;
+    finalAmount = Math.max(0, Math.round(itemsTotal + cardSupplement - discountAmount));
   }
 
   const { payToken, payTokenHash } = generatePayToken();

@@ -49,7 +49,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [items, setItems] = useState<CartItem[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      return saved ? JSON.parse(saved) : [];
+      const parsed = saved ? JSON.parse(saved) : [];
+      if (!Array.isArray(parsed)) return [];
+      return parsed.map((it: any) => ({
+        ...it,
+        numericPrice: Number.isFinite(Number(it?.numericPrice)) ? Number(it.numericPrice) : 0,
+        quantity: Math.max(1, Number.isFinite(Number(it?.quantity)) ? Number(it.quantity) : 1),
+      }));
     } catch {
       return [];
     }
@@ -93,8 +99,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         {
           id: product.id,
           name: product.name,
-          price: product.price || `${product.numericPrice.toLocaleString('fr-FR')} FCFA`,
-          numericPrice: product.numericPrice,
+          price: product.price || `${(Number.isFinite(Number(product.numericPrice)) ? Number(product.numericPrice) : 0).toLocaleString('fr-FR')} FCFA`,
+          numericPrice: Number.isFinite(Number(product.numericPrice)) ? Number(product.numericPrice) : 0,
           quantity,
           image: product.image,
           category: product.category,
@@ -130,8 +136,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setItems([]);
   };
 
-  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
-  const totalAmount = items.reduce((sum, item) => sum + (item.numericPrice * item.quantity), 0);
+  const totalItems = items.reduce((sum, item) => sum + (Number.isFinite(Number(item.quantity)) ? Number(item.quantity) : 0), 0);
+  const totalAmount = items.reduce((sum, item) => sum + ((Number.isFinite(Number(item.numericPrice)) ? Number(item.numericPrice) : 0) * (Number.isFinite(Number(item.quantity)) ? Number(item.quantity) : 0)), 0);
 
   const openCart = () => setIsOpen(true);
   const closeCart = () => setIsOpen(false);

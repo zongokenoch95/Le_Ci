@@ -529,37 +529,37 @@ export function Catalogue() {
                       )}
                     </div>
 
-                    {/* 4. Zone d'action en bas : Sélecteur [- 2 +] / Ajouter + Bouton éditorial "Commander ────•◯" */}
-                    <div className="pt-2 space-y-2.5">
+                    {/* 4. Zone d'action en bas (ancienne version conservée) : Bouton Ajouter / Sélecteur [ -  2  + ] + Bouton Commander */}
+                    <div className="pt-2 space-y-2">
                       {cartQty > 0 ? (
                         <div className="w-full rounded-full bg-[#FDECE8] p-1 flex items-center justify-between shadow-2xs">
                           <button
                             type="button"
                             onClick={() => updateQuantity(cartItemId, -1)}
-                            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white text-[#2B1204] hover:bg-[#2B1204] hover:text-white font-black flex items-center justify-center shadow-xs transition cursor-pointer"
+                            className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white text-[#2B1204] hover:bg-[#2B1204] hover:text-white font-black flex items-center justify-center shadow-xs transition cursor-pointer"
                             title="Diminuer la quantité"
                           >
-                            <Minus size={13} strokeWidth={3} />
+                            <Minus size={15} strokeWidth={3} />
                           </button>
-                          <span className="text-xs sm:text-sm font-black text-[#2B1204]">
+                          <span className="text-sm sm:text-base font-black text-[#2B1204]">
                             {cartQty}
                           </span>
                           <button
                             type="button"
                             onClick={() => updateQuantity(cartItemId, 1)}
-                            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white text-[#2B1204] hover:bg-[#2B1204] hover:text-white font-black flex items-center justify-center shadow-xs transition cursor-pointer"
+                            className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white text-[#2B1204] hover:bg-[#2B1204] hover:text-white font-black flex items-center justify-center shadow-xs transition cursor-pointer"
                             title="Augmenter la quantité"
                           >
-                            <Plus size={13} strokeWidth={3} />
+                            <Plus size={15} strokeWidth={3} />
                           </button>
                         </div>
                       ) : (
                         <button
                           type="button"
                           onClick={() => handleAddToCart(product, false)}
-                          className="w-full py-1.5 px-3 rounded-full border border-[#2B1204]/20 hover:border-[#2B1204] text-[#2B1204] text-[11px] sm:text-xs font-semibold transition cursor-pointer"
+                          className="w-full py-2.5 sm:py-3 px-4 rounded-full bg-[#C20A0A] hover:bg-[#a50808] text-white font-extrabold text-xs sm:text-sm shadow-sm transition-all cursor-pointer text-center active:scale-95"
                         >
-                          + Ajouter au panier
+                          Ajouter
                         </button>
                       )}
 
@@ -572,16 +572,10 @@ export function Catalogue() {
                             handleAddToCart(product, true);
                           }
                         }}
-                        className="w-full flex items-center justify-center gap-2 sm:gap-3 py-1 text-[#2B1204] hover:text-[#C20A0A] transition group/btn cursor-pointer"
+                        className="w-full py-2 sm:py-2.5 px-4 rounded-full bg-[#2B1204] hover:bg-[#F8BE40] text-[#F8BE40] hover:text-[#2B1204] font-extrabold text-xs sm:text-sm shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
                       >
-                        <span className="text-[11px] sm:text-xs font-medium tracking-wide">
-                          Commander
-                        </span>
-                        <div className="relative flex items-center">
-                          <span className="w-6 sm:w-10 h-px bg-[#2B1204] group-hover/btn:bg-[#C20A0A] transition-all" />
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#2B1204] group-hover/btn:bg-[#C20A0A] -ml-0.5 z-10 transition-all" />
-                          <span className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-[#2B1204]/50 group-hover/btn:border-[#C20A0A] -ml-4 sm:-ml-5 transition-all" />
-                        </div>
+                        <span>Commander</span>
+                        <ArrowRight size={14} />
                       </button>
                     </div>
                   </motion.div>

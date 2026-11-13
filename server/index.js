@@ -11,6 +11,7 @@ import rateLimit from 'express-rate-limit';
 import db from './db.js';
 
 const app = express();
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3001;
 const server = http.createServer(app);
 
@@ -95,6 +96,7 @@ const webhookLimiter = rateLimit({
   max: 30,
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
   message: {
     success: false,
     error: 'Trop de requêtes. Limite : 30 par minute. Réessayez plus tard.'
@@ -124,6 +126,7 @@ const apiLimiter = rateLimit({
   max: 100,
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
   message: {
     success: false,
     error: 'Trop de requêtes API. Limite : 100 par minute.'
@@ -449,13 +452,14 @@ app.get('/api/health', (req, res) => {
 // La commande n'apparaît dans le Dashboard qu'à partir du moment où le client saisit le nom et le numéro de transfert
 app.post('/api/orders', async (req, res) => {
   try {
-    const order = await db.createOrder(req.body);
+    const order = await db.createOrder(req.body || {});
     if (order.payerPhone && String(order.payerPhone).trim()) {
       emitOrderCreated(order);
     }
     res.status(201).json(order);
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    console.error('❌ [POST /api/orders] Erreur création commande:', err);
+    res.status(400).json({ error: err.message || 'Erreur lors de la création de la commande' });
   }
 });
 

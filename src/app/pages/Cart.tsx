@@ -19,8 +19,7 @@ import {
   Gift,
   Sparkles,
   CreditCard,
-  Loader2,
-  ChevronRight
+  Loader2
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import {
@@ -45,26 +44,14 @@ export const Cart: React.FC = () => {
     }
   }, []);
 
-  // Détection si le panier contient au moins un gâteau (pour afficher la carte de vœux manuscrite)
-  const hasCakeInCart = useMemo(() => {
-    return items.some((item) =>
-      Boolean(
-        item.isCake ||
-          item.category === 'Gâteaux' ||
-          /g[aâ]teau|layer|fraisier|moka|for[eê]t|arzanier|orsia|pi[eè]ce mont[eé]e/i.test(item.name || '')
-      )
-    );
-  }, [items]);
-
   // 1. Mode de réception
   const [deliveryType, setDeliveryType] = useState<'livraison' | 'sur_place'>(
     savedPref?.deliveryType || 'livraison'
   );
 
-  // 2. Date et heure — Cadrage selon les horaires Google Maps de la boutique + 1h30 de préparation
-  // Horaires boutique (Google Maps : Les Douceurs de Lê-Ci, 01BP 6131, Ouagadougou) :
-  // - Lundi au Samedi : 08h30 – 18h00 -> Livraison autorisée de 10h00 (08h30 + 1h30) à 19h30 (18h00 + 1h30)
-  // - Dimanche        : 10h30 – 12h00 -> Livraison autorisée de 12h00 (10h30 + 1h30) à 13h30 (12h00 + 1h30)
+  // 2. Date et heure — Cadrage des heures de livraison :
+  // - Lundi au Samedi : 09h00 à 18h00
+  // - Dimanche        : 10h30 à 12h00
   const formatLocalDate = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const formatMinutesToTime = (totalMins: number) =>
@@ -83,21 +70,21 @@ export const Cart: React.FC = () => {
         dayLabel: 'Dimanche',
         openTimeDisplay: '10h30',
         closeTimeDisplay: '12h00',
-        minDeliveryMinutes: 12 * 60, // 10h30 + 1h30 = 12h00
-        maxDeliveryMinutes: 13 * 60 + 30, // 12h00 + 1h30 = 13h30
-        minDeliveryTime: '12:00',
-        maxDeliveryTime: '13:30'
+        minDeliveryMinutes: 10 * 60 + 30, // 10h30
+        maxDeliveryMinutes: 12 * 60, // 12h00
+        minDeliveryTime: '10:30',
+        maxDeliveryTime: '12:00'
       };
     }
     return {
       isSunday: false,
       dayLabel: 'Lundi au Samedi',
-      openTimeDisplay: '08h30',
+      openTimeDisplay: '09h00',
       closeTimeDisplay: '18h00',
-      minDeliveryMinutes: 10 * 60, // 08h30 + 1h30 = 10h00
-      maxDeliveryMinutes: 19 * 60 + 30, // 18h00 + 1h30 = 19h30
-      minDeliveryTime: '10:00',
-      maxDeliveryTime: '19:30'
+      minDeliveryMinutes: 9 * 60, // 09h00
+      maxDeliveryMinutes: 18 * 60, // 18h00
+      minDeliveryTime: '09:00',
+      maxDeliveryTime: '18:00'
     };
   };
 
@@ -282,13 +269,14 @@ export const Cart: React.FC = () => {
         ? memberInfo.settings?.silver_discount_percent || 5
         : 0;
   const tierDiscountAmount = Math.round((totalAmount * tierDiscountPercent) / 100);
-  const effectiveGreetingCard = hasCakeInCart && hasGreetingCard;
+  const effectiveGreetingCard = hasGreetingCard;
   const cardSupplement = effectiveGreetingCard ? 200 : 0;
 
   // Montant à payer
+  const safeTotalAmount = Number.isFinite(Number(totalAmount)) ? Number(totalAmount) : 0;
   const finalAmountToPay = Math.max(
     0,
-    totalAmount + cardSupplement - loyaltyDiscount - tierDiscountAmount
+    safeTotalAmount + cardSupplement - loyaltyDiscount - tierDiscountAmount
   );
 
   // Validation du formulaire de panier
@@ -337,21 +325,21 @@ export const Cart: React.FC = () => {
     const chosenDateTime = new Date(year, month - 1, day, chosenHours, chosenMinutes, 0, 0);
     const dayWindow = getShopDeliveryWindowForDate(deliveryDate);
 
-    // Règle 2 : Pas d'heure de livraison en dessous de l'heure d'ouverture + 1h30
+    // Règle 2 : Pas d'heure de livraison en dessous de l'heure d'ouverture
     if (chosenTotalMinutes < dayWindow.minDeliveryMinutes) {
       setSingleError(
         'deliveryTimeSlot',
-        `La boutique ouvre à ${dayWindow.openTimeDisplay} (${dayWindow.dayLabel}). Avec 1h30 de préparation, l'heure de réception ne peut pas être avant ${dayWindow.minDeliveryTime.replace(':', 'h')} (ouverture + 1h30).`,
+        `Livraison ${dayWindow.dayLabel} possible de ${dayWindow.openTimeDisplay} à ${dayWindow.closeTimeDisplay}. L'heure choisie ne peut pas être avant ${dayWindow.openTimeDisplay}.`,
         'field-cart-time'
       );
       return false;
     }
 
-    // Règle 1 : Pas d'heure de livraison au-delà de l'heure de fermeture + 1h30
+    // Règle 1 : Pas d'heure de livraison au-delà de l'heure de fermeture
     if (chosenTotalMinutes > dayWindow.maxDeliveryMinutes) {
       setSingleError(
         'deliveryTimeSlot',
-        `La boutique ferme à ${dayWindow.closeTimeDisplay} (${dayWindow.dayLabel}). L'heure de réception ne peut pas dépasser ${dayWindow.maxDeliveryTime.replace(':', 'h')} (fermeture + 1h30).`,
+        `Livraison ${dayWindow.dayLabel} possible de ${dayWindow.openTimeDisplay} à ${dayWindow.closeTimeDisplay}. L'heure choisie ne peut pas dépasser ${dayWindow.closeTimeDisplay}.`,
         'field-cart-time'
       );
       return false;
@@ -480,11 +468,13 @@ export const Cart: React.FC = () => {
               /g[aâ]teau|layer|fraisier/i.test(item.name || '')
           );
           const isCustomCakeItem = String(item.id).startsWith('custom-cake') || !!item.description;
+          const safePrice = Number.isFinite(Number(item.numericPrice)) ? Number(item.numericPrice) : 0;
+          const safeQty = Math.max(1, Number.isFinite(Number(item.quantity)) ? Number(item.quantity) : 1);
           return {
             id: typeof item.id === 'number' ? item.id : 9999,
             name: item.name,
-            price: item.numericPrice,
-            quantity: item.quantity,
+            price: safePrice,
+            quantity: safeQty,
             image: item.image || '/products/gateau_1.jpeg',
             category: item.category || (isCakeItem ? 'Gâteaux' : 'Pâtisserie'),
             portion: item.portion,
@@ -494,7 +484,7 @@ export const Cart: React.FC = () => {
             description: item.description
           };
         }),
-        montantTotal: finalAmountToPay,
+        montantTotal: Math.max(0, Math.round(finalAmountToPay)),
         modePaiement: 'orange_money',
         notes: finalNotes,
         deliveryType,
@@ -528,16 +518,8 @@ export const Cart: React.FC = () => {
   return (
     <div className="min-h-screen py-10 sm:py-16 bg-[#FAF8F5]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Fil d'Ariane & Titre */}
+        {/* Titre */}
         <div className="mb-8">
-          <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 mb-3">
-            <Link to="/" className="hover:text-[#581C87] transition">
-              Accueil
-            </Link>
-            <ChevronRight size={14} />
-            <span className="text-[#581C87] font-bold">Mon Panier Gourmand</span>
-          </div>
-
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-purple-100 text-[#581C87] uppercase tracking-wider mb-2">
@@ -619,83 +601,175 @@ export const Cart: React.FC = () => {
                   </Link>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-3">
                   {items.map((item) => {
                     const descFlavorMatch = (item.description || '').match(/Saveur:\s*([^|\]]+)/i);
                     const flavorLabel =
                       item.flavor || (descFlavorMatch ? descFlavorMatch[1].trim() : '');
+                    const safePrice = Number.isFinite(Number(item.numericPrice)) ? Number(item.numericPrice) : 0;
+                    const safeQty = Math.max(1, Number.isFinite(Number(item.quantity)) ? Number(item.quantity) : 1);
                     return (
                       <div
                         key={`top-preview-${item.id}`}
-                        className="bg-[#FDF8F2] rounded-3xl overflow-hidden border border-[#F6C58E]/60 flex flex-col justify-between shadow-xs"
+                        className="bg-[#FDF8F2] rounded-2xl p-3 sm:p-4 border border-[#F6C58E]/60 flex items-center gap-3.5 sm:gap-4 shadow-xs"
                       >
-                        <div>
-                          {/* 1. IMAGE DU PRODUIT EN PREMIER */}
-                          <div className="relative aspect-square w-full overflow-hidden bg-white">
-                            <img
-                              src={item.image || '/products/gateau_1.jpeg'}
-                              alt={item.name}
-                              className="w-full h-full object-cover"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => removeFromCart(item.id)}
-                              className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 hover:bg-[#C20A0A] text-[#2B1204] hover:text-white flex items-center justify-center shadow-md transition cursor-pointer"
-                              title="Retirer cet article"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
+                        {/* 1. IMAGE MINIATURE EN PREMIER */}
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-white border border-[#F6C58E]/40 shrink-0">
+                          <img
+                            src={item.image || '/products/gateau_1.jpeg'}
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
 
-                          {/* 2. TITRE, PRIX & SAVEUR */}
-                          <div className="p-4 pb-2">
-                            <h3 className="text-sm sm:text-base font-black text-[#2B1204] leading-snug">
-                              {item.name}
-                            </h3>
-                            <div className="text-[#C20A0A] text-sm sm:text-base font-black mt-1">
-                              {(item.numericPrice * item.quantity).toLocaleString('fr-FR')} F
-                              {item.quantity > 1 && (
-                                <span className="text-[11px] font-semibold text-[#2B1204]/60 ml-1.5">
-                                  ({item.numericPrice.toLocaleString('fr-FR')} F / unité)
-                                </span>
-                              )}
-                            </div>
-                            {flavorLabel && (
-                              <p className="text-xs text-[#2B1204]/75 mt-1">
-                                Saveur : <strong className="text-[#2B1204]">{flavorLabel}</strong>
-                              </p>
+                        {/* 2. TITRE, SAVEUR & PRIX EN ROUGE */}
+                        <div className="min-w-0 flex-1">
+                          <h3 className="text-sm sm:text-base font-black text-[#2B1204] leading-snug truncate">
+                            {item.name}
+                          </h3>
+                          {flavorLabel && (
+                            <p className="text-xs text-[#2B1204]/75 mt-0.5 truncate">
+                              Saveur : <strong className="text-[#2B1204]">{flavorLabel}</strong>
+                            </p>
+                          )}
+                          <div className="text-[#C20A0A] text-sm sm:text-base font-black mt-1">
+                            {(safePrice * safeQty).toLocaleString('fr-FR')} FCFA
+                            {safeQty > 1 && (
+                              <span className="text-[11px] font-semibold text-[#C20A0A]/80 ml-1.5">
+                                ({safePrice.toLocaleString('fr-FR')} F / u)
+                              </span>
                             )}
                           </div>
                         </div>
 
-                        {/* 3. SÉLECTEUR DE QUANTITÉ PILL [-  qty  +] */}
-                        <div className="p-4 pt-2">
-                          <div className="w-full py-1.5 px-2 rounded-full bg-[#FDECE8] border border-[#EE7362]/30 flex items-center justify-between">
+                        {/* 3. QUANTITÉ & SUPPRIMER */}
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div className="py-1 px-1.5 rounded-full bg-[#FDECE8] border border-[#EE7362]/30 flex items-center gap-1.5">
                             <button
                               type="button"
                               onClick={() => updateQuantity(item.id, -1)}
-                              className="w-8 h-8 rounded-full bg-white text-[#2B1204] font-black flex items-center justify-center shadow-xs hover:bg-[#2B1204] hover:text-white transition cursor-pointer"
+                              className="w-7 h-7 rounded-full bg-white text-[#2B1204] font-black flex items-center justify-center shadow-xs hover:bg-[#2B1204] hover:text-white transition cursor-pointer"
                               title="Diminuer la quantité"
                             >
-                              <Minus size={14} strokeWidth={3} />
+                              <Minus size={12} strokeWidth={3} />
                             </button>
-                            <span className="text-sm sm:text-base font-black text-[#2B1204]">
-                              {item.quantity}
+                            <span className="text-xs sm:text-sm font-black text-[#2B1204] min-w-[18px] text-center">
+                              {safeQty}
                             </span>
                             <button
                               type="button"
                               onClick={() => updateQuantity(item.id, 1)}
-                              className="w-8 h-8 rounded-full bg-white text-[#2B1204] font-black flex items-center justify-center shadow-xs hover:bg-[#2B1204] hover:text-white transition cursor-pointer"
+                              className="w-7 h-7 rounded-full bg-white text-[#2B1204] font-black flex items-center justify-center shadow-xs hover:bg-[#2B1204] hover:text-white transition cursor-pointer"
                               title="Augmenter la quantité"
                             >
-                              <Plus size={14} strokeWidth={3} />
+                              <Plus size={12} strokeWidth={3} />
                             </button>
                           </div>
+                          <button
+                            type="button"
+                            onClick={() => removeFromCart(item.id)}
+                            className="w-8 h-8 rounded-full bg-white hover:bg-[#C20A0A] text-[#2B1204] hover:text-white flex items-center justify-center border border-[#F6C58E]/50 transition cursor-pointer"
+                            title="Retirer cet article"
+                          >
+                            <Trash2 size={14} />
+                          </button>
                         </div>
                       </div>
                     );
                   })}
                 </div>
+              </div>
+
+              {/* PETIT MOT / CARTE DE VŒUX MANUSCRITE (+200 FCFA) — Juste après Votre sélection gourmande */}
+              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <h2 className="text-base sm:text-lg font-extrabold text-gray-900 flex items-center gap-2">
+                    <Gift size={18} className="text-[#C20A0A]" />
+                    <span>Petit mot / Carte de vœux</span>
+                    <span className="text-[#C20A0A] font-black text-sm">(+200 FCFA)</span>
+                  </h2>
+                </div>
+                <p className="text-xs text-gray-500 mb-4 font-light">
+                  Glissez une délicate attention manuscrite avec votre commande si besoin.
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                  <label
+                    onClick={() => setHasGreetingCard(false)}
+                    className={`p-3.5 px-4 rounded-xl border transition-all cursor-pointer flex items-center gap-3 ${
+                      !hasGreetingCard
+                        ? 'border-[#581C87] bg-purple-50/60 shadow-xs'
+                        : 'border-gray-200 hover:border-purple-200 bg-white'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="greetingCardOption"
+                      checked={!hasGreetingCard}
+                      onChange={() => setHasGreetingCard(false)}
+                      className="w-4 h-4 accent-[#581C87] cursor-pointer"
+                    />
+                    <span className="text-xs sm:text-sm font-bold text-gray-900">
+                      Sans carte de vœux
+                    </span>
+                  </label>
+
+                  <label
+                    onClick={() => setHasGreetingCard(true)}
+                    className={`p-3.5 px-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                      hasGreetingCard
+                        ? 'border-[#581C87] bg-purple-50/60 shadow-xs'
+                        : 'border-gray-200 hover:border-purple-200 bg-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="radio"
+                        name="greetingCardOption"
+                        checked={hasGreetingCard}
+                        onChange={() => setHasGreetingCard(true)}
+                        className="w-4 h-4 accent-[#581C87] cursor-pointer"
+                      />
+                      <span className="text-xs sm:text-sm font-bold text-gray-900">
+                        Ajouter une carte de vœux
+                      </span>
+                    </div>
+                    <span className="text-xs font-extrabold text-[#C20A0A] shrink-0">+200 FCFA</span>
+                  </label>
+                </div>
+
+                {hasGreetingCard && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    className="mt-3 pt-3 border-t border-purple-100"
+                  >
+                    <label className="block text-xs font-bold text-gray-700 mb-2">
+                      Texte à inscrire sur la carte :
+                    </label>
+                    <textarea
+                      id="field-cart-cardMessage"
+                      rows={2}
+                      value={cardMessage}
+                      onChange={(e) => {
+                        setCardMessage(e.target.value);
+                        clearFieldError('cardMessage');
+                      }}
+                      placeholder="Ex: Joyeux anniversaire ! De la part de toute la famille..."
+                      className={`w-full p-3.5 rounded-2xl outline-none text-sm transition ${
+                        fieldErrors.cardMessage
+                          ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200'
+                          : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
+                      }`}
+                    />
+                    {fieldErrors.cardMessage && (
+                      <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
+                        <AlertCircle size={13} className="text-red-500 shrink-0" />
+                        <span>{fieldErrors.cardMessage}</span>
+                      </p>
+                    )}
+                  </motion.div>
+                )}
               </div>
 
               {/* POINT 1 : MODE DE RÉCEPTION */}
@@ -821,9 +895,9 @@ export const Cart: React.FC = () => {
                       </p>
                     )}
                     <span className="block text-[11px] text-gray-500 mt-1">
-                      Horaires boutique ({selectedDateWindow.dayLabel}) :{' '}
+                      Livraison ({selectedDateWindow.dayLabel}) :{' '}
                       <strong className="text-[#581C87]">
-                        {selectedDateWindow.openTimeDisplay} – {selectedDateWindow.closeTimeDisplay}
+                        {selectedDateWindow.openTimeDisplay} à {selectedDateWindow.closeTimeDisplay}
                       </strong>
                     </span>
                   </div>
@@ -857,15 +931,7 @@ export const Cart: React.FC = () => {
                       </p>
                     )}
                     <span className="block text-[11px] text-gray-500 mt-1">
-                      ⏱️ Créneau autorisé (+1h30 de préparation) : de{' '}
-                      <strong className="text-gray-700">
-                        {minAllowedTimeForSelectedDate.replace(':', 'h')}
-                      </strong>{' '}
-                      à{' '}
-                      <strong className="text-gray-700">
-                        {maxAllowedTimeForSelectedDate.replace(':', 'h')}
-                      </strong>
-                      .
+                      ⏱️ Du lundi au samedi de <strong className="text-gray-700">09h00 à 18h00</strong> · Le dimanche de <strong className="text-gray-700">10h30 à 12h00</strong>.
                     </span>
                   </div>
                 </div>
@@ -979,103 +1045,9 @@ export const Cart: React.FC = () => {
                 </div>
               )}
 
-              {/* CARTE DE VŒUX MANUSCRITE (+200 FCFA) — Affichée uniquement quand il s'agit d'un gâteau */}
-              {hasCakeInCart && (
-                <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
-                  <div className="flex items-center justify-between mb-2">
-                    <h2 className="text-base sm:text-lg font-extrabold text-gray-900 flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">
-                        {deliveryType === 'livraison' ? '5' : '3'}
-                      </span>
-                      Carte de vœux manuscrite (+200 FCFA)
-                    </h2>
-                  </div>
-                  <p className="text-xs text-gray-500 mb-4 font-light">
-                    Glissez une délicate attention manuscrite dans le coffret pour sublimer votre gâteau.
-                  </p>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                    <label
-                      onClick={() => setHasGreetingCard(false)}
-                      className={`p-3.5 px-4 rounded-xl border transition-all cursor-pointer flex items-center gap-3 ${
-                        !hasGreetingCard
-                          ? 'border-[#581C87] bg-purple-50/60 shadow-xs'
-                          : 'border-gray-200 hover:border-purple-200 bg-white'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="greetingCardOption"
-                        checked={!hasGreetingCard}
-                        onChange={() => setHasGreetingCard(false)}
-                        className="w-4 h-4 accent-[#581C87] cursor-pointer"
-                      />
-                      <span className="text-xs sm:text-sm font-bold text-gray-900">
-                        Sans carte de vœux
-                      </span>
-                    </label>
-
-                    <label
-                      onClick={() => setHasGreetingCard(true)}
-                      className={`p-3.5 px-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                        hasGreetingCard
-                          ? 'border-[#581C87] bg-purple-50/60 shadow-xs'
-                          : 'border-gray-200 hover:border-purple-200 bg-white'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="radio"
-                          name="greetingCardOption"
-                          checked={hasGreetingCard}
-                          onChange={() => setHasGreetingCard(true)}
-                          className="w-4 h-4 accent-[#581C87] cursor-pointer"
-                        />
-                        <span className="text-xs sm:text-sm font-bold text-gray-900">
-                          Ajouter une carte de vœux
-                        </span>
-                      </div>
-                      <span className="text-xs font-extrabold text-[#581C87] shrink-0">+200 FCFA</span>
-                    </label>
-                  </div>
-
-                  {hasGreetingCard && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      className="mt-3 pt-3 border-t border-purple-100"
-                    >
-                      <label className="block text-xs font-bold text-gray-700 mb-2">
-                        Texte à calligraphier sur la carte :
-                      </label>
-                      <textarea
-                        id="field-cart-cardMessage"
-                        rows={2}
-                        value={cardMessage}
-                        onChange={(e) => {
-                          setCardMessage(e.target.value);
-                          clearFieldError('cardMessage');
-                        }}
-                        placeholder="Ex: Joyeux anniversaire mon amour ! De la part de toute la famille..."
-                        className={`w-full p-3.5 rounded-2xl outline-none text-sm transition ${
-                          fieldErrors.cardMessage
-                            ? 'border-2 border-red-500 bg-red-50/20 ring-2 ring-red-200'
-                            : 'border border-gray-200 focus:border-[#581C87] focus:ring-2 focus:ring-purple-200'
-                        }`}
-                      />
-                      {fieldErrors.cardMessage && (
-                        <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-1.5 animate-pulse">
-                          <AlertCircle size={13} className="text-red-500 shrink-0" />
-                          <span>{fieldErrors.cardMessage}</span>
-                        </p>
-                      )}
-                    </motion.div>
-                  )}
-                </div>
-              )}
             </div>
 
-            {/* COLONNE DROITE (5 cols) : Récapitulatif (Nom, Saveur, Montant à payer) */}
+            {/* COLONNE DROITE (5 cols) : Récapitulatif (Plats choisis avec prix, Carte de vœux si besoin, Montant à payer) */}
             <div className="lg:col-span-5 sticky top-24 space-y-6">
               <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-xl">
                 <h3 className="text-lg font-extrabold text-gray-900 mb-4 pb-4 border-b border-gray-100 flex items-center justify-between">
@@ -1085,46 +1057,41 @@ export const Cart: React.FC = () => {
                   </span>
                 </h3>
 
-                {/* Liste des articles du panier dans le Récapitulatif (SANS image) */}
+                {/* Liste simplifiée du Récapitulatif : plat choisi + prix en rouge + carte de vœux si besoin */}
                 <div className="space-y-3 pb-5 border-b border-gray-100">
                   {items.map((item) => {
-                    const descFlavorMatch = (item.description || '').match(/Saveur:\s*([^|\]]+)/i);
-                    const flavorLabel =
-                      item.flavor || (descFlavorMatch ? descFlavorMatch[1].trim() : '');
+                    const safePrice = Number.isFinite(Number(item.numericPrice)) ? Number(item.numericPrice) : 0;
+                    const safeQty = Math.max(1, Number.isFinite(Number(item.quantity)) ? Number(item.quantity) : 1);
                     return (
                       <div
                         key={item.id}
                         className="p-3.5 rounded-2xl bg-[#FDF8F2] border border-[#F6C58E]/60 flex items-center justify-between gap-3 text-xs sm:text-sm"
                       >
-                        <div className="min-w-0 flex-1">
-                          <div className="text-[#2B1204] font-extrabold leading-snug">
-                            {item.name}{' '}
-                            <span className="text-[#C20A0A] font-black">× {item.quantity}</span>
-                          </div>
-                          {flavorLabel && (
-                            <div className="text-[11px] text-[#2B1204]/75 mt-0.5 truncate">
-                              <span className="font-semibold">Saveur :</span>{' '}
-                              <span className="font-bold text-[#2B1204]">{flavorLabel}</span>
-                            </div>
+                        <div className="min-w-0 flex-1 text-[#2B1204] font-extrabold leading-snug">
+                          {item.name}
+                          {safeQty > 1 && (
+                            <span className="text-[#C20A0A] font-black ml-1.5">× {safeQty}</span>
                           )}
                         </div>
 
-                        <div className="flex items-center gap-2 shrink-0">
-                          <div className="text-right font-black text-sm sm:text-base text-[#C20A0A]">
-                            {(item.numericPrice * item.quantity).toLocaleString('fr-FR')} F
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => removeFromCart(item.id)}
-                            className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition cursor-pointer"
-                            title="Retirer cet article"
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                        <div className="font-black text-sm sm:text-base text-[#C20A0A] shrink-0">
+                          {(safePrice * safeQty).toLocaleString('fr-FR')} F
                         </div>
                       </div>
                     );
                   })}
+
+                  {effectiveGreetingCard && (
+                    <div className="p-3.5 rounded-2xl bg-[#FDF8F2] border border-[#F6C58E]/60 flex items-center justify-between gap-3 text-xs sm:text-sm">
+                      <div className="min-w-0 flex-1 text-[#2B1204] font-extrabold flex items-center gap-2">
+                        <Gift size={14} className="text-[#C20A0A] shrink-0" />
+                        <span>Carte de vœux manuscrite</span>
+                      </div>
+                      <div className="font-black text-sm sm:text-base text-[#C20A0A] shrink-0">
+                        +200 F
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Espace Fidélité si reconnu */}
@@ -1152,14 +1119,14 @@ export const Cart: React.FC = () => {
                   </div>
                 )}
 
-                {/* Montant à payer */}
+                {/* Montant à payer en rouge */}
                 <div className="py-5 flex items-baseline justify-between">
                   <div>
                     <span className="text-xs text-gray-500 uppercase tracking-wider block font-bold">
                       Montant à payer
                     </span>
                   </div>
-                  <div className="text-2xl sm:text-3xl font-black text-[#581C87]">
+                  <div className="text-2xl sm:text-3xl font-black text-[#C20A0A]">
                     {finalAmountToPay.toLocaleString('fr-FR')} FCFA
                   </div>
                 </div>
@@ -1172,16 +1139,16 @@ export const Cart: React.FC = () => {
                   </div>
                 )}
 
-                {/* Bouton Passer au paiement */}
+                {/* Bouton doré Passer au paiement */}
                 <button
                   type="button"
                   onClick={handleProceedToPayment}
                   disabled={isSubmitting}
-                  className="w-full py-4 px-6 rounded-lg bg-[#581C87] hover:bg-[#6B21A8] text-white font-extrabold text-sm shadow-xl shadow-purple-900/30 transition-all flex items-center justify-center gap-2.5 cursor-pointer transform hover:-translate-y-0.5 disabled:opacity-50"
+                  className="w-full py-4 px-6 rounded-lg bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] font-extrabold text-sm shadow-xl shadow-[#F8BE40]/30 transition-all flex items-center justify-center gap-2.5 cursor-pointer transform hover:-translate-y-0.5 disabled:opacity-50"
                 >
                   {isSubmitting ? (
                     <>
-                      <Loader2 size={18} className="animate-spin text-white" />
+                      <Loader2 size={18} className="animate-spin text-[#2B1204]" />
                       <span>Génération de votre commande...</span>
                     </>
                   ) : (

@@ -563,17 +563,49 @@ export function CustomOrder() {
   const cakeSupplementsTotal = edibleImageCost + nonEdibleImageCost + alcoholCost + sugarPasteCost;
   const cakeItemPriceForCart = baseCakePrice + cakeSupplementsTotal;
 
-  // Gestion de l'upload d'image
+  // Gestion de l'upload d'image avec compression automatique pour ne jamais bloquer la création de commande
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        alert("L'image est trop lourde (maximum 5 Mo)");
+      if (file.size > 8 * 1024 * 1024) {
+        alert("L'image est trop lourde (maximum 8 Mo)");
         return;
       }
       const reader = new FileReader();
       reader.onloadend = () => {
-        setUploadedImagePreview(reader.result as string);
+        const rawDataUrl = reader.result as string;
+        const img = new Image();
+        img.onload = () => {
+          try {
+            const maxDim = 900;
+            let width = img.width;
+            let height = img.height;
+            if (width > maxDim || height > maxDim) {
+              if (width > height) {
+                height = Math.round((height * maxDim) / width);
+                width = maxDim;
+              } else {
+                width = Math.round((width * maxDim) / height);
+                height = maxDim;
+              }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(img, 0, 0, width, height);
+              const compressed = canvas.toDataURL('image/jpeg', 0.8);
+              setUploadedImagePreview(compressed);
+              return;
+            }
+          } catch (err) {
+            console.warn('Fallback image upload sans compression:', err);
+          }
+          setUploadedImagePreview(rawDataUrl);
+        };
+        img.onerror = () => setUploadedImagePreview(rawDataUrl);
+        img.src = rawDataUrl;
       };
       reader.readAsDataURL(file);
     }
@@ -804,23 +836,23 @@ export function CustomOrder() {
                               setSelectedFlavorKey(cake.flavorKey);
                             }
                           }}
-                          className={`group relative rounded-none overflow-hidden border-2 cursor-pointer transition-all flex flex-col justify-between bg-white ${
+                          className={`group relative rounded-none overflow-hidden border-2 cursor-pointer transition-all bg-white ${
                             isSelected
-                              ? 'border-[#581C87] shadow-lg ring-2 ring-[#581C87]/20 scale-[1.01]'
+                              ? 'border-[#C20A0A] shadow-lg ring-2 ring-[#C20A0A]/25 scale-[1.01]'
                               : 'border-gray-200 hover:border-purple-200'
                           }`}
                         >
-                          <div className="aspect-square w-full overflow-hidden bg-gray-100">
+                          <div className="relative aspect-square w-full overflow-hidden bg-gray-100">
                             <ImageWithFallback
                               src={cake.image}
                               alt={cake.name}
                               className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                             />
-                          </div>
-                          <div className="p-3 bg-white">
-                            <h4 className="text-xs font-extrabold text-gray-900 leading-snug line-clamp-2">
-                              {cake.name}
-                            </h4>
+                            {isSelected && (
+                              <div className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full bg-[#C20A0A] text-white flex items-center justify-center shadow-md">
+                                <Check size={14} strokeWidth={3} />
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
@@ -887,18 +919,13 @@ export function CustomOrder() {
           {/* POINT 3 : TAILLE ET SAVEUR                                                */}
           {/* ========================================================================= */}
           <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm space-y-8">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
               <h3 className="text-base sm:text-lg font-extrabold text-gray-900 flex items-center gap-2">
                 <span className="w-6 h-6 rounded-full bg-purple-100 text-[#581C87] text-xs font-black flex items-center justify-center">
                   3
                 </span>
                 Taille et saveur
               </h3>
-              {!isPlus20Selected && (
-                <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-purple-100 text-[#581C87] text-xs font-extrabold">
-                  Prix du gâteau : {baseCakePrice.toLocaleString('fr-FR')} FCFA
-                </span>
-              )}
             </div>
 
             {/* --------------------------------------------------------------------- */}
@@ -1084,7 +1111,7 @@ export function CustomOrder() {
                                         />
                                         <span className="font-bold text-xs text-gray-900">{opt.optionLabel}</span>
                                       </div>
-                                      <span className="font-black text-xs text-[#581C87]">
+                                      <span className="font-black text-xs text-[#C20A0A]">
                                         {opt.price.toLocaleString('fr-FR')} F
                                       </span>
                                     </label>
@@ -1167,7 +1194,7 @@ export function CustomOrder() {
                                     </div>
                                   </div>
                                   {!isOptPlus20 && (
-                                    <span className="font-black text-[#581C87] text-sm shrink-0">
+                                    <span className="font-black text-[#C20A0A] text-sm shrink-0">
                                       {totalForAllCakes.toLocaleString('fr-FR')} FCFA
                                     </span>
                                   )}
@@ -1219,7 +1246,7 @@ export function CustomOrder() {
                             <span className="font-extrabold text-sm text-gray-900">{opt.label}</span>
                           </div>
                           {!isOptPlus20 && (
-                            <span className="font-black text-[#581C87] text-sm shrink-0">
+                            <span className="font-black text-[#C20A0A] text-sm shrink-0">
                               {opt.price.toLocaleString('fr-FR')} FCFA
                             </span>
                           )}
@@ -1294,44 +1321,78 @@ export function CustomOrder() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* Images comestibles : 5 000 F */}
+              {/* Images comestibles : 5 000 F (exclusif avec Images non comestibles) */}
               <label
-                className={`p-3.5 px-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                  suppEdibleImage
-                    ? 'border-[#581C87] bg-purple-50/70 shadow-xs'
-                    : 'border-gray-200 hover:border-purple-200 bg-white'
+                className={`p-3.5 px-4 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+                  suppNonEdibleImage
+                    ? 'border-gray-200 bg-gray-100/70 opacity-50 cursor-not-allowed'
+                    : suppEdibleImage
+                      ? 'border-[#C20A0A] bg-red-50/40 shadow-xs cursor-pointer'
+                      : 'border-gray-200 hover:border-purple-200 bg-white cursor-pointer'
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <input
                     type="checkbox"
                     checked={suppEdibleImage}
-                    onChange={(e) => setSuppEdibleImage(e.target.checked)}
-                    className="w-4 h-4 accent-[#581C87] rounded cursor-pointer"
+                    disabled={suppNonEdibleImage}
+                    onChange={(e) => {
+                      if (suppNonEdibleImage) return;
+                      const checked = e.target.checked;
+                      setSuppEdibleImage(checked);
+                      if (checked) setSuppNonEdibleImage(false);
+                    }}
+                    className="w-4 h-4 accent-[#C20A0A] rounded cursor-pointer disabled:cursor-not-allowed"
                   />
-                  <span className="text-xs sm:text-sm font-bold text-gray-900">Images comestibles</span>
+                  <div>
+                    <span className="block text-xs sm:text-sm font-bold text-gray-900">
+                      Images comestibles
+                    </span>
+                    {suppNonEdibleImage && (
+                      <span className="block text-[10px] text-gray-500">
+                        Désactivez « Images non comestibles » pour choisir
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <span className="text-xs font-black text-[#581C87] shrink-0">+5 000 FCFA</span>
+                <span className="text-xs font-black text-[#C20A0A] shrink-0">+5 000 FCFA</span>
               </label>
 
-              {/* Images non comestibles : 1 500 F */}
+              {/* Images non comestibles : 1 500 F (exclusif avec Images comestibles) */}
               <label
-                className={`p-3.5 px-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                  suppNonEdibleImage
-                    ? 'border-[#581C87] bg-purple-50/70 shadow-xs'
-                    : 'border-gray-200 hover:border-purple-200 bg-white'
+                className={`p-3.5 px-4 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+                  suppEdibleImage
+                    ? 'border-gray-200 bg-gray-100/70 opacity-50 cursor-not-allowed'
+                    : suppNonEdibleImage
+                      ? 'border-[#C20A0A] bg-red-50/40 shadow-xs cursor-pointer'
+                      : 'border-gray-200 hover:border-purple-200 bg-white cursor-pointer'
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <input
                     type="checkbox"
                     checked={suppNonEdibleImage}
-                    onChange={(e) => setSuppNonEdibleImage(e.target.checked)}
-                    className="w-4 h-4 accent-[#581C87] rounded cursor-pointer"
+                    disabled={suppEdibleImage}
+                    onChange={(e) => {
+                      if (suppEdibleImage) return;
+                      const checked = e.target.checked;
+                      setSuppNonEdibleImage(checked);
+                      if (checked) setSuppEdibleImage(false);
+                    }}
+                    className="w-4 h-4 accent-[#C20A0A] rounded cursor-pointer disabled:cursor-not-allowed"
                   />
-                  <span className="text-xs sm:text-sm font-bold text-gray-900">Images non comestibles</span>
+                  <div>
+                    <span className="block text-xs sm:text-sm font-bold text-gray-900">
+                      Images non comestibles
+                    </span>
+                    {suppEdibleImage && (
+                      <span className="block text-[10px] text-gray-500">
+                        Désactivez « Images comestibles » pour choisir
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <span className="text-xs font-black text-[#581C87] shrink-0">+1 500 FCFA</span>
+                <span className="text-xs font-black text-[#C20A0A] shrink-0">+1 500 FCFA</span>
               </label>
 
               {/* Alcool : 1 000 F */}
@@ -1351,7 +1412,7 @@ export function CustomOrder() {
                   />
                   <span className="text-xs sm:text-sm font-bold text-gray-900">Alcool</span>
                 </div>
-                <span className="text-xs font-black text-[#581C87] shrink-0">+1 000 FCFA</span>
+                <span className="text-xs font-black text-[#C20A0A] shrink-0">+1 000 FCFA</span>
               </label>
 
               {/* Pâte à sucre : 2 500 F / part */}
@@ -1378,7 +1439,7 @@ export function CustomOrder() {
                     </span>
                   </div>
                 </div>
-                <span className="text-xs font-black text-[#581C87] shrink-0">
+                <span className="text-xs font-black text-[#C20A0A] shrink-0">
                   +{(SUPPLEMENT_PRICES.sugarPastePerPart * effectivePartsCount).toLocaleString('fr-FR')} FCFA
                 </span>
               </label>
@@ -1413,38 +1474,38 @@ export function CustomOrder() {
           {/* RÉCAPITULATIF DU MONTANT TOTAL & AJOUT AU PANIER                          */}
           {/* ========================================================================= */}
           {!isPlus20Selected && (
-            <div className="bg-white rounded-3xl p-6 sm:p-8 border-2 border-[#581C87]/20 shadow-lg space-y-4">
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border-2 border-[#C20A0A]/25 shadow-lg space-y-4">
               <div className="space-y-2 text-xs sm:text-sm text-gray-700">
                 <div className="flex justify-between">
                   <span>Prix du gâteau :</span>
-                  <span className="font-bold text-gray-900">{baseCakePrice.toLocaleString('fr-FR')} FCFA</span>
+                  <span className="font-bold text-[#C20A0A]">{baseCakePrice.toLocaleString('fr-FR')} FCFA</span>
                 </div>
 
                 {suppEdibleImage && (
-                  <div className="flex justify-between text-purple-900">
+                  <div className="flex justify-between text-gray-800">
                     <span>Images comestibles :</span>
-                    <span className="font-bold">+{edibleImageCost.toLocaleString('fr-FR')} FCFA</span>
+                    <span className="font-bold text-[#C20A0A]">+{edibleImageCost.toLocaleString('fr-FR')} FCFA</span>
                   </div>
                 )}
 
                 {suppNonEdibleImage && (
-                  <div className="flex justify-between text-purple-900">
+                  <div className="flex justify-between text-gray-800">
                     <span>Images non comestibles :</span>
-                    <span className="font-bold">+{nonEdibleImageCost.toLocaleString('fr-FR')} FCFA</span>
+                    <span className="font-bold text-[#C20A0A]">+{nonEdibleImageCost.toLocaleString('fr-FR')} FCFA</span>
                   </div>
                 )}
 
                 {suppAlcohol && (
-                  <div className="flex justify-between text-purple-900">
+                  <div className="flex justify-between text-gray-800">
                     <span>Alcool :</span>
-                    <span className="font-bold">+{alcoholCost.toLocaleString('fr-FR')} FCFA</span>
+                    <span className="font-bold text-[#C20A0A]">+{alcoholCost.toLocaleString('fr-FR')} FCFA</span>
                   </div>
                 )}
 
                 {suppSugarPaste && (
-                  <div className="flex justify-between text-purple-900">
+                  <div className="flex justify-between text-gray-800">
                     <span>Pâte à sucre (2 500 F × {effectivePartsCount} parts) :</span>
-                    <span className="font-bold">+{sugarPasteCost.toLocaleString('fr-FR')} FCFA</span>
+                    <span className="font-bold text-[#C20A0A]">+{sugarPasteCost.toLocaleString('fr-FR')} FCFA</span>
                   </div>
                 )}
 
@@ -1452,7 +1513,7 @@ export function CustomOrder() {
                   <span className="text-sm sm:text-base font-extrabold text-gray-900">
                     Montant Total :
                   </span>
-                  <span className="text-xl sm:text-2xl font-black text-[#581C87]">
+                  <span className="text-xl sm:text-2xl font-black text-[#C20A0A]">
                     {cakeItemPriceForCart.toLocaleString('fr-FR')} FCFA
                   </span>
                 </div>
