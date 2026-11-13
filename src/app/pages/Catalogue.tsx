@@ -456,11 +456,11 @@ export function Catalogue() {
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
                     key={product.id}
-                    className="bg-white text-[#2B1204] p-3 sm:p-5 rounded-2xl border-2 border-[#F8BE40] shadow-md hover:shadow-2xl transition-all duration-300 flex flex-col justify-between group hover:-translate-y-1"
+                    className="bg-white text-[#2B1204] p-3 sm:p-5 rounded-xl border-2 border-[#F8BE40] shadow-md hover:shadow-2xl transition-all duration-300 flex flex-col justify-between group hover:-translate-y-1"
                   >
                     <div>
                       {/* 1. Image du produit */}
-                      <div className="relative aspect-[4/5] rounded-xl overflow-hidden bg-[#FDF6EC]">
+                      <div className="relative aspect-[4/5] rounded-lg overflow-hidden bg-[#FDF6EC]">
                         <ImageWithFallback
                           src={product.image}
                           alt={product.name}
@@ -499,7 +499,7 @@ export function Catalogue() {
                                 }))
                               }
                               disabled={currentPcs <= minPcs}
-                              className="w-6 h-6 rounded-full border border-[#F6C58E] bg-[#FDF6EC] text-[#2B1204] flex items-center justify-center disabled:opacity-40 cursor-pointer"
+                              className="w-6 h-6 rounded border border-[#F6C58E] bg-[#FDF6EC] text-[#2B1204] flex items-center justify-center disabled:opacity-40 cursor-pointer"
                             >
                               <Minus size={11} />
                             </button>
@@ -514,7 +514,7 @@ export function Catalogue() {
                                   [product.id]: currentPcs + 1
                                 }))
                               }
-                              className="w-6 h-6 rounded-full border border-[#F6C58E] bg-[#FDF6EC] text-[#2B1204] flex items-center justify-center cursor-pointer"
+                              className="w-6 h-6 rounded border border-[#F6C58E] bg-[#FDF6EC] text-[#2B1204] flex items-center justify-center cursor-pointer"
                             >
                               <Plus size={11} />
                             </button>
@@ -523,15 +523,15 @@ export function Catalogue() {
                       )}
                     </div>
 
-                    {/* 5. Boutons pilules compacts : Ajouter / compteur simple + Commander (doré + bordure dorée) */}
+                    {/* 5. Boutons rectangulaires à coins légèrement arrondis : Ajouter / compteur simple + Commander */}
                     <div className="pt-2 space-y-1.5">
                       {cartQty > 0 ? (
-                        <div className="w-full py-0.5 px-2.5 rounded-full border border-[#F8BE40] bg-[#FDF8F2] flex items-center justify-between">
+                        <div className="w-full py-0.5 px-2.5 rounded-md border border-[#F8BE40] bg-[#FDF8F2] flex items-center justify-between">
                           <button
                             type="button"
                             onClick={() => updateQuantity(cartItemId, -1)}
                             disabled={cartQty <= 1}
-                            className="w-6 h-6 rounded-full flex items-center justify-center text-[#2B1204] hover:text-[#C20A0A] disabled:opacity-35 disabled:cursor-not-allowed font-bold transition cursor-pointer"
+                            className="w-6 h-6 rounded flex items-center justify-center text-[#2B1204] hover:text-[#C20A0A] disabled:opacity-35 disabled:cursor-not-allowed font-bold transition cursor-pointer"
                             title="Diminuer la quantité"
                           >
                             <Minus size={12} strokeWidth={2.5} />
@@ -542,7 +542,7 @@ export function Catalogue() {
                           <button
                             type="button"
                             onClick={() => updateQuantity(cartItemId, 1)}
-                            className="w-6 h-6 rounded-full flex items-center justify-center text-[#2B1204] hover:text-[#C20A0A] font-bold transition cursor-pointer"
+                            className="w-6 h-6 rounded flex items-center justify-center text-[#2B1204] hover:text-[#C20A0A] font-bold transition cursor-pointer"
                             title="Augmenter la quantité"
                           >
                             <Plus size={12} strokeWidth={2.5} />
@@ -552,7 +552,7 @@ export function Catalogue() {
                         <button
                           type="button"
                           onClick={() => handleAddToCart(product, false)}
-                          className="w-full py-1.5 sm:py-2 px-3 rounded-full border border-[#F8BE40] text-[#2B1204] hover:bg-[#F8BE40]/15 font-bold text-[11px] sm:text-xs transition-all cursor-pointer text-center active:scale-95"
+                          className="w-full py-1.5 sm:py-2 px-3 rounded-md border border-[#F8BE40] text-[#2B1204] hover:bg-[#F8BE40]/15 font-bold text-[11px] sm:text-xs transition-all cursor-pointer text-center active:scale-95"
                         >
                           Ajouter
                         </button>
@@ -567,7 +567,7 @@ export function Catalogue() {
                             handleAddToCart(product, true);
                           }
                         }}
-                        className="w-full py-1.5 sm:py-2 px-3 rounded-full bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] border border-[#F8BE40] font-extrabold text-[11px] sm:text-xs shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                        className="w-full py-1.5 sm:py-2 px-3 rounded-md bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] border border-[#F8BE40] font-extrabold text-[11px] sm:text-xs shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
                       >
                         <span>Commander</span>
                         <ArrowRight size={13} />
