@@ -456,7 +456,7 @@ export function Catalogue() {
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
                     key={product.id}
-                    className="bg-white text-[#2B1204] p-1.5 sm:p-2.5 rounded-xl border-2 border-[#F8BE40] shadow-md hover:shadow-2xl transition-all duration-300 flex flex-col justify-between group hover:-translate-y-1"
+                    className="bg-white text-[#2B1204] p-1 rounded-xl border-2 border-[#F8BE40] shadow-md hover:shadow-2xl transition-all duration-300 flex flex-col justify-between group hover:-translate-y-1"
                   >
                     <div>
                       {/* 1. Image du produit */}
