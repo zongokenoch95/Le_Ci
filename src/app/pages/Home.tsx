@@ -416,12 +416,12 @@ export function Home() {
           transition={{ duration: 0.9 }}
           className="relative z-10 text-center max-w-4xl px-4 sm:px-6"
         >
-          {/* Titre Hero : Bienvenue chez / Les Douceurs de / Lê-Ci */}
+          {/* Titre Hero : Bienvenue chez / Les Douceurs de (Barcelony) + Lê-Ci */}
           <h1 className="flex flex-col items-center justify-center mb-5">
-            <span className="font-gotham-pro text-2xl sm:text-4xl md:text-5xl font-bold text-[#FDF8F2] tracking-wide leading-tight drop-shadow-2xl">
+            <span className="font-barcelony text-4xl sm:text-6xl md:text-7xl font-normal text-[#FDF8F2] tracking-normal leading-tight drop-shadow-2xl">
               Bienvenue chez
             </span>
-            <span className="font-gotham-pro text-2xl sm:text-4xl md:text-5xl font-bold text-[#FDF8F2] tracking-wide leading-tight drop-shadow-2xl mt-1">
+            <span className="font-barcelony text-4xl sm:text-6xl md:text-7xl font-normal text-[#FDF8F2] tracking-normal leading-tight drop-shadow-2xl mt-1">
               Les Douceurs de
             </span>
             <img

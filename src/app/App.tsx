@@ -1,6 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Header } from './components/Header';
-import { PageNavigator } from './components/PageNavigator';
 import { ScrollToTop } from './components/ScrollToTop';
 import { Footer } from './components/Footer';
 import { PageLoader } from './components/PageLoader';
@@ -27,7 +26,6 @@ export default function App() {
         <ScrollToTop />
         <div className="flex flex-col min-h-screen">
           <Header />
-          <PageNavigator />
           <main className="flex-1">
             <Routes>
               <Route path="/" element={<Home />} />

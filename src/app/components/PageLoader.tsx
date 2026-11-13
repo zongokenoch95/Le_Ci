@@ -1,34 +1,23 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { motion } from 'motion/react';
 
 interface PageLoaderProps {
   onComplete?: () => void;
 }
 
 export const PageLoader: React.FC<PageLoaderProps> = ({ onComplete }) => {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
   const [fadingOut, setFadingOut] = useState(false);
   const [hidden, setHidden] = useState(false);
 
   useEffect(() => {
-    const videoEl = videoRef.current;
-    if (videoEl) {
-      videoEl.muted = true;
-      videoEl.defaultMuted = true;
-      videoEl.volume = 0;
-      const playPromise = videoEl.play();
-      if (playPromise && typeof playPromise.catch === 'function') {
-        playPromise.catch(() => {});
-      }
-    }
-
     const fadeTimer = window.setTimeout(() => {
       setFadingOut(true);
-    }, 1800);
+    }, 1200);
 
     const hideTimer = window.setTimeout(() => {
       setHidden(true);
       onComplete?.();
-    }, 2300);
+    }, 1650);
 
     return () => {
       window.clearTimeout(fadeTimer);
@@ -45,15 +34,13 @@ export const PageLoader: React.FC<PageLoaderProps> = ({ onComplete }) => {
         fadingOut ? 'opacity-0 pointer-events-none' : 'opacity-100'
       }`}
     >
-      <video
-        ref={videoRef}
-        src="/img/loader.mp4"
-        autoPlay
-        muted
-        loop
-        playsInline
-        preload="auto"
-        className="w-56 h-56 sm:w-72 sm:h-72 object-contain pointer-events-none select-none"
+      <motion.img
+        src="/img/logo.png"
+        alt="Les Douceurs de Lê-Ci"
+        initial={{ opacity: 0.35, scale: 0.88 }}
+        animate={{ opacity: [0.6, 1, 0.6], scale: [0.94, 1.05, 0.94] }}
+        transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+        className="w-36 h-36 sm:w-48 sm:h-48 object-contain select-none pointer-events-none"
       />
     </div>
   );
