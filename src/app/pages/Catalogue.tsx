@@ -398,9 +398,9 @@ export function Catalogue() {
           </div>
         </motion.div>
 
-        {/* Filtres par Catégorie */}
+        {/* Filtres par Catégorie — Intitulés alignés horizontalement avec défilement horizontal */}
         <div className="mb-10">
-          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+          <div className="flex flex-nowrap items-center justify-start md:justify-center gap-2.5 sm:gap-3 overflow-x-auto pb-2 px-1">
             {categories.map((category) => (
               <button
                 key={category}
@@ -411,9 +411,9 @@ export function Catalogue() {
                     setSelectedCategory(category);
                   }
                 }}
-                className={`px-6 py-2.5 rounded-lg text-xs sm:text-sm font-extrabold transition-all cursor-pointer ${
+                className={`shrink-0 whitespace-nowrap px-5 sm:px-6 py-2.5 rounded-lg text-xs sm:text-sm font-extrabold transition-all cursor-pointer ${
                   selectedCategory === category
-                    ? 'bg-[#2B1204] text-[#F8BE40] shadow-lg scale-105 border-2 border-[#F8BE40]'
+                    ? 'bg-[#2B1204] text-[#F8BE40] shadow-lg border-2 border-[#F8BE40]'
                     : 'bg-white text-[#2B1204] border border-[#F6C58E] hover:border-[#2B1204] hover:bg-[#FDF6EC]'
                 }`}
               >

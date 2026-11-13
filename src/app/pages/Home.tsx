@@ -361,17 +361,17 @@ export function Home() {
       </AnimatePresence>
 
       {/* ========================================================================= */}
-      {/* 1. HERO SECTION (Brun Cacao #2B1204, Jaune Doré #F8BE40, Vert Moringa)    */}
+      {/* 1. HERO SECTION (Ancienne configuration avec Charte Graphique)            */}
       {/* ========================================================================= */}
-      <section className="relative min-h-[88vh] sm:min-h-[94vh] pt-32 sm:pt-40 pb-20 flex items-center justify-center overflow-hidden">
-        {/* Photo de couverture avec voile Brun Cacao chaleureux */}
+      <section className="relative min-h-[92vh] sm:min-h-screen pt-32 sm:pt-40 pb-20 flex items-center justify-center overflow-hidden">
+        {/* Photo de couverture */}
         <div className="absolute inset-0 z-0">
           <img
             src="/tarte-cover.png"
-            alt="Création signature Les Douceurs de Lê-Ci"
+            alt="Création signature Les Douceurs de Lê Ci"
             className="w-full h-full object-cover object-center scale-105 transform animate-fade-in"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#2B1204]/90 via-[#2B1204]/65 to-[#2B1204]/95" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#2B1204]/85 via-[#2B1204]/60 to-[#2B1204]/90" />
         </div>
 
         <motion.div
@@ -380,73 +380,58 @@ export function Home() {
           transition={{ duration: 0.9 }}
           className="relative z-10 text-center max-w-4xl px-4 sm:px-6"
         >
-          {/* Badge Vert Moringa / Produits locaux */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#5DBA68]/20 border border-[#5DBA68]/60 text-[#FDF8F2] text-xs font-bold mb-5 backdrop-blur-xs">
-            <Leaf size={14} className="text-[#5DBA68]" />
-            <span>Pâtisserie Artisanale & Saveurs Locales (Moringa, Bissap, Teedo)</span>
-          </div>
-
-          {/* Titre en police signature Barcelony / Monotype Corsiva */}
-          <h1 className="font-barcelony text-6xl sm:text-8xl md:text-9xl text-[#F8BE40] tracking-wide mb-4 leading-tight drop-shadow-2xl">
-            Les Douceurs de Lê-Ci
+          {/* Titre en police calligraphique Barcelony */}
+          <h1 className="font-barcelony text-6xl sm:text-8xl md:text-9xl text-[#F8BE40] tracking-wide mb-3 leading-tight drop-shadow-2xl">
+            Les Douceurs de Lê Ci
           </h1>
 
-          {/* Slogan en police Fredoka (typographie éditoriale principale de la charte) */}
+          {/* Slogan */}
           <p className="font-fredoka text-sm sm:text-base md:text-lg text-[#FDF8F2] font-normal mb-8 max-w-2xl mx-auto leading-relaxed drop-shadow">
             La croisée entre la santé consciente, le plaisir gourmand et la fierté locale.
           </p>
 
-          <div className="flex flex-wrap justify-center items-center gap-4">
-            {/* Bouton CTA principal en Jaune doré #F8BE40 et texte Brun cacao #2B1204 (Charte page 5) */}
+          <div className="flex justify-center items-center">
             <button
               onClick={() => scrollToSection('nos-produits')}
-              className="px-9 py-4 bg-[#F8BE40] hover:bg-[#f5b120] text-[#2B1204] font-extrabold rounded-lg shadow-2xl transition-all inline-flex items-center justify-center gap-2.5 transform hover:-translate-y-0.5 text-sm cursor-pointer border-2 border-[#F8BE40]"
+              className="px-10 py-4 bg-[#F8BE40] hover:bg-[#f5b120] text-[#2B1204] font-extrabold rounded-full shadow-2xl transition-all inline-flex items-center justify-center gap-2.5 transform hover:-translate-y-0.5 text-sm cursor-pointer border border-[#F8BE40]"
             >
               <span>Commander</span>
               <ArrowRight size={18} />
             </button>
-
-            <Link
-              to="/sur-commande"
-              className="px-8 py-4 bg-[#C20A0A] hover:bg-[#a50808] text-white font-extrabold rounded-lg shadow-xl transition-all inline-flex items-center justify-center gap-2 transform hover:-translate-y-0.5 text-sm cursor-pointer"
-            >
-              <Cake size={18} />
-              <span>Gâteau sur-mesure</span>
-            </Link>
           </div>
 
           {/* Garanties en bas du Hero */}
-          <div className="mt-14 pt-8 border-t border-[#F6C58E]/25 grid grid-cols-3 gap-4 text-[#FDF8F2] max-w-xl mx-auto">
+          <div className="mt-14 pt-8 border-t border-white/15 grid grid-cols-3 gap-4 text-white/90 max-w-xl mx-auto">
             <div className="flex flex-col items-center gap-1.5">
-              <Leaf size={22} className="text-[#5DBA68]" />
+              <ShieldCheck size={22} className="text-[#F8BE40]" />
               <span className="text-[11px] font-bold tracking-wide">Produits locaux</span>
             </div>
             <div className="flex flex-col items-center gap-1.5">
-              <Heart size={22} className="text-[#EE7362]" />
-              <span className="text-[11px] font-bold tracking-wide">Healthy & Équilibré</span>
+              <Heart size={22} className="text-[#F8BE40]" />
+              <span className="text-[11px] font-bold tracking-wide">Healthy</span>
             </div>
             <div className="flex flex-col items-center gap-1.5">
               <Clock size={22} className="text-[#F8BE40]" />
-              <span className="text-[11px] font-bold tracking-wide">Fraîcheur du four</span>
+              <span className="text-[11px] font-bold tracking-wide">Produits frais</span>
             </div>
           </div>
         </motion.div>
       </section>
 
       {/* ========================================================================= */}
-      {/* 2. SECTION NOS DOUCEURS — DÉFILEMENT HORIZONTAL (IMAGE + TITRE UNIQUEMENT) */}
+      {/* 2. SECTION NOS DOUCEURS (Ancienne configuration en grille : Image + Titre) */}
       {/* ========================================================================= */}
       <section
         id="nos-produits"
-        className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24"
+        className="max-w-7xl lg:max-w-5xl xl:max-w-6xl mx-auto px-4 sm:px-6 lg:px-14 xl:px-20 py-20 sm:py-24"
       >
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center mb-10 sm:mb-14"
+          className="text-center mb-16"
         >
-          <h2 className="text-3xl sm:text-5xl font-black text-[#2B1204] tracking-tight">
+          <h2 className="text-3xl sm:text-5xl font-extrabold text-[#2B1204] tracking-tight">
             Nos Douceurs
           </h2>
           <p className="font-barcelony text-2xl sm:text-3xl text-[#C20A0A] max-w-2xl mx-auto mt-3 leading-relaxed">
@@ -454,8 +439,8 @@ export function Home() {
           </p>
         </motion.div>
 
-        {/* Catégories alignées horizontalement avec défilement horizontal (image + titre uniquement) */}
-        <div className="flex overflow-x-auto gap-4 sm:gap-6 pb-4 snap-x snap-mandatory scrollbar-thin">
+        {/* Grille des 4 Catégories (constituées uniquement d'une image et d'un titre) */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8">
           {productCategories.map((cat, idx) => {
             const targetUrl =
               cat.id === 'gateaux'
@@ -464,17 +449,17 @@ export function Home() {
             return (
               <motion.div
                 key={cat.id}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: idx * 0.08 }}
-                className="w-60 sm:w-72 shrink-0 snap-start"
+                transition={{ duration: 0.5, delay: idx * 0.1 }}
+                className="h-full"
               >
                 <Link
                   to={targetUrl}
-                  className="group block bg-white rounded-2xl overflow-hidden border-2 border-[#F6C58E]/60 hover:border-[#2B1204] shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:-translate-y-1"
+                  className="group relative bg-white rounded-none overflow-hidden border border-[#F6C58E] shadow-md hover:shadow-2xl hover:border-[#2B1204] transition-all duration-300 flex flex-col justify-between h-full cursor-pointer block transform hover:-translate-y-1.5"
                 >
-                  {/* Image de la catégorie */}
+                  {/* Photo représentative de la catégorie */}
                   <div className="relative aspect-[4/3] overflow-hidden bg-[#FDF6EC]">
                     <ImageWithFallback
                       src={cat.image}
@@ -484,8 +469,8 @@ export function Home() {
                   </div>
 
                   {/* Titre uniquement */}
-                  <div className="p-4 sm:p-5 text-center">
-                    <h3 className="text-base sm:text-lg font-black text-[#2B1204] group-hover:text-[#C20A0A] transition">
+                  <div className="p-4 sm:p-6 text-center">
+                    <h3 className="text-sm sm:text-lg font-extrabold text-[#2B1204] group-hover:text-[#C20A0A] transition">
                       {cat.title}
                     </h3>
                   </div>
