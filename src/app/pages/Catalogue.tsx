@@ -251,7 +251,7 @@ export function Catalogue() {
   
   const [addedProductId, setAddedProductId] = useState<number | null>(null);
 
-  const { addToCart, openCart } = useCart();
+  const { items: cartItems, addToCart, updateQuantity } = useCart();
 
   useEffect(() => {
     async function loadCatalogue() {
@@ -423,17 +423,29 @@ export function Catalogue() {
           </div>
         </div>
 
-        {/* Grille de Produits en 2 COLONNES */}
+        {/* Grille de Produits en 2 COLONNES — Design inspiré de la maquette (Image, Titre, Prix, Description, Sélecteur -/+ ou Ajouter + Commander) */}
         {loading ? (
           <div className="flex flex-col items-center justify-center py-24 text-[#2B1204]/60 gap-3">
             <Loader2 className="animate-spin text-[#2B1204]" size={36} />
             <span className="text-sm font-medium">Chargement de nos douceurs artisanales...</span>
           </div>
         ) : (
-          <motion.div layout className="grid grid-cols-2 gap-4 sm:gap-8">
+          <motion.div layout className="grid grid-cols-2 gap-3.5 sm:gap-6">
             <AnimatePresence>
               {filteredProducts.map((product) => {
-                const isAdded = addedProductId === product.id;
+                const isPaquetProduct = Boolean(product.category && /paquet/i.test(product.category));
+                const minPcs = product.min_pieces && product.min_pieces > 0 ? product.min_pieces : 20;
+                const currentPcs = Math.max(minPcs, selectedPaquetPieces[product.id] || minPcs);
+                const cartItemId = isPaquetProduct ? `${product.id}-pcs-${currentPcs}` : product.id;
+                const existingCartItem = cartItems.find((ci) => String(ci.id) === String(cartItemId));
+                const cartQty = existingCartItem ? existingCartItem.quantity : 0;
+
+                const unitComputedPrice = isPaquetProduct
+                  ? Math.round((product.numericPrice / minPcs) * currentPcs)
+                  : product.numericPrice;
+                const displayPrice =
+                  cartQty > 1 ? unitComputedPrice * cartQty : unitComputedPrice;
+
                 return (
                   <motion.div
                     layout
@@ -441,10 +453,11 @@ export function Catalogue() {
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
                     key={product.id}
-                    className="bg-white rounded-2xl overflow-hidden border-2 border-[#F6C58E]/60 hover:border-[#2B1204] shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between group"
+                    className="bg-white rounded-3xl overflow-hidden shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between group"
                   >
                     <div>
-                      <div className="relative aspect-[4/3] overflow-hidden bg-[#FDF6EC]">
+                      {/* 1. Image du produit en haut */}
+                      <div className="relative aspect-square overflow-hidden bg-[#FDF6EC]">
                         <ImageWithFallback
                           src={product.image}
                           alt={product.name}
@@ -452,129 +465,114 @@ export function Catalogue() {
                         />
                       </div>
 
-                      <div className="p-4 sm:p-6">
-                        <h3 className="font-black text-[#2B1204] text-sm sm:text-lg group-hover:text-[#C20A0A] transition mb-1.5 line-clamp-2">
+                      {/* 2. Titre -> Prix -> Description */}
+                      <div className="p-3.5 sm:p-5 pb-2">
+                        <h3 className="font-fredoka font-bold text-[#2B1204] text-base sm:text-xl leading-snug mb-1 line-clamp-2">
                           {product.name}
                         </h3>
-                        <p className="hidden sm:block text-xs text-[#2B1204]/75 mb-3 line-clamp-2 leading-relaxed">
-                          {product.description || 'Création artisanale raffinée avec des ingrédients d excellence.'}
+
+                        <div className="text-sm sm:text-lg font-extrabold text-[#C20A0A] mb-1.5">
+                          {displayPrice.toLocaleString('fr-FR')} F
+                          {isPaquetProduct && (
+                            <span className="text-[11px] font-medium text-[#2B1204]/60 ml-1">
+                              ({currentPcs} pcs)
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="text-xs sm:text-sm text-[#2B1204]/65 font-normal mb-2.5 line-clamp-2 leading-snug">
+                          {product.description || 'Création artisanale raffinée préparée à la commande.'}
                         </p>
 
-                        {/* Affichage de la composition précise pour Douceurs salées / Douceurs sucrées */}
-                        {Array.isArray(product.composition) && product.composition.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mb-3">
-                            {product.composition.map((comp: { name: string; count: number }, idx: number) => (
-                              <span
-                                key={idx}
-                                className="px-2 py-0.5 rounded-md bg-[#FDF6EC] text-[#2B1204] border border-[#F6C58E] text-[10px] font-bold"
+                        {/* Configurateur de pièces si catégorie Paquets */}
+                        {isPaquetProduct && (
+                          <div className="mt-2 pt-2 border-t border-[#F6C58E]/40 flex items-center justify-between gap-1 text-[11px]">
+                            <span className="font-semibold text-[#2B1204]/75">
+                              Pièces (min. {minPcs}) :
+                            </span>
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setSelectedPaquetPieces((prev) => ({
+                                    ...prev,
+                                    [product.id]: Math.max(minPcs, currentPcs - 1)
+                                  }))
+                                }
+                                disabled={currentPcs <= minPcs}
+                                className="w-6 h-6 rounded-full border border-[#F6C58E] bg-[#FDF6EC] text-[#2B1204] flex items-center justify-center disabled:opacity-40 cursor-pointer"
                               >
-                                {comp.count} {comp.name}
+                                <Minus size={11} />
+                              </button>
+                              <span className="w-8 text-center text-xs font-extrabold text-[#2B1204]">
+                                {currentPcs}
                               </span>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Configurateur de nombre de pièces pour Paquets (minimum + possibilité d'augmenter) */}
-                        {/paquet/i.test(product.category || '') ? (
-                          <div className="mt-2 pt-2 border-t border-[#F6C58E]/60 space-y-2">
-                            {(() => {
-                              const minPcs = product.min_pieces && product.min_pieces > 0 ? product.min_pieces : 20;
-                              const currentPcs = Math.max(minPcs, selectedPaquetPieces[product.id] || minPcs);
-                              const computedPrice = Math.round((product.numericPrice / minPcs) * currentPcs);
-                              return (
-                                <>
-                                  <div className="flex flex-wrap items-center justify-between gap-1 text-[11px]">
-                                    <span className="font-semibold text-[#2B1204]/80">
-                                      Min. <strong className="text-[#C20A0A]">{minPcs} pcs</strong> :
-                                    </span>
-                                    <div className="flex items-center gap-1">
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          setSelectedPaquetPieces(prev => ({
-                                            ...prev,
-                                            [product.id]: Math.max(minPcs, currentPcs - 1)
-                                          }))
-                                        }
-                                        disabled={currentPcs <= minPcs}
-                                        className="w-6 h-6 rounded-md border border-[#F6C58E] bg-[#FDF6EC] text-[#2B1204] flex items-center justify-center disabled:opacity-40 cursor-pointer"
-                                      >
-                                        <Minus size={11} />
-                                      </button>
-                                      <input
-                                        type="number"
-                                        min={minPcs}
-                                        value={currentPcs}
-                                        onChange={(e) => {
-                                          const val = parseInt(e.target.value, 10);
-                                          setSelectedPaquetPieces(prev => ({
-                                            ...prev,
-                                            [product.id]: isNaN(val) ? minPcs : Math.max(minPcs, val)
-                                          }));
-                                        }}
-                                        className="w-12 sm:w-14 text-center py-0.5 border border-[#F6C58E] rounded-md text-xs font-extrabold text-[#2B1204] focus:outline-none"
-                                      />
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          setSelectedPaquetPieces(prev => ({
-                                            ...prev,
-                                            [product.id]: currentPcs + 1
-                                          }))
-                                        }
-                                        className="w-6 h-6 rounded-md border border-[#F6C58E] bg-[#FDF6EC] text-[#2B1204] flex items-center justify-center cursor-pointer"
-                                      >
-                                        <Plus size={11} />
-                                      </button>
-                                    </div>
-                                  </div>
-                                  <div className="text-sm sm:text-lg font-black text-[#C20A0A]">
-                                    {computedPrice.toLocaleString('fr-FR')} FCFA{' '}
-                                    <span className="text-[11px] font-medium text-[#2B1204]/60">({currentPcs} pcs)</span>
-                                  </div>
-                                </>
-                              );
-                            })()}
-                          </div>
-                        ) : (
-                          <div className="text-sm sm:text-lg font-black text-[#C20A0A]">
-                            {product.price}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setSelectedPaquetPieces((prev) => ({
+                                    ...prev,
+                                    [product.id]: currentPcs + 1
+                                  }))
+                                }
+                                className="w-6 h-6 rounded-full border border-[#F6C58E] bg-[#FDF6EC] text-[#2B1204] flex items-center justify-center cursor-pointer"
+                              >
+                                <Plus size={11} />
+                              </button>
+                            </div>
                           </div>
                         )}
                       </div>
                     </div>
 
-                    <div className="p-4 sm:p-6 pt-0">
-                      <div className="flex flex-col sm:flex-row gap-2">
+                    {/* 3. Zone d'action en bas : Bouton Ajouter / Sélecteur [ -  2  + ] + Bouton Commander direct vers Panier */}
+                    <div className="p-3.5 sm:p-5 pt-2 space-y-2">
+                      {cartQty > 0 ? (
+                        <div className="w-full rounded-full bg-[#FDECE8] p-1 flex items-center justify-between shadow-2xs">
+                          <button
+                            type="button"
+                            onClick={() => updateQuantity(cartItemId, -1)}
+                            className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white text-[#2B1204] hover:bg-[#2B1204] hover:text-white font-black flex items-center justify-center shadow-xs transition cursor-pointer"
+                            title="Diminuer la quantité"
+                          >
+                            <Minus size={15} strokeWidth={3} />
+                          </button>
+                          <span className="text-sm sm:text-base font-black text-[#2B1204]">
+                            {cartQty}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => updateQuantity(cartItemId, 1)}
+                            className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white text-[#2B1204] hover:bg-[#2B1204] hover:text-white font-black flex items-center justify-center shadow-xs transition cursor-pointer"
+                            title="Augmenter la quantité"
+                          >
+                            <Plus size={15} strokeWidth={3} />
+                          </button>
+                        </div>
+                      ) : (
                         <button
+                          type="button"
                           onClick={() => handleAddToCart(product, false)}
-                          className={`flex-1 py-2.5 px-3 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                            isAdded
-                              ? 'bg-[#5DBA68] text-white shadow-md'
-                              : 'bg-[#FDF6EC] hover:bg-[#F8BE40]/40 text-[#2B1204] border border-[#2B1204]/20 shadow-xs'
-                          }`}
-                          title="Ajouter au panier"
+                          className="w-full py-2.5 sm:py-3 px-4 rounded-full bg-[#C20A0A] hover:bg-[#a50808] text-white font-extrabold text-xs sm:text-sm shadow-sm transition-all cursor-pointer text-center active:scale-95"
                         >
-                          {isAdded ? (
-                            <>
-                              <Check size={15} /> Ajouté !
-                            </>
-                          ) : (
-                            <>
-                              <ShoppingBag size={15} /> Panier
-                            </>
-                          )}
+                          Ajouter
                         </button>
+                      )}
 
-                        <button
-                          onClick={() => handleAddToCart(product, true)}
-                          className="flex-1 py-2.5 px-3 rounded-lg font-extrabold text-xs bg-[#2B1204] hover:bg-[#F8BE40] text-[#F8BE40] hover:text-[#2B1204] shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
-                          title="Commander immédiatement"
-                        >
-                          <Zap size={15} />
-                          <span>Commander</span>
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (cartQty > 0) {
+                            navigate('/panier');
+                          } else {
+                            handleAddToCart(product, true);
+                          }
+                        }}
+                        className="w-full py-2 sm:py-2.5 px-4 rounded-full bg-[#2B1204] hover:bg-[#F8BE40] text-[#F8BE40] hover:text-[#2B1204] font-extrabold text-xs sm:text-sm shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                      >
+                        <span>Commander</span>
+                        <ArrowRight size={14} />
+                      </button>
                     </div>
                   </motion.div>
                 );

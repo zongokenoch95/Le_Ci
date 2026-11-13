@@ -578,8 +578,102 @@ export const Cart: React.FC = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            {/* COLONNE GAUCHE (7 cols) : Formulaire de commande */}
+            {/* COLONNE GAUCHE (7 cols) : Image du produit en premier + Formulaire de commande */}
             <div className="lg:col-span-7 space-y-8">
+              {/* EN PREMIER DANS LE PANIER : L'IMAGE ET LA CARTE DU PRODUIT SÉLECTIONNÉ */}
+              <div className="bg-white rounded-3xl p-5 sm:p-7 border border-[#F6C58E]/60 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-base sm:text-lg font-black text-[#2B1204] flex items-center gap-2">
+                    <ShoppingBag size={18} className="text-[#C20A0A]" />
+                    <span>Votre sélection gourmande</span>
+                  </h2>
+                  <Link
+                    to="/catalogue"
+                    className="text-xs font-extrabold text-[#C20A0A] hover:underline"
+                  >
+                    + Ajouter d'autres douceurs
+                  </Link>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {items.map((item) => {
+                    const descFlavorMatch = (item.description || '').match(/Saveur:\s*([^|\]]+)/i);
+                    const flavorLabel =
+                      item.flavor || (descFlavorMatch ? descFlavorMatch[1].trim() : '');
+                    return (
+                      <div
+                        key={`top-preview-${item.id}`}
+                        className="bg-[#FDF8F2] rounded-3xl overflow-hidden border border-[#F6C58E]/60 flex flex-col justify-between shadow-xs"
+                      >
+                        <div>
+                          {/* 1. IMAGE DU PRODUIT EN PREMIER */}
+                          <div className="relative aspect-square w-full overflow-hidden bg-white">
+                            <img
+                              src={item.image || '/products/gateau_1.jpeg'}
+                              alt={item.name}
+                              className="w-full h-full object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeFromCart(item.id)}
+                              className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 hover:bg-[#C20A0A] text-[#2B1204] hover:text-white flex items-center justify-center shadow-md transition cursor-pointer"
+                              title="Retirer cet article"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+
+                          {/* 2. TITRE, PRIX & SAVEUR */}
+                          <div className="p-4 pb-2">
+                            <h3 className="text-sm sm:text-base font-black text-[#2B1204] leading-snug">
+                              {item.name}
+                            </h3>
+                            <div className="text-[#C20A0A] text-sm sm:text-base font-black mt-1">
+                              {(item.numericPrice * item.quantity).toLocaleString('fr-FR')} F
+                              {item.quantity > 1 && (
+                                <span className="text-[11px] font-semibold text-[#2B1204]/60 ml-1.5">
+                                  ({item.numericPrice.toLocaleString('fr-FR')} F / unité)
+                                </span>
+                              )}
+                            </div>
+                            {flavorLabel && (
+                              <p className="text-xs text-[#2B1204]/75 mt-1">
+                                Saveur : <strong className="text-[#2B1204]">{flavorLabel}</strong>
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* 3. SÉLECTEUR DE QUANTITÉ PILL [-  qty  +] */}
+                        <div className="p-4 pt-2">
+                          <div className="w-full py-1.5 px-2 rounded-full bg-[#FDECE8] border border-[#EE7362]/30 flex items-center justify-between">
+                            <button
+                              type="button"
+                              onClick={() => updateQuantity(item.id, -1)}
+                              className="w-8 h-8 rounded-full bg-white text-[#2B1204] font-black flex items-center justify-center shadow-xs hover:bg-[#2B1204] hover:text-white transition cursor-pointer"
+                              title="Diminuer la quantité"
+                            >
+                              <Minus size={14} strokeWidth={3} />
+                            </button>
+                            <span className="text-sm sm:text-base font-black text-[#2B1204]">
+                              {item.quantity}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => updateQuantity(item.id, 1)}
+                              className="w-8 h-8 rounded-full bg-white text-[#2B1204] font-black flex items-center justify-center shadow-xs hover:bg-[#2B1204] hover:text-white transition cursor-pointer"
+                              title="Augmenter la quantité"
+                            >
+                              <Plus size={14} strokeWidth={3} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* POINT 1 : MODE DE RÉCEPTION */}
               <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm">
                 <h2 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 flex items-center gap-2">
@@ -967,8 +1061,8 @@ export const Cart: React.FC = () => {
                   </span>
                 </h3>
 
-                {/* Liste des articles du panier dans le Récapitulatif : Image, Nom, Quantité & Prix dynamique */}
-                <div className="space-y-3 pb-5 border-b border-gray-100">
+                {/* Liste des articles du panier dans le Récapitulatif : Image du produit en premier */}
+                <div className="space-y-4 pb-5 border-b border-gray-100">
                   {items.map((item) => {
                     const descFlavorMatch = (item.description || '').match(/Saveur:\s*([^|\]]+)/i);
                     const flavorLabel =
@@ -976,64 +1070,60 @@ export const Cart: React.FC = () => {
                     return (
                       <div
                         key={item.id}
-                        className="p-3.5 rounded-2xl bg-purple-50/40 border border-purple-100 flex items-center gap-3.5 text-xs sm:text-sm"
+                        className="rounded-2xl bg-[#FDF8F2] border border-[#F6C58E]/60 overflow-hidden text-xs sm:text-sm shadow-2xs"
                       >
-                        <img
-                          src={item.image || '/products/gateau_1.jpeg'}
-                          alt={item.name}
-                          className="w-16 h-16 rounded-xl object-cover shrink-0 border border-purple-100 bg-white shadow-xs"
-                        />
+                        {/* 1. IMAGE DU PRODUIT EN PREMIER */}
+                        <div className="relative h-40 w-full overflow-hidden bg-white">
+                          <img
+                            src={item.image || '/products/gateau_1.jpeg'}
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeFromCart(item.id)}
+                            className="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-white/90 hover:bg-[#C20A0A] text-[#2B1204] hover:text-white flex items-center justify-center shadow-sm transition cursor-pointer"
+                            title="Retirer cet article"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
 
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              <div className="text-gray-900 font-extrabold leading-snug truncate">
-                                {item.name}
-                              </div>
-                              {flavorLabel && (
-                                <div className="text-[11px] text-gray-600 mt-0.5 truncate">
-                                  <span className="font-semibold text-gray-500">Saveur :</span>{' '}
-                                  <span className="font-bold text-[#581C87]">{flavorLabel}</span>
-                                </div>
-                              )}
+                        {/* 2. NOM, PRIX & SÉLECTEUR DE QUANTITÉ [- 2 +] */}
+                        <div className="p-3.5">
+                          <div className="text-[#2B1204] font-black text-sm sm:text-base leading-snug">
+                            {item.name}
+                          </div>
+                          <div className="text-[#C20A0A] font-black text-sm sm:text-base mt-0.5">
+                            {(item.numericPrice * item.quantity).toLocaleString('fr-FR')} F
+                          </div>
+                          {flavorLabel && (
+                            <div className="text-[11px] text-[#2B1204]/75 mt-1">
+                              <span className="font-semibold">Saveur :</span>{' '}
+                              <span className="font-bold text-[#2B1204]">{flavorLabel}</span>
                             </div>
+                          )}
 
+                          <div className="mt-3 w-full py-1.5 px-2 rounded-full bg-[#FDECE8] border border-[#EE7362]/30 flex items-center justify-between">
                             <button
                               type="button"
-                              onClick={() => removeFromCart(item.id)}
-                              className="p-1 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition cursor-pointer shrink-0"
-                              title="Retirer cet article"
+                              onClick={() => updateQuantity(item.id, -1)}
+                              className="w-8 h-8 rounded-full bg-white text-[#2B1204] font-black flex items-center justify-center shadow-xs hover:bg-[#2B1204] hover:text-white transition cursor-pointer"
+                              title="Diminuer la quantité"
                             >
-                              <Trash2 size={15} />
+                              <Minus size={14} strokeWidth={3} />
                             </button>
-                          </div>
-
-                          <div className="flex items-center justify-between gap-2 mt-2.5">
-                            <div className="flex items-center border border-purple-200 rounded-lg bg-white px-1.5 py-0.5 shadow-2xs">
-                              <button
-                                type="button"
-                                onClick={() => updateQuantity(item.id, -1)}
-                                className="p-1 text-gray-500 hover:text-[#581C87] transition cursor-pointer"
-                                title="Diminuer la quantité"
-                              >
-                                <Minus size={13} />
-                              </button>
-                              <span className="w-7 text-center text-xs font-extrabold text-gray-900">
-                                {item.quantity}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => updateQuantity(item.id, 1)}
-                                className="p-1 text-gray-500 hover:text-[#581C87] transition cursor-pointer"
-                                title="Augmenter la quantité"
-                              >
-                                <Plus size={13} />
-                              </button>
-                            </div>
-
-                            <div className="text-right font-black text-sm sm:text-base text-[#581C87] shrink-0">
-                              {(item.numericPrice * item.quantity).toLocaleString('fr-FR')} FCFA
-                            </div>
+                            <span className="text-sm font-black text-[#2B1204]">
+                              {item.quantity}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => updateQuantity(item.id, 1)}
+                              className="w-8 h-8 rounded-full bg-white text-[#2B1204] font-black flex items-center justify-center shadow-xs hover:bg-[#2B1204] hover:text-white transition cursor-pointer"
+                              title="Augmenter la quantité"
+                            >
+                              <Plus size={14} strokeWidth={3} />
+                            </button>
                           </div>
                         </div>
                       </div>

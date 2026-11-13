@@ -16,7 +16,9 @@ import {
   Crown,
   ShoppingBag,
   Check,
-  Leaf
+  Leaf,
+  Plus,
+  Minus
 } from 'lucide-react';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { useCart } from '../context/CartContext';
@@ -198,7 +200,7 @@ export function Home() {
   const [showSplash, setShowSplash] = useState<boolean>(() => !hasShownSplashInMemory);
   const [loadingProgress, setLoadingProgress] = useState<number>(0);
 
-  const { addToCart } = useCart();
+  const { items: cartItems, addToCart, updateQuantity } = useCart();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -230,23 +232,31 @@ export function Home() {
     setShowSplash(false);
   };
 
+  const getSignatureCartQuantity = (productId: number) => {
+    const found = cartItems.find((c) => c.id === `prod-${productId}`);
+    return found ? found.quantity : 0;
+  };
+
   const handleAddSignatureToCart = (item: (typeof signatureCreations)[0], immediate = false) => {
-    addToCart(
-      {
-        id: item.id,
-        name: item.name,
-        price: item.price,
-        numericPrice: item.numericPrice,
-        image: item.image,
-        category: item.category,
-        description: item.description,
-        catalogModel: item.name,
-        isCake: item.isCake
-      },
-      1
-    );
-    setAddedProductId(item.id);
-    setTimeout(() => setAddedProductId(null), 1500);
+    const currentQty = getSignatureCartQuantity(item.id);
+    if (!immediate || currentQty === 0) {
+      addToCart(
+        {
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          numericPrice: item.numericPrice,
+          image: item.image,
+          category: item.category,
+          description: item.description,
+          catalogModel: item.name,
+          isCake: item.isCake
+        },
+        1
+      );
+      setAddedProductId(item.id);
+      setTimeout(() => setAddedProductId(null), 1500);
+    }
     if (immediate) {
       navigate('/panier');
     }
@@ -511,10 +521,10 @@ export function Home() {
             </p>
           </motion.div>
 
-          {/* Grille des produits phares en 2 COLONNES (grid-cols-2) */}
-          <div className="grid grid-cols-2 gap-4 sm:gap-8">
+          {/* Grille des produits phares en 2 COLONNES (grid-cols-2) - Modèle de carte de référence */}
+          <div className="grid grid-cols-2 gap-3.5 sm:gap-7">
             {signatureCreations.map((item, idx) => {
-              const isAdded = addedProductId === item.id;
+              const cartQty = getSignatureCartQuantity(item.id);
               return (
                 <motion.div
                   key={item.id}
@@ -522,75 +532,92 @@ export function Home() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.45, delay: idx * 0.08 }}
-                  className="bg-[#FDF8F2] text-[#2B1204] rounded-2xl overflow-hidden border-2 border-[#F8BE40]/40 hover:border-[#F8BE40] shadow-xl transition-all duration-300 flex flex-col justify-between group hover:-translate-y-1"
+                  className="bg-white text-[#2B1204] rounded-3xl overflow-hidden border border-[#F6C58E]/50 hover:border-[#F8BE40] shadow-md hover:shadow-xl transition-all duration-300 flex flex-col justify-between group"
                 >
                   <div>
-                    {/* Photo de la création signature */}
-                    <div className="relative aspect-[4/3] overflow-hidden bg-[#F6C58E]/30">
+                    {/* Photo carrée en haut */}
+                    <div className="relative aspect-square overflow-hidden bg-[#FDF8F2]">
                       <ImageWithFallback
                         src={item.image}
                         alt={item.name}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
-                      <span
-                        className={`absolute top-2.5 left-2.5 px-2.5 py-1 rounded-md text-[10px] sm:text-xs font-extrabold shadow-xs ${item.tagBg}`}
-                      >
-                        {item.tag}
-                      </span>
                     </div>
 
-                    {/* Titre, Description & Prix */}
-                    <div className="p-4 sm:p-6">
-                      <h3 className="text-sm sm:text-xl font-black text-[#2B1204] leading-snug line-clamp-2 mb-1.5">
+                    {/* Titre -> Prix -> Description (conforme au modèle de carte) */}
+                    <div className="p-3.5 sm:p-5 pb-2 sm:pb-3">
+                      <h3 className="text-sm sm:text-lg font-black text-[#2B1204] leading-snug line-clamp-2">
                         {item.name}
                       </h3>
-                      <p className="hidden sm:block text-xs text-[#2B1204]/75 font-normal leading-relaxed line-clamp-2 mb-3">
+                      <div className="text-[#C20A0A] text-sm sm:text-lg font-black mt-1">
+                        {item.numericPrice.toLocaleString('fr-FR')} F
+                      </div>
+                      <p className="text-xs sm:text-sm text-[#2B1204]/65 font-normal leading-relaxed line-clamp-2 mt-1.5">
                         {item.description}
                       </p>
-                      <div className="text-[#C20A0A] text-sm sm:text-lg font-black mt-1">
-                        {item.price}
-                      </div>
                     </div>
                   </div>
 
-                  {/* Boutons d'action */}
-                  <div className="p-4 sm:p-6 pt-0 flex flex-col sm:flex-row gap-2">
+                  {/* Zone d'actions en bas : Sélecteur [- 2 +] / Ajouter + Bouton Commander direct vers Panier */}
+                  <div className="p-3.5 sm:p-5 pt-2 flex flex-col gap-2">
                     {item.isCake ? (
-                      <Link
-                        to="/sur-commande"
-                        className="w-full py-2.5 sm:py-3 px-4 rounded-lg font-extrabold text-xs bg-[#F8BE40] hover:bg-[#f5b120] text-[#2B1204] shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center"
-                      >
-                        <Cake size={14} />
-                        <span>Personnaliser</span>
-                        <ArrowRight size={13} />
-                      </Link>
-                    ) : (
                       <>
+                        <Link
+                          to="/sur-commande"
+                          className="w-full py-2.5 sm:py-3 px-4 rounded-full font-black text-xs sm:text-sm bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center"
+                        >
+                          <Cake size={15} />
+                          <span>Personnaliser</span>
+                        </Link>
                         <button
                           type="button"
-                          onClick={() => handleAddSignatureToCart(item, false)}
-                          className={`flex-1 py-2.5 px-3 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                            isAdded
-                              ? 'bg-[#5DBA68] text-white shadow-md'
-                              : 'bg-[#FDF6EC] hover:bg-[#F6C58E]/50 text-[#2B1204] border border-[#2B1204]/20'
-                          }`}
+                          onClick={() => handleAddSignatureToCart(item, true)}
+                          className="w-full py-2.5 sm:py-3 px-4 rounded-full font-black text-xs sm:text-sm bg-[#2B1204] hover:bg-[#431E09] text-[#F8BE40] shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                         >
-                          {isAdded ? (
-                            <>
-                              <Check size={14} /> Ajouté !
-                            </>
-                          ) : (
-                            <>
-                              <ShoppingBag size={14} /> Panier
-                            </>
-                          )}
+                          <ShoppingBag size={14} />
+                          <span>Commander</span>
                         </button>
+                      </>
+                    ) : (
+                      <>
+                        {cartQty > 0 ? (
+                          <div className="w-full py-1.5 px-2 rounded-full bg-[#FDECE8] border border-[#EE7362]/30 flex items-center justify-between">
+                            <button
+                              type="button"
+                              onClick={() => updateQuantity(`prod-${item.id}`, -1)}
+                              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white text-[#2B1204] font-black flex items-center justify-center shadow-xs hover:bg-[#2B1204] hover:text-white transition cursor-pointer"
+                              aria-label="Diminuer la quantité"
+                            >
+                              <Minus size={15} strokeWidth={3} />
+                            </button>
+                            <span className="text-sm sm:text-base font-black text-[#2B1204]">
+                              {cartQty}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => updateQuantity(`prod-${item.id}`, 1)}
+                              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white text-[#2B1204] font-black flex items-center justify-center shadow-xs hover:bg-[#2B1204] hover:text-white transition cursor-pointer"
+                              aria-label="Augmenter la quantité"
+                            >
+                              <Plus size={15} strokeWidth={3} />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleAddSignatureToCart(item, false)}
+                            className="w-full py-2.5 sm:py-3 px-4 rounded-full font-black text-xs sm:text-sm bg-[#C20A0A] hover:bg-[#a10808] text-white shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <span>Ajouter</span>
+                          </button>
+                        )}
 
                         <button
                           type="button"
                           onClick={() => handleAddSignatureToCart(item, true)}
-                          className="flex-1 py-2.5 px-3 rounded-lg font-black text-xs bg-[#2B1204] hover:bg-[#431E09] text-[#F8BE40] shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                          className="w-full py-2.5 sm:py-3 px-4 rounded-full font-black text-xs sm:text-sm bg-[#2B1204] hover:bg-[#431E09] text-[#F8BE40] shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                         >
+                          <ShoppingBag size={14} />
                           <span>Commander</span>
                         </button>
                       </>
