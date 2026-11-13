@@ -412,22 +412,12 @@ export function Home() {
 
       {/* ========================================================================= */}
       {/* 2.BIS SECTION SIGNATURE DE LA MAISON — PRÉSENTATION DE CARTE ÉDITORIALE    */}
-      {/* Background h5.png & 2 produits phares                                     */}
+      {/* Fond Brun Cacao #2B1204 sans image & 2 produits phares                    */}
       {/* ========================================================================= */}
       <section
         id="signature-maison"
-        className="py-16 sm:py-24 text-[#2B1204] relative overflow-hidden"
+        className="bg-[#2B1204] py-16 sm:py-24 text-[#FDF8F2] relative overflow-hidden"
       >
-        {/* Image de fond (h5.png) */}
-        <div className="absolute inset-0 z-0 pointer-events-none">
-          <img
-            src="/img/h5.png"
-            alt=""
-            aria-hidden="true"
-            className="w-full h-full object-cover object-center"
-          />
-        </div>
-
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-10 relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -435,10 +425,10 @@ export function Home() {
             viewport={{ once: true }}
             className="text-center mb-12 sm:mb-16"
           >
-            <h2 className="font-adapt text-3xl sm:text-5xl font-extrabold text-[#2B1204] tracking-tight drop-shadow-[0_2px_12px_rgba(255,255,255,0.9)]">
+            <h2 className="font-adapt text-3xl sm:text-5xl font-extrabold text-[#FDF8F2] tracking-tight">
               Signature de la maison
             </h2>
-            <p className="font-barcelony text-2xl sm:text-3xl text-[#C20A0A] max-w-2xl mx-auto mt-3 leading-relaxed drop-shadow-[0_2px_10px_rgba(255,255,255,0.95)]">
+            <p className="font-barcelony text-2xl sm:text-3xl text-[#F8BE40] max-w-2xl mx-auto mt-3 leading-relaxed">
               L’excellence artisanale de nos créations emblématiques, pensées pour éveiller vos sens.
             </p>
           </motion.div>
