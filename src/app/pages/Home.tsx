@@ -437,7 +437,7 @@ export function Home() {
           <div className="flex justify-center items-center">
             <button
               onClick={() => scrollToSection('nos-produits')}
-              className="px-10 py-4 bg-[#5DBA68] hover:bg-[#4CA857] text-white font-extrabold rounded-full shadow-2xl transition-all inline-flex items-center justify-center gap-2.5 transform hover:-translate-y-0.5 text-sm cursor-pointer border border-[#5DBA68]"
+              className="px-10 py-4 bg-white/15 hover:bg-white/25 backdrop-blur-md text-white font-extrabold rounded-full shadow-[0_8px_32px_rgba(0,0,0,0.25)] transition-all inline-flex items-center justify-center gap-2.5 transform hover:-translate-y-0.5 text-sm cursor-pointer border border-white/40 hover:border-white/60"
             >
               <span>Commander</span>
               <ArrowRight size={18} />
