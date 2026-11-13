@@ -581,7 +581,7 @@ export function Home() {
           </motion.div>
 
           {/* Grille des Promotions & Événements en 2 colonnes (même design que la section précédente) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-7 max-w-3xl mx-auto">
+          <div className="grid grid-cols-2 gap-4 sm:gap-7 max-w-2xl mx-auto">
             {promoEvents.map((item, idx) => (
               <motion.div
                 key={item.id}
@@ -593,7 +593,7 @@ export function Home() {
               >
                 <div>
                   {/* Image */}
-                  <div className="relative aspect-[16/10] rounded-lg overflow-hidden bg-[#FDF8F2]">
+                  <div className="relative aspect-[4/5] rounded-lg overflow-hidden bg-[#FDF8F2]">
                     <ImageWithFallback
                       src={item.image}
                       alt={item.title}
@@ -602,36 +602,36 @@ export function Home() {
                   </div>
 
                   {/* Contenu */}
-                  <div className="px-3 pt-4 text-center">
+                  <div className="px-2 sm:px-3 pt-3 sm:pt-4 text-center">
                     <span
-                      className={`inline-block px-3 py-1 rounded-md text-[10px] font-black border uppercase tracking-wider mb-2.5 ${item.badgeColor}`}
+                      className={`inline-block px-2 sm:px-3 py-0.5 sm:py-1 rounded-md text-[9px] sm:text-[10px] font-black border uppercase tracking-wider mb-2 ${item.badgeColor}`}
                     >
                       {item.badge}
                     </span>
-                    <h3 className="font-fredoka text-sm sm:text-base font-extrabold text-[#2B1204] mb-1 leading-snug">
+                    <h3 className="font-fredoka text-xs sm:text-base font-extrabold text-[#2B1204] mb-1 leading-snug line-clamp-2">
                       {item.title}
                     </h3>
-                    <p className="text-xs font-bold text-[#C20A0A] mb-2">{item.subtitle}</p>
-                    <p className="font-fredoka text-[11px] sm:text-xs text-[#2B1204]/75 font-normal leading-relaxed mb-4">
+                    <p className="text-[11px] sm:text-xs font-bold text-[#C20A0A] mb-1.5">{item.subtitle}</p>
+                    <p className="font-fredoka text-[11px] sm:text-xs text-[#2B1204]/75 font-normal leading-relaxed mb-3 line-clamp-2">
                       {item.description}
                     </p>
 
                     {/* Bloc Code promo interactif si présent */}
                     {item.promoCode && (
-                      <div className="mb-4 inline-flex items-center gap-2 p-2 px-3 rounded-lg bg-[#FDF6EC] border border-[#F8BE40]">
-                        <span className="text-[11px] font-bold text-[#2B1204]">Code :</span>
-                        <code className="text-xs font-mono font-extrabold text-[#C20A0A] tracking-wider">
+                      <div className="mb-3 inline-flex items-center gap-1.5 p-1.5 px-2.5 rounded-md bg-[#FDF6EC] border border-[#F8BE40]">
+                        <span className="text-[10px] sm:text-[11px] font-bold text-[#2B1204]">Code :</span>
+                        <code className="text-[10px] sm:text-xs font-mono font-extrabold text-[#C20A0A] tracking-wider">
                           {item.promoCode}
                         </code>
                         <button
                           onClick={() => handleCopyCode(item.promoCode!)}
-                          className="p-1 hover:bg-[#F8BE40]/40 rounded-md text-[#2B1204] transition cursor-pointer"
+                          className="p-0.5 hover:bg-[#F8BE40]/40 rounded text-[#2B1204] transition cursor-pointer"
                           title="Copier le code"
                         >
                           {copiedCode ? (
-                            <CheckCircle2 size={14} className="text-[#5DBA68]" />
+                            <CheckCircle2 size={13} className="text-[#5DBA68]" />
                           ) : (
-                            <Copy size={14} />
+                            <Copy size={13} />
                           )}
                         </button>
                       </div>
@@ -640,13 +640,13 @@ export function Home() {
                 </div>
 
                 {/* Bouton rectangulaire à coins légèrement arrondis */}
-                <div className="p-2 pt-1">
+                <div className="p-1.5 sm:p-2 pt-1">
                   <Link
                     to={item.actionLink}
-                    className="w-full py-2 px-3 rounded-md bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] border border-[#F8BE40] text-xs font-extrabold shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full py-1.5 sm:py-2 px-3 rounded-md bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] border border-[#F8BE40] text-[11px] sm:text-xs font-extrabold shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <span>{item.actionText}</span>
-                    <ChevronRight size={14} />
+                    <ChevronRight size={13} />
                   </Link>
                 </div>
               </motion.div>
