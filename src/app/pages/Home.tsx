@@ -390,9 +390,17 @@ export function Home() {
           transition={{ duration: 0.9 }}
           className="relative z-10 text-center max-w-4xl px-4 sm:px-6"
         >
-          {/* Titre en police calligraphique Barcelony */}
-          <h1 className="font-barcelony text-6xl sm:text-8xl md:text-9xl text-[#F8BE40] tracking-wide mb-3 leading-tight drop-shadow-2xl">
-            Les Douceurs de Lê Ci
+          {/* Titre Hero : Bienvenue chez Les Douceurs de Lê-Ci (avec le design exact de Lê-Ci) */}
+          <h1 className="flex flex-col items-center justify-center mb-4">
+            <span className="font-barcelony text-5xl sm:text-7xl md:text-8xl text-[#FDF8F2] tracking-wide leading-tight drop-shadow-2xl">
+              Bienvenue chez Les Douceurs de
+            </span>
+            <img
+              src="/img/le-ci-signature.png"
+              alt="Lê-Ci"
+              className="h-24 sm:h-36 md:h-44 w-auto object-contain mt-1 drop-shadow-[0_4px_24px_rgba(248,190,64,0.55)] select-none"
+            />
+            <span className="sr-only">Lê-Ci</span>
           </h1>
 
           {/* Slogan */}
