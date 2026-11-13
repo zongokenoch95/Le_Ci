@@ -286,9 +286,9 @@ export function Home() {
           transition={{ duration: 0.9 }}
           className="relative z-10 text-center max-w-4xl px-4 sm:px-6"
         >
-          {/* Titre Hero : Bienvenue chez / Les Douceurs de (Barcelony) + Lê-Ci */}
+          {/* Titre Hero : Bienvenue chez (Gotham Pro) / Les Douceurs de (Barcelony) + Lê-Ci */}
           <h1 className="flex flex-col items-center justify-center mb-5">
-            <span className="font-barcelony text-4xl sm:text-6xl md:text-7xl font-normal text-[#FDF8F2] tracking-normal leading-tight drop-shadow-2xl">
+            <span className="font-gotham-pro text-lg sm:text-2xl md:text-3xl font-bold uppercase text-[#FDF8F2] tracking-[0.18em] leading-tight drop-shadow-2xl mb-1">
               Bienvenue chez
             </span>
             <span className="font-barcelony text-4xl sm:text-6xl md:text-7xl font-normal text-[#FDF8F2] tracking-normal leading-tight drop-shadow-2xl mt-1">
