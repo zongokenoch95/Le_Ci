@@ -412,16 +412,16 @@ export function Home() {
 
       {/* ========================================================================= */}
       {/* 2.BIS SECTION SIGNATURE DE LA MAISON — PRÉSENTATION DE CARTE ÉDITORIALE    */}
-      {/* Background h3.jpg & 2 produits phares                                     */}
+      {/* Background h4.jpg & 2 produits phares                                     */}
       {/* ========================================================================= */}
       <section
         id="signature-maison"
         className="py-16 sm:py-24 text-[#2B1204] relative overflow-hidden"
       >
-        {/* Image de fond (h3.jpg) */}
+        {/* Image de fond (h4.jpg) */}
         <div className="absolute inset-0 z-0 pointer-events-none">
           <img
-            src="/img/h3.jpg"
+            src="/img/h4.jpg"
             alt=""
             aria-hidden="true"
             className="w-full h-full object-cover object-center"
