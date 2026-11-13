@@ -287,17 +287,17 @@ export function Home() {
           className="relative z-10 text-center max-w-4xl px-4 sm:px-6"
         >
           {/* Titre Hero : Bienvenue chez (Gotham Pro) / Les Douceurs de (Barcelony) + Lê-Ci */}
-          <h1 className="flex flex-col items-center justify-center mb-5">
-            <span className="font-gotham-pro text-lg sm:text-2xl md:text-3xl font-bold uppercase text-[#FDF8F2] tracking-[0.18em] leading-tight drop-shadow-2xl mb-1">
+          <h1 className="flex flex-col items-center justify-center gap-4 sm:gap-6 mb-5">
+            <span className="font-gotham-pro text-lg sm:text-2xl md:text-3xl font-bold uppercase text-[#FDF8F2] tracking-[0.18em] leading-tight drop-shadow-2xl">
               Bienvenue chez
             </span>
-            <span className="font-barcelony text-4xl sm:text-6xl md:text-7xl font-normal text-[#FDF8F2] tracking-normal leading-tight drop-shadow-2xl mt-1">
+            <span className="font-barcelony text-4xl sm:text-6xl md:text-7xl font-normal text-[#FDF8F2] tracking-normal leading-tight drop-shadow-2xl">
               Les Douceurs de
             </span>
             <img
               src="/img/le-ci-signature.png"
               alt="Lê-Ci"
-              className="h-44 sm:h-64 md:h-80 w-auto object-contain mt-2 drop-shadow-[0_6px_28px_rgba(248,190,64,0.65)] select-none"
+              className="h-44 sm:h-64 md:h-80 w-auto object-contain drop-shadow-[0_6px_28px_rgba(248,190,64,0.65)] select-none"
             />
             <span className="sr-only">Lê-Ci</span>
           </h1>
