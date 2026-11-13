@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 export function Footer() {
   return (
     <footer className="relative mt-20 text-[#FDF8F2]">
-      {/* Vagues décoratives inspirées du footer de référence aux couleurs de la Charte */}
+      {/* Vague décorative brun cacao en transition vers le footer */}
       <div className="w-full overflow-hidden leading-none bg-transparent">
         <svg
           viewBox="0 0 1440 70"
@@ -13,16 +13,8 @@ export function Footer() {
           className="w-full h-12 sm:h-16 block"
         >
           <path
-            fill="#F8BE40"
-            d="M0 30C180 0 360 50 560 34C760 18 900 0 1100 22C1260 40 1360 30 1440 18V70H0Z"
-          />
-          <path
-            fill="#EE7362"
-            d="M0 46C200 24 380 60 600 48C800 36 960 20 1160 38C1300 50 1380 44 1440 36V70H0Z"
-          />
-          <path
             fill="#2B1204"
-            d="M0 58C220 42 420 68 640 60C840 52 1000 40 1200 54C1320 62 1400 58 1440 54V70H0Z"
+            d="M0 40C220 12 420 62 680 38C920 16 1140 52 1440 24V70H0Z"
           />
         </svg>
       </div>
