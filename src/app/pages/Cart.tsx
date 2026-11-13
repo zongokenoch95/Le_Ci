@@ -106,7 +106,9 @@ export const Cart: React.FC = () => {
     const todayStr = formatLocalDate(now);
     const earliest = new Date(now.getTime() + 90 * 60 * 1000); // +1h30 (90 minutes)
     const earliestDateStr = formatLocalDate(earliest);
-    const earliestMinutes = earliest.getHours() * 60 + earliest.getMinutes();
+    // Arrondir aux 5 minutes supérieures pour éviter que l'heure pré-remplie n'expire pendant que le client remplit le formulaire
+    const rawEarliestMinutes = earliest.getHours() * 60 + earliest.getMinutes() + (earliest.getSeconds() > 0 ? 1 : 0);
+    const earliestMinutes = Math.ceil(rawEarliestMinutes / 5) * 5;
     const todayWindow = getShopDeliveryWindowForDate(todayStr);
 
     // Si aujourd'hui + 1h30 reste dans la journée et ne dépasse pas (fermeture + 1h30)
@@ -223,7 +225,7 @@ export const Cart: React.FC = () => {
 
   const setSingleError = (key: string, msg: string, elementId: string) => {
     setFieldErrors({ [key]: msg });
-    setErrorMsg('');
+    setErrorMsg(msg);
     setTimeout(() => {
       const el = document.getElementById(elementId);
       if (el) {
@@ -356,18 +358,40 @@ export const Cart: React.FC = () => {
     }
 
     // Règle temps réel : Délai minimum de préparation de 1h30 à partir de l'instant présent
-    const minAllowedDateTime = new Date(now.getTime() + 89 * 60 * 1000);
-    const displayMinDateTime = new Date(now.getTime() + 90 * 60 * 1000);
-    const nowFormatted = `${String(now.getHours()).padStart(2, '0')}h${String(now.getMinutes()).padStart(2, '0')}`;
-    const minFormatted = `${String(displayMinDateTime.getHours()).padStart(2, '0')}h${String(displayMinDateTime.getMinutes()).padStart(2, '0')}`;
+    // Appliqué uniquement si la commande est pour aujourd'hui et que (maintenant + 1h30) est avant la fermeture + 1h30
+    if (deliveryDate === currentTodayStr) {
+      const displayMinDateTime = new Date(now.getTime() + 90 * 60 * 1000);
+      const displayMinDateStr = formatLocalDate(displayMinDateTime);
+      const displayMinTotalMinutes =
+        displayMinDateTime.getHours() * 60 + displayMinDateTime.getMinutes();
 
-    if (chosenDateTime.getTime() < minAllowedDateTime.getTime()) {
-      setSingleError(
-        'deliveryTimeSlot',
-        `La préparation d'une commande prend 1h à 1h30. En commandant à ${nowFormatted}, vous ne pouvez pas choisir une heure avant ${minFormatted} (minimum +1h30).`,
-        'field-cart-time'
-      );
-      return false;
+      // Si aujourd'hui est déjà trop tard (après 18h00 lun-sam ou 12h00 dim), basculer automatiquement au lendemain
+      if (displayMinDateStr !== currentTodayStr || displayMinTotalMinutes > dayWindow.maxDeliveryMinutes) {
+        const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+        const tomorrowStr = formatLocalDate(tomorrow);
+        const tomorrowWin = getShopDeliveryWindowForDate(tomorrowStr);
+        setDeliveryDate(tomorrowStr);
+        setDeliveryTimeSlot(tomorrowWin.minDeliveryTime);
+      } else {
+        const minAllowedDateTime = new Date(now.getTime() + 85 * 60 * 1000);
+        const nowFormatted = `${String(now.getHours()).padStart(2, '0')}h${String(now.getMinutes()).padStart(2, '0')}`;
+        const minFormatted = `${String(displayMinDateTime.getHours()).padStart(2, '0')}h${String(displayMinDateTime.getMinutes()).padStart(2, '0')}`;
+        const minFormattedInput = `${String(displayMinDateTime.getHours()).padStart(2, '0')}:${String(displayMinDateTime.getMinutes()).padStart(2, '0')}`;
+
+        if (chosenDateTime.getTime() < minAllowedDateTime.getTime()) {
+          const diffMinutes = (displayMinDateTime.getTime() - chosenDateTime.getTime()) / (60 * 1000);
+          if (diffMinutes <= 30) {
+            setDeliveryTimeSlot(minFormattedInput);
+          } else {
+            setSingleError(
+              'deliveryTimeSlot',
+              `La préparation d'une commande prend 1h à 1h30. En commandant à ${nowFormatted}, veuillez choisir une heure à partir de ${minFormatted} (+1h30).`,
+              'field-cart-time'
+            );
+            return false;
+          }
+        }
+      }
     }
 
     if (deliveryType === 'livraison') {
@@ -1061,8 +1085,8 @@ export const Cart: React.FC = () => {
                   </span>
                 </h3>
 
-                {/* Liste des articles du panier dans le Récapitulatif : Image du produit en premier */}
-                <div className="space-y-4 pb-5 border-b border-gray-100">
+                {/* Liste des articles du panier dans le Récapitulatif (SANS image) */}
+                <div className="space-y-3 pb-5 border-b border-gray-100">
                   {items.map((item) => {
                     const descFlavorMatch = (item.description || '').match(/Saveur:\s*([^|\]]+)/i);
                     const flavorLabel =
@@ -1070,61 +1094,33 @@ export const Cart: React.FC = () => {
                     return (
                       <div
                         key={item.id}
-                        className="rounded-2xl bg-[#FDF8F2] border border-[#F6C58E]/60 overflow-hidden text-xs sm:text-sm shadow-2xs"
+                        className="p-3.5 rounded-2xl bg-[#FDF8F2] border border-[#F6C58E]/60 flex items-center justify-between gap-3 text-xs sm:text-sm"
                       >
-                        {/* 1. IMAGE DU PRODUIT EN PREMIER */}
-                        <div className="relative h-40 w-full overflow-hidden bg-white">
-                          <img
-                            src={item.image || '/products/gateau_1.jpeg'}
-                            alt={item.name}
-                            className="w-full h-full object-cover"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeFromCart(item.id)}
-                            className="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-white/90 hover:bg-[#C20A0A] text-[#2B1204] hover:text-white flex items-center justify-center shadow-sm transition cursor-pointer"
-                            title="Retirer cet article"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-
-                        {/* 2. NOM, PRIX & SÉLECTEUR DE QUANTITÉ [- 2 +] */}
-                        <div className="p-3.5">
-                          <div className="text-[#2B1204] font-black text-sm sm:text-base leading-snug">
-                            {item.name}
-                          </div>
-                          <div className="text-[#C20A0A] font-black text-sm sm:text-base mt-0.5">
-                            {(item.numericPrice * item.quantity).toLocaleString('fr-FR')} F
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[#2B1204] font-extrabold leading-snug">
+                            {item.name}{' '}
+                            <span className="text-[#C20A0A] font-black">× {item.quantity}</span>
                           </div>
                           {flavorLabel && (
-                            <div className="text-[11px] text-[#2B1204]/75 mt-1">
+                            <div className="text-[11px] text-[#2B1204]/75 mt-0.5 truncate">
                               <span className="font-semibold">Saveur :</span>{' '}
                               <span className="font-bold text-[#2B1204]">{flavorLabel}</span>
                             </div>
                           )}
+                        </div>
 
-                          <div className="mt-3 w-full py-1.5 px-2 rounded-full bg-[#FDECE8] border border-[#EE7362]/30 flex items-center justify-between">
-                            <button
-                              type="button"
-                              onClick={() => updateQuantity(item.id, -1)}
-                              className="w-8 h-8 rounded-full bg-white text-[#2B1204] font-black flex items-center justify-center shadow-xs hover:bg-[#2B1204] hover:text-white transition cursor-pointer"
-                              title="Diminuer la quantité"
-                            >
-                              <Minus size={14} strokeWidth={3} />
-                            </button>
-                            <span className="text-sm font-black text-[#2B1204]">
-                              {item.quantity}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => updateQuantity(item.id, 1)}
-                              className="w-8 h-8 rounded-full bg-white text-[#2B1204] font-black flex items-center justify-center shadow-xs hover:bg-[#2B1204] hover:text-white transition cursor-pointer"
-                              title="Augmenter la quantité"
-                            >
-                              <Plus size={14} strokeWidth={3} />
-                            </button>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div className="text-right font-black text-sm sm:text-base text-[#C20A0A]">
+                            {(item.numericPrice * item.quantity).toLocaleString('fr-FR')} F
                           </div>
+                          <button
+                            type="button"
+                            onClick={() => removeFromCart(item.id)}
+                            className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition cursor-pointer"
+                            title="Retirer cet article"
+                          >
+                            <Trash2 size={14} />
+                          </button>
                         </div>
                       </div>
                     );
@@ -1167,6 +1163,14 @@ export const Cart: React.FC = () => {
                     {finalAmountToPay.toLocaleString('fr-FR')} FCFA
                   </div>
                 </div>
+
+                {/* Message d'alerte directement visible au-dessus du bouton Passer au paiement */}
+                {errorMsg && (
+                  <div className="mb-4 p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-bold flex items-start gap-2.5 animate-pulse">
+                    <AlertCircle size={16} className="shrink-0 text-red-600 mt-0.5" />
+                    <span>{errorMsg}</span>
+                  </div>
+                )}
 
                 {/* Bouton Passer au paiement */}
                 <button
