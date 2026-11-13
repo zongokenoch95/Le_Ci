@@ -52,18 +52,34 @@ export interface BirthdayCakeFamily {
   };
 }
 
+const ARZANIER_ORSIA_PRICES = {
+  '6': 10500,
+  '8': 13500,
+  '10': 17500,
+  '12': 20500,
+  '15': 25000,
+  '20': 33000
+};
+
+const FORET_PRICES = {
+  '6': 10500,
+  '8': 13500,
+  '10': 16500,
+  '12': 20000,
+  '15': 25500,
+  '20': 32000
+};
+
 export const BIRTHDAY_CAKE_FAMILIES: BirthdayCakeFamily[] = [
   {
-    key: 'arzanier_orsia',
-    label: 'Arzanier (Gâteau au moringa et bissap) ou Orsia (Gâteau au riz et teedo)',
-    prices: {
-      '6': 10500,
-      '8': 13500,
-      '10': 17500,
-      '12': 20500,
-      '15': 25000,
-      '20': 33000
-    }
+    key: 'arzanier',
+    label: 'Arzanier (Gâteau au moringa et bissap)',
+    prices: ARZANIER_ORSIA_PRICES
+  },
+  {
+    key: 'orsia',
+    label: 'Orsia (Gâteau au riz et teedo)',
+    prices: ARZANIER_ORSIA_PRICES
   },
   {
     key: 'moka_vanille_chocolat',
@@ -90,16 +106,14 @@ export const BIRTHDAY_CAKE_FAMILIES: BirthdayCakeFamily[] = [
     }
   },
   {
-    key: 'foret_noire_blanche',
-    label: 'Forêt noire, forêt blanche',
-    prices: {
-      '6': 10500,
-      '8': 13500,
-      '10': 16500,
-      '12': 20000,
-      '15': 25500,
-      '20': 32000
-    }
+    key: 'foret_noire',
+    label: 'Forêt noire',
+    prices: FORET_PRICES
+  },
+  {
+    key: 'foret_blanche',
+    label: 'Forêt blanche',
+    prices: FORET_PRICES
   },
   {
     key: 'infini_chocolat_fraisier',
@@ -187,7 +201,7 @@ const fallbackCatalogCakes: CakeCatalogItem[] = [
     image: '/products/gateau_1.jpeg',
     subcategory: 'Anniversaire',
     price: 10500,
-    flavorKey: 'arzanier_orsia',
+    flavorKey: 'arzanier',
     portions: buildPortionsFromFamily(BIRTHDAY_CAKE_FAMILIES[0]).map(p => ({ label: p.label, price: p.price }))
   },
   {
@@ -197,7 +211,7 @@ const fallbackCatalogCakes: CakeCatalogItem[] = [
     subcategory: 'Anniversaire',
     price: 8500,
     flavorKey: 'moka_vanille_chocolat',
-    portions: buildPortionsFromFamily(BIRTHDAY_CAKE_FAMILIES[1]).map(p => ({ label: p.label, price: p.price }))
+    portions: buildPortionsFromFamily(BIRTHDAY_CAKE_FAMILIES[2]).map(p => ({ label: p.label, price: p.price }))
   },
   {
     id: 103,
@@ -206,16 +220,16 @@ const fallbackCatalogCakes: CakeCatalogItem[] = [
     subcategory: 'Anniversaire',
     price: 9000,
     flavorKey: 'moka_vanille_fraise',
-    portions: buildPortionsFromFamily(BIRTHDAY_CAKE_FAMILIES[2]).map(p => ({ label: p.label, price: p.price }))
+    portions: buildPortionsFromFamily(BIRTHDAY_CAKE_FAMILIES[3]).map(p => ({ label: p.label, price: p.price }))
   },
   {
     id: 104,
-    name: 'Forêt noire, forêt blanche',
+    name: 'Forêt noire / Forêt blanche',
     image: '/products/gateau_3.jpeg',
     subcategory: 'Anniversaire',
     price: 10500,
-    flavorKey: 'foret_noire_blanche',
-    portions: buildPortionsFromFamily(BIRTHDAY_CAKE_FAMILIES[3]).map(p => ({ label: p.label, price: p.price }))
+    flavorKey: 'foret_noire',
+    portions: buildPortionsFromFamily(BIRTHDAY_CAKE_FAMILIES[4]).map(p => ({ label: p.label, price: p.price }))
   },
   {
     id: 105,
@@ -224,7 +238,7 @@ const fallbackCatalogCakes: CakeCatalogItem[] = [
     subcategory: 'Anniversaire',
     price: 10500,
     flavorKey: 'infini_chocolat_fraisier',
-    portions: buildPortionsFromFamily(BIRTHDAY_CAKE_FAMILIES[4]).map(p => ({ label: p.label, price: p.price }))
+    portions: buildPortionsFromFamily(BIRTHDAY_CAKE_FAMILIES[6]).map(p => ({ label: p.label, price: p.price }))
   },
   {
     id: 106,
@@ -233,7 +247,7 @@ const fallbackCatalogCakes: CakeCatalogItem[] = [
     subcategory: 'Anniversaire',
     price: 11000,
     flavorKey: 'gateau_glace',
-    portions: buildPortionsFromFamily(BIRTHDAY_CAKE_FAMILIES[5]).map(p => ({ label: p.label, price: p.price }))
+    portions: buildPortionsFromFamily(BIRTHDAY_CAKE_FAMILIES[7]).map(p => ({ label: p.label, price: p.price }))
   },
   {
     id: 19,
@@ -248,7 +262,7 @@ const fallbackCatalogCakes: CakeCatalogItem[] = [
     image: '/products/gateau_6.jpeg',
     subcategory: 'Autres',
     price: 10500,
-    flavorKey: 'arzanier_orsia'
+    flavorKey: 'arzanier'
   }
 ];
 
@@ -270,8 +284,11 @@ function inferCakeSubcategory(name: string, sub?: string): string {
 
 function inferFlavorKeyFromName(name: string): string | undefined {
   const lower = (name || '').toLowerCase();
-  if (lower.includes('arzanier') || lower.includes('orsia') || lower.includes('moringa') || lower.includes('teedo')) {
-    return 'arzanier_orsia';
+  if (lower.includes('orsia') || lower.includes('teedo') || lower.includes('riz')) {
+    return 'orsia';
+  }
+  if (lower.includes('arzanier') || lower.includes('moringa') || lower.includes('bissap')) {
+    return 'arzanier';
   }
   if (lower.includes('moka') && (lower.includes('fraise') || lower.includes('fruits rouges'))) {
     return 'moka_vanille_fraise';
@@ -279,8 +296,11 @@ function inferFlavorKeyFromName(name: string): string | undefined {
   if (lower.includes('moka')) {
     return 'moka_vanille_chocolat';
   }
+  if ((lower.includes('forêt') || lower.includes('foret')) && lower.includes('blanche')) {
+    return 'foret_blanche';
+  }
   if (lower.includes('forêt') || lower.includes('foret')) {
-    return 'foret_noire_blanche';
+    return 'foret_noire';
   }
   if (lower.includes('infini') || lower.includes('fraisier')) {
     return 'infini_chocolat_fraisier';
@@ -323,6 +343,8 @@ export function CustomOrder() {
   // Point 4 : Supplément (optionnel)
   const [suppEdibleImage, setSuppEdibleImage] = useState<boolean>(false);
   const [suppNonEdibleImage, setSuppNonEdibleImage] = useState<boolean>(false);
+  const [printImagePreview, setPrintImagePreview] = useState<string | null>(null);
+  const [printImageNotes, setPrintImageNotes] = useState<string>('');
   const [suppAlcohol, setSuppAlcohol] = useState<boolean>(false);
   const [suppSugarPaste, setSuppSugarPaste] = useState<boolean>(false);
 
@@ -367,7 +389,7 @@ export function CustomOrder() {
               } else if (p.portions_json) {
                 try {
                   portions = JSON.parse(p.portions_json);
-                } catch (e) {}
+                } catch (e) { }
               }
               const sub = inferCakeSubcategory(p.name, p.subcategory);
               if (sub && !mergedSubcats.includes(sub)) {
@@ -569,50 +591,60 @@ export function CustomOrder() {
   const cakeItemPriceForCart = baseCakePrice + cakeSupplementsTotal;
 
   // Gestion de l'upload d'image avec compression automatique pour ne jamais bloquer la création de commande
+  const compressAndSetImage = (file: File, onLoaded: (dataUrl: string) => void) => {
+    if (file.size > 8 * 1024 * 1024) {
+      alert("L'image est trop lourde (maximum 8 Mo)");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const rawDataUrl = reader.result as string;
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const maxDim = 900;
+          let width = img.width;
+          let height = img.height;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            onLoaded(canvas.toDataURL('image/jpeg', 0.8));
+            return;
+          }
+        } catch (err) {
+          console.warn('Fallback image upload sans compression:', err);
+        }
+        onLoaded(rawDataUrl);
+      };
+      img.onerror = () => onLoaded(rawDataUrl);
+      img.src = rawDataUrl;
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 8 * 1024 * 1024) {
-        alert("L'image est trop lourde (maximum 8 Mo)");
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const rawDataUrl = reader.result as string;
-        const img = new Image();
-        img.onload = () => {
-          try {
-            const maxDim = 900;
-            let width = img.width;
-            let height = img.height;
-            if (width > maxDim || height > maxDim) {
-              if (width > height) {
-                height = Math.round((height * maxDim) / width);
-                width = maxDim;
-              } else {
-                width = Math.round((width * maxDim) / height);
-                height = maxDim;
-              }
-            }
-            const canvas = document.createElement('canvas');
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('2d');
-            if (ctx) {
-              ctx.drawImage(img, 0, 0, width, height);
-              const compressed = canvas.toDataURL('image/jpeg', 0.8);
-              setUploadedImagePreview(compressed);
-              return;
-            }
-          } catch (err) {
-            console.warn('Fallback image upload sans compression:', err);
-          }
-          setUploadedImagePreview(rawDataUrl);
-        };
-        img.onerror = () => setUploadedImagePreview(rawDataUrl);
-        img.src = rawDataUrl;
-      };
-      reader.readAsDataURL(file);
+      compressAndSetImage(file, setUploadedImagePreview);
+    }
+  };
+
+  const handlePrintImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      compressAndSetImage(file, setPrintImagePreview);
     }
   };
 
@@ -674,6 +706,10 @@ export function CustomOrder() {
     const chosenSupplementsList = [
       suppEdibleImage ? `Image comestible (+${SUPPLEMENT_PRICES.edibleImage.toLocaleString('fr-FR')} F)` : '',
       suppNonEdibleImage ? `Image non comestible (+${SUPPLEMENT_PRICES.nonEdibleImage.toLocaleString('fr-FR')} F)` : '',
+      (suppEdibleImage || suppNonEdibleImage) && printImagePreview ? 'Image à imprimer fournie' : '',
+      (suppEdibleImage || suppNonEdibleImage) && printImageNotes.trim()
+        ? `Info image à imprimer: « ${printImageNotes.trim()} »`
+        : '',
       suppAlcohol ? `Alcool (+${SUPPLEMENT_PRICES.alcohol.toLocaleString('fr-FR')} F)` : '',
       suppSugarPaste
         ? `Pâte à sucre 2500F × ${effectivePartsCount} parts (+${sugarPasteCost.toLocaleString('fr-FR')} F)`
@@ -767,19 +803,17 @@ export function CustomOrder() {
                       setSelectedCakeCategory(catName);
                       setModelType('catalog');
                     }}
-                    className={`py-4 px-5 rounded-2xl border-2 font-extrabold text-sm transition-all cursor-pointer flex items-center justify-between text-left ${
-                      isSelected
-                        ? 'border-[#581C87] bg-[#581C87] text-white shadow-lg shadow-purple-900/25 scale-[1.01]'
-                        : 'border-gray-200 bg-white text-gray-800 hover:border-purple-300 hover:bg-purple-50/40'
-                    }`}
+                    className={`py-4 px-5 rounded-2xl border-2 font-extrabold text-sm transition-all cursor-pointer flex items-center justify-between text-left ${isSelected
+                      ? 'border-[#581C87] bg-[#581C87] text-white shadow-lg shadow-purple-900/25 scale-[1.01]'
+                      : 'border-gray-200 bg-white text-gray-800 hover:border-purple-300 hover:bg-purple-50/40'
+                      }`}
                   >
                     <div className="min-w-0 pr-2">
                       <span className="block">{catName}</span>
                       {subMeta?.theme && (
                         <span
-                          className={`block text-[11px] font-medium truncate mt-0.5 ${
-                            isSelected ? 'text-purple-200' : 'text-gray-500'
-                          }`}
+                          className={`block text-[11px] font-medium truncate mt-0.5 ${isSelected ? 'text-purple-200' : 'text-gray-500'
+                            }`}
                         >
                           {subMeta.theme}
                         </span>
@@ -838,11 +872,10 @@ export function CustomOrder() {
               <button
                 type="button"
                 onClick={() => setModelType('catalog')}
-                className={`py-3 px-4 rounded-xl border-2 text-xs sm:text-sm font-bold transition cursor-pointer flex items-center justify-center gap-2 ${
-                  modelType === 'catalog'
-                    ? 'bg-[#581C87] border-[#581C87] text-white shadow-md'
-                    : 'bg-purple-50/70 border-purple-200 text-gray-700 hover:bg-purple-100/60'
-                }`}
+                className={`py-3 px-4 rounded-xl border-2 text-xs sm:text-sm font-bold transition cursor-pointer flex items-center justify-center gap-2 ${modelType === 'catalog'
+                  ? 'bg-[#581C87] border-[#581C87] text-white shadow-md'
+                  : 'bg-purple-50/70 border-purple-200 text-gray-700 hover:bg-purple-100/60'
+                  }`}
               >
                 <Sparkles size={15} />
                 <span>Catalogue « {selectedCakeCategory} »</span>
@@ -850,11 +883,10 @@ export function CustomOrder() {
               <button
                 type="button"
                 onClick={() => setModelType('upload')}
-                className={`py-3 px-4 rounded-xl border-2 text-xs sm:text-sm font-bold transition cursor-pointer flex items-center justify-center gap-2 ${
-                  modelType === 'upload'
-                    ? 'bg-[#581C87] border-[#581C87] text-white shadow-md'
-                    : 'bg-purple-50/70 border-purple-200 text-gray-700 hover:bg-purple-100/60'
-                }`}
+                className={`py-3 px-4 rounded-xl border-2 text-xs sm:text-sm font-bold transition cursor-pointer flex items-center justify-center gap-2 ${modelType === 'upload'
+                  ? 'bg-[#581C87] border-[#581C87] text-white shadow-md'
+                  : 'bg-purple-50/70 border-purple-200 text-gray-700 hover:bg-purple-100/60'
+                  }`}
               >
                 <Upload size={15} />
                 <span>Charger ma propre photo</span>
@@ -876,11 +908,10 @@ export function CustomOrder() {
                               setSelectedFlavorKey(cake.flavorKey);
                             }
                           }}
-                          className={`group relative rounded-none overflow-hidden border-2 cursor-pointer transition-all bg-white ${
-                            isSelected
-                              ? 'border-[#C20A0A] shadow-lg ring-2 ring-[#C20A0A]/25 scale-[1.01]'
-                              : 'border-gray-200 hover:border-purple-200'
-                          }`}
+                          className={`group relative rounded-none overflow-hidden border-2 cursor-pointer transition-all bg-white ${isSelected
+                            ? 'border-[#C20A0A] shadow-lg ring-2 ring-[#C20A0A]/25 scale-[1.01]'
+                            : 'border-gray-200 hover:border-purple-200'
+                            }`}
                         >
                           <div className="relative aspect-square w-full overflow-hidden bg-gray-100">
                             <ImageWithFallback
@@ -973,7 +1004,7 @@ export function CustomOrder() {
             {/* --------------------------------------------------------------------- */}
             <div>
               <h4 id="field-customFlavorSection" className="text-sm sm:text-base font-extrabold text-gray-900 mb-3">
-                Saveur du gâteau *
+                Saveur du gâteau
               </h4>
               {fieldErrors.flavorSelection && (
                 <p className="text-xs text-red-600 font-bold mb-2.5 flex items-center gap-1.5">
@@ -993,11 +1024,10 @@ export function CustomOrder() {
                         clearFieldError('flavorSelection');
                         clearFieldError('customFlavorText');
                       }}
-                      className={`p-3.5 px-4 rounded-xl border transition-all cursor-pointer flex items-center gap-3 ${
-                        isSelected
-                          ? 'border-[#581C87] bg-purple-50/60 shadow-xs'
-                          : 'border-gray-200 hover:border-purple-200 bg-white'
-                      }`}
+                      className={`p-3.5 px-4 rounded-xl border transition-all cursor-pointer flex items-center gap-3 ${isSelected
+                        ? 'border-[#581C87] bg-purple-50/60 shadow-xs'
+                        : 'border-gray-200 hover:border-purple-200 bg-white'
+                        }`}
                     >
                       <input
                         type="radio"
@@ -1018,11 +1048,10 @@ export function CustomOrder() {
 
                 <label
                   onClick={() => setSelectedFlavorKey('custom')}
-                  className={`p-3.5 px-4 rounded-xl border transition-all cursor-pointer flex items-center gap-3 ${
-                    selectedFlavorKey === 'custom'
-                      ? 'border-[#581C87] bg-purple-50/60 shadow-xs'
-                      : 'border-gray-200 hover:border-purple-200 bg-white'
-                  }`}
+                  className={`p-3.5 px-4 rounded-xl border transition-all cursor-pointer flex items-center gap-3 ${selectedFlavorKey === 'custom'
+                    ? 'border-[#581C87] bg-purple-50/60 shadow-xs'
+                    : 'border-gray-200 hover:border-purple-200 bg-white'
+                    }`}
                 >
                   <input
                     type="radio"
@@ -1071,13 +1100,12 @@ export function CustomOrder() {
                       }
                     }}
                     placeholder="Ex: Chocolat blanc & fruits de la passion, Noisette gianduja..."
-                    className={`w-full px-4 py-3 rounded-2xl outline-none text-sm transition ${
-                      fieldErrors.customFlavorText
-                        ? 'border-2 border-[#C20A0A] bg-red-50/20 ring-2 ring-red-200'
-                        : customFlavorText.trim()
-                          ? 'border-2 border-[#5DBA68] bg-emerald-50/20'
-                          : 'border border-gray-200 focus:border-[#F8BE40]'
-                    }`}
+                    className={`w-full px-4 py-3 rounded-2xl outline-none text-sm transition ${fieldErrors.customFlavorText
+                      ? 'border-2 border-[#C20A0A] bg-red-50/20 ring-2 ring-red-200'
+                      : customFlavorText.trim()
+                        ? 'border-2 border-[#5DBA68] bg-emerald-50/20'
+                        : 'border border-gray-200 focus:border-[#F8BE40]'
+                      }`}
                   />
                   {fieldErrors.customFlavorText && (
                     <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 mt-2 animate-pulse">
@@ -1103,17 +1131,16 @@ export function CustomOrder() {
                 <div className="space-y-6">
                   <div>
                     <h4 className="text-sm sm:text-base font-extrabold text-gray-900 mb-3">
-                      Taille / Format du Gâteau de Mariage *
+                      Taille / Format du Gâteau de Mariage
                     </h4>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
                       <label
                         onClick={() => setWeddingFormat('piece_montee')}
-                        className={`p-4 rounded-xl border transition cursor-pointer flex items-center gap-3 ${
-                          weddingFormat === 'piece_montee'
-                            ? 'border-[#581C87] bg-purple-50/70 shadow-xs'
-                            : 'border-gray-200 bg-white hover:border-purple-200'
-                        }`}
+                        className={`p-4 rounded-xl border transition cursor-pointer flex items-center gap-3 ${weddingFormat === 'piece_montee'
+                          ? 'border-[#581C87] bg-purple-50/70 shadow-xs'
+                          : 'border-gray-200 bg-white hover:border-purple-200'
+                          }`}
                       >
                         <input
                           type="radio"
@@ -1130,11 +1157,10 @@ export function CustomOrder() {
 
                       <label
                         onClick={() => setWeddingFormat('gateaux_separes')}
-                        className={`p-4 rounded-xl border transition cursor-pointer flex items-center gap-3 ${
-                          weddingFormat === 'gateaux_separes'
-                            ? 'border-[#581C87] bg-purple-50/70 shadow-xs'
-                            : 'border-gray-200 bg-white hover:border-purple-200'
-                        }`}
+                        className={`p-4 rounded-xl border transition cursor-pointer flex items-center gap-3 ${weddingFormat === 'gateaux_separes'
+                          ? 'border-[#581C87] bg-purple-50/70 shadow-xs'
+                          : 'border-gray-200 bg-white hover:border-purple-200'
+                          }`}
                       >
                         <input
                           type="radio"
@@ -1166,14 +1192,13 @@ export function CustomOrder() {
                                     <label
                                       key={opt.id}
                                       onClick={() => {
-                                    setSelectedWeddingTierOptionId(opt.id);
-                                    clearFieldError('portionSelection');
-                                  }}
-                                      className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2 ${
-                                        isSelected
-                                          ? 'border-[#581C87] bg-white shadow-sm ring-2 ring-[#581C87]/20'
-                                          : 'border-gray-200 hover:border-purple-200 bg-white/80'
-                                      }`}
+                                        setSelectedWeddingTierOptionId(opt.id);
+                                        clearFieldError('portionSelection');
+                                      }}
+                                      className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2 ${isSelected
+                                        ? 'border-[#581C87] bg-white shadow-sm ring-2 ring-[#581C87]/20'
+                                        : 'border-gray-200 hover:border-purple-200 bg-white/80'
+                                        }`}
                                     >
                                       <div className="flex items-center gap-2">
                                         <input
@@ -1245,11 +1270,10 @@ export function CustomOrder() {
                                     setSeparateCakePortionId(opt.id);
                                     clearFieldError('portionSelection');
                                   }}
-                                  className={`p-3.5 px-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                                    isSelected
-                                      ? 'border-[#581C87] bg-white shadow-xs ring-2 ring-[#581C87]/15'
-                                      : 'border-gray-200 hover:border-purple-200 bg-white/80'
-                                  }`}
+                                  className={`p-3.5 px-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${isSelected
+                                    ? 'border-[#581C87] bg-white shadow-xs ring-2 ring-[#581C87]/15'
+                                    : 'border-gray-200 hover:border-purple-200 bg-white/80'
+                                    }`}
                                 >
                                   <div className="flex items-center gap-3">
                                     <input
@@ -1295,7 +1319,7 @@ export function CustomOrder() {
               ) : (
                 <div>
                   <h4 className="text-sm sm:text-base font-extrabold text-gray-900 mb-3">
-                    Taille du gâteau (Nombre de parts et prix) *
+                    Taille du gâteau
                   </h4>
 
                   <div className="space-y-2.5">
@@ -1309,11 +1333,10 @@ export function CustomOrder() {
                             setSelectedPortionId(opt.id);
                             clearFieldError('portionSelection');
                           }}
-                          className={`p-3.5 px-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                            isSelected
-                              ? 'border-[#581C87] bg-purple-50/60 shadow-xs'
-                              : 'border-gray-200 hover:border-purple-200 bg-white'
-                          }`}
+                          className={`p-3.5 px-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${isSelected
+                            ? 'border-[#581C87] bg-purple-50/60 shadow-xs'
+                            : 'border-gray-200 hover:border-purple-200 bg-white'
+                            }`}
                         >
                           <div className="flex items-center gap-3">
                             <input
@@ -1349,16 +1372,10 @@ export function CustomOrder() {
                       Commande de gâteau au-delà de 20 parts
                     </h5>
                     <p className="text-xs text-gray-600 mt-1">
-                      Pour un gâteau de plus de 20 parts, contactez directement notre assistance par WhatsApp ou par appel téléphonique. Le récapitulatif de votre commande est déjà prêt :
+                      Contactez directement notre assistance par WhatsApp ou par appel téléphonique.
                     </p>
                   </div>
 
-                  <div className="p-3.5 rounded-xl bg-white border border-purple-100 text-xs text-gray-700 space-y-1 font-medium">
-                    <div><span className="font-bold text-gray-900">Catégorie :</span> {eventLabelForSummary}</div>
-                    <div><span className="font-bold text-gray-900">Modèle :</span> {modelDisplayForSummary}</div>
-                    <div><span className="font-bold text-gray-900">Saveur :</span> {flavorDisplayForSummary}</div>
-                    <div><span className="font-bold text-[#581C87]">Taille :</span> Au-delà de 20 parts (+ de 20 parts)</div>
-                  </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <a
@@ -1367,15 +1384,15 @@ export function CustomOrder() {
                       rel="noreferrer"
                       className="py-3.5 px-5 rounded-lg bg-[#25D366] hover:bg-[#1ebe57] text-white font-extrabold text-xs sm:text-sm shadow-md transition flex items-center justify-center gap-2"
                     >
-                      <MessageCircle size={18} />
-                      <span>Contacter sur WhatsApp</span>
+
+                      <span>WhatsApp</span>
                     </a>
 
                     <a
                       href={phoneAssistanceUrl}
                       className="py-3.5 px-5 rounded-lg bg-[#581C87] hover:bg-[#6B21A8] text-white font-extrabold text-xs sm:text-sm shadow-md transition flex items-center justify-center gap-2"
                     >
-                      <PhoneCall size={18} />
+
                       <span>Appel téléphonique</span>
                     </a>
                   </div>
@@ -1395,21 +1412,18 @@ export function CustomOrder() {
                 </span>
                 Supplément (optionnel)
               </h3>
-              <p className="text-xs text-gray-500 mt-1 font-light">
-                Sélectionnez les suppléments souhaités pour votre gâteau :
-              </p>
+
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* Images comestibles : 5 000 F (exclusif avec Images non comestibles) */}
               <label
-                className={`p-3.5 px-4 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-                  suppNonEdibleImage
-                    ? 'border-gray-200 bg-gray-100/70 opacity-50 cursor-not-allowed'
-                    : suppEdibleImage
-                      ? 'border-[#C20A0A] bg-red-50/40 shadow-xs cursor-pointer'
-                      : 'border-gray-200 hover:border-purple-200 bg-white cursor-pointer'
-                }`}
+                className={`p-3.5 px-4 rounded-xl border transition-all flex items-center justify-between gap-3 ${suppNonEdibleImage
+                  ? 'border-gray-200 bg-gray-100/70 opacity-50 cursor-not-allowed'
+                  : suppEdibleImage
+                    ? 'border-[#C20A0A] bg-red-50/40 shadow-xs cursor-pointer'
+                    : 'border-gray-200 hover:border-purple-200 bg-white cursor-pointer'
+                  }`}
               >
                 <div className="flex items-center gap-3">
                   <input
@@ -1440,13 +1454,12 @@ export function CustomOrder() {
 
               {/* Images non comestibles : 1 500 F (exclusif avec Images comestibles) */}
               <label
-                className={`p-3.5 px-4 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-                  suppEdibleImage
-                    ? 'border-gray-200 bg-gray-100/70 opacity-50 cursor-not-allowed'
-                    : suppNonEdibleImage
-                      ? 'border-[#C20A0A] bg-red-50/40 shadow-xs cursor-pointer'
-                      : 'border-gray-200 hover:border-purple-200 bg-white cursor-pointer'
-                }`}
+                className={`p-3.5 px-4 rounded-xl border transition-all flex items-center justify-between gap-3 ${suppEdibleImage
+                  ? 'border-gray-200 bg-gray-100/70 opacity-50 cursor-not-allowed'
+                  : suppNonEdibleImage
+                    ? 'border-[#C20A0A] bg-red-50/40 shadow-xs cursor-pointer'
+                    : 'border-gray-200 hover:border-purple-200 bg-white cursor-pointer'
+                  }`}
               >
                 <div className="flex items-center gap-3">
                   <input
@@ -1477,11 +1490,10 @@ export function CustomOrder() {
 
               {/* Alcool : 1 000 F */}
               <label
-                className={`p-3.5 px-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                  suppAlcohol
-                    ? 'border-[#581C87] bg-purple-50/70 shadow-xs'
-                    : 'border-gray-200 hover:border-purple-200 bg-white'
-                }`}
+                className={`p-3.5 px-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${suppAlcohol
+                  ? 'border-[#581C87] bg-purple-50/70 shadow-xs'
+                  : 'border-gray-200 hover:border-purple-200 bg-white'
+                  }`}
               >
                 <div className="flex items-center gap-3">
                   <input
@@ -1497,11 +1509,10 @@ export function CustomOrder() {
 
               {/* Pâte à sucre : 2 500 F / part */}
               <label
-                className={`p-3.5 px-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                  suppSugarPaste
-                    ? 'border-[#581C87] bg-purple-50/70 shadow-xs'
-                    : 'border-gray-200 hover:border-purple-200 bg-white'
-                }`}
+                className={`p-3.5 px-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${suppSugarPaste
+                  ? 'border-[#581C87] bg-purple-50/70 shadow-xs'
+                  : 'border-gray-200 hover:border-purple-200 bg-white'
+                  }`}
               >
                 <div className="flex items-center gap-3">
                   <input
@@ -1512,7 +1523,7 @@ export function CustomOrder() {
                   />
                   <div>
                     <span className="block text-xs sm:text-sm font-bold text-gray-900">
-                      Pâte à sucre (2 500 F / part)
+                      Pâte à sucre
                     </span>
                     <span className="block text-[11px] text-gray-500">
                       2 500 F × {effectivePartsCount} parts
@@ -1524,6 +1535,88 @@ export function CustomOrder() {
                 </span>
               </label>
             </div>
+
+            {(suppEdibleImage || suppNonEdibleImage) && (
+              <div className="mt-4 p-4 sm:p-5 rounded-2xl bg-[#FDF8F2] border border-[#F8BE40]/70 space-y-4">
+                <div>
+                  <p className="text-xs sm:text-sm font-extrabold text-[#2B1204]">
+                    Image à imprimer ({suppEdibleImage ? 'Image comestible' : 'Image non comestible'})
+                  </p>
+                  <p className="text-[11px] text-[#2B1204]/70 mt-0.5">
+                    Chargez votre visuel et/ou précisez les informations de l’image à imprimer sur le gâteau.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+                  <div>
+                    <label className="block text-xs font-bold text-[#2B1204] mb-1.5">
+                      Charger l’image à imprimer
+                    </label>
+                    {printImagePreview ? (
+                      <div className="flex items-center gap-3 p-2.5 rounded-xl bg-white border border-[#5DBA68]">
+                        <img
+                          src={printImagePreview}
+                          alt="Aperçu image à imprimer"
+                          className="w-16 h-16 rounded-lg object-cover shrink-0 border border-gray-100"
+                        />
+                        <div className="flex flex-col gap-1.5 min-w-0">
+                          <label
+                            htmlFor="cake-print-image-upload"
+                            className="text-xs font-bold text-[#581C87] hover:underline cursor-pointer"
+                          >
+                            Changer l’image
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setPrintImagePreview(null)}
+                            className="text-left text-[11px] font-bold text-[#C20A0A] hover:underline cursor-pointer"
+                          >
+                            Supprimer
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <label
+                        htmlFor="cake-print-image-upload"
+                        className="flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed border-[#F8BE40] bg-white hover:bg-[#FDF6EC] transition cursor-pointer text-center"
+                      >
+                        <Upload size={18} className="text-[#2B1204] mb-1" />
+                        <span className="text-xs font-bold text-[#2B1204]">
+                          Importer une image
+                        </span>
+                        <span className="text-[10px] text-[#2B1204]/60 mt-0.5">
+                          PNG, JPG jusqu’à 8 Mo
+                        </span>
+                      </label>
+                    )}
+                    <input
+                      id="cake-print-image-upload"
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePrintImageUpload}
+                      className="hidden"
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="cake-print-image-notes"
+                      className="block text-xs font-bold text-[#2B1204] mb-1.5"
+                    >
+                      Informations sur l’image à imprimer
+                    </label>
+                    <textarea
+                      id="cake-print-image-notes"
+                      rows={3}
+                      value={printImageNotes}
+                      onChange={(e) => setPrintImageNotes(e.target.value)}
+                      placeholder="Ex : Logo d’entreprise, personnage Spider-Man, photo centrée avec contour doré..."
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:border-[#F8BE40] bg-white text-xs text-[#2B1204] outline-none resize-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* ========================================================================= */}
@@ -1536,9 +1629,7 @@ export function CustomOrder() {
               </span>
               Message à écrire sur le gâteau
             </h3>
-            <p className="text-xs text-gray-500 mb-4 font-light">
-              Indiquez le message ou prénom qui sera calligraphié sur votre gâteau (laissez vide si vous ne souhaitez pas d'inscription).
-            </p>
+
 
             <input
               id="field-cakeInscriptionMessage"
@@ -1607,7 +1698,7 @@ export function CustomOrder() {
                   className="w-full md:w-auto px-8 py-4 rounded-full bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] border-2 border-[#F8BE40] font-black text-sm shadow-xl transition cursor-pointer flex items-center justify-center gap-3 transform hover:scale-[1.01] active:scale-95 shrink-0 disabled:opacity-50"
                 >
                   <ShoppingBag size={18} />
-                  <span>Ajouter au panier ({cakeItemPriceForCart.toLocaleString('fr-FR')} FCFA)</span>
+                  <span>Passer panier </span>
                   <ArrowRight size={18} />
                 </button>
               </div>
