@@ -24,7 +24,7 @@ export function Header() {
   ];
 
   const rightNavItems = [
-    { name: 'Carte de fidélité', path: '/fidelite' },
+    { name: 'Mon compte', path: '/fidelite' },
     { name: 'À propos', path: '/a-propos' },
   ];
 

@@ -149,10 +149,15 @@ export async function initDb() {
       tier TEXT DEFAULT 'BRONZE',
       total_spent INTEGER DEFAULT 0,
       orders_count INTEGER DEFAULT 0,
+      pin_hash TEXT,
+      default_address TEXT,
       created_at DATETIME NOT NULL,
       updated_at DATETIME NOT NULL
     )
   `);
+
+  try { await run('ALTER TABLE loyalty_members ADD COLUMN pin_hash TEXT'); } catch (_) {}
+  try { await run('ALTER TABLE loyalty_members ADD COLUMN default_address TEXT'); } catch (_) {}
 
   // Historique des points (gains, déductions, bonus)
   await run(`
@@ -1349,36 +1354,48 @@ export async function getLoyaltyMember(rawPhone) {
   );
 
   const settings = await getLoyaltySettings();
+  const { pin_hash, ...safeMember } = member;
 
   return {
-    ...member,
+    ...safeMember,
+    has_pin: Boolean(pin_hash),
     history: history || [],
     settings
   };
 }
 
 
-export async function registerLoyaltyMember({ phone, name }) {
+export async function registerLoyaltyMember({ phone, name, pin, defaultAddress }) {
   if (!phone || !name) throw new Error('Nom et numéro de téléphone obligatoires');
   const cleanPhone = normalizeBurkinaPhone(phone);
   if (!cleanPhone) throw new Error('Numéro de téléphone invalide : doit comporter 8 chiffres (avec ou sans +226 ou 00226)');
+
+  const cleanPin = pin !== undefined && pin !== null ? String(pin).trim() : '';
+  if (!/^\d{4}$/.test(cleanPin)) {
+    throw new Error('Veuillez choisir un code PIN à 4 chiffres pour sécuriser votre compte.');
+  }
+  const pinHash = bcrypt.hashSync(cleanPin, bcrypt.genSaltSync(10));
 
   const settings = await getLoyaltySettings();
   let existing = await get('SELECT * FROM loyalty_members WHERE phone = ?', [cleanPhone]);
   const now = new Date().toISOString();
 
   if (existing) {
-    if (name && name.trim()) {
-      await run('UPDATE loyalty_members SET name = ?, updated_at = ? WHERE phone = ?', [name.trim(), now, cleanPhone]);
+    if (existing.pin_hash) {
+      throw new Error('Un compte existe déjà avec ce numéro. Veuillez vous connecter.');
     }
+    await run(
+      'UPDATE loyalty_members SET name = ?, pin_hash = ?, default_address = COALESCE(?, default_address), updated_at = ? WHERE phone = ?',
+      [name.trim(), pinHash, defaultAddress ? defaultAddress.trim() : null, now, cleanPhone]
+    );
     return getLoyaltyMember(cleanPhone);
   }
 
   const welcomePts = settings.welcome_bonus_points || 50;
   await run(`
-    INSERT INTO loyalty_members (phone, name, points, tier, total_spent, orders_count, created_at, updated_at)
-    VALUES (?, ?, ?, 'BRONZE', 0, 0, ?, ?)
-  `, [cleanPhone, name.trim(), welcomePts, now, now]);
+    INSERT INTO loyalty_members (phone, name, points, tier, total_spent, orders_count, pin_hash, default_address, created_at, updated_at)
+    VALUES (?, ?, ?, 'BRONZE', 0, 0, ?, ?, ?, ?)
+  `, [cleanPhone, name.trim(), welcomePts, pinHash, defaultAddress ? defaultAddress.trim() : null, now, now]);
 
   if (welcomePts > 0) {
     await run(`
@@ -1390,26 +1407,113 @@ export async function registerLoyaltyMember({ phone, name }) {
   return getLoyaltyMember(cleanPhone);
 }
 
-export async function loginLoyaltyMember({ phone, name }) {
+export async function loginLoyaltyMember({ phone, pin, name }) {
   if (!phone) throw new Error('Numéro de téléphone requis');
   const cleanPhone = normalizeBurkinaPhone(phone);
   if (!cleanPhone) throw new Error('Numéro de téléphone invalide : doit comporter 8 chiffres (avec ou sans +226 ou 00226)');
 
-  let member = await getLoyaltyMember(cleanPhone);
-  if (!member) {
-    if (name && name.trim()) {
-      return registerLoyaltyMember({ phone: cleanPhone, name: name.trim() });
-    }
+  const raw = await get('SELECT * FROM loyalty_members WHERE phone = ?', [cleanPhone]);
+  if (!raw) {
     return null;
   }
 
-  if (name && name.trim() && name.trim() !== member.name) {
-    const now = new Date().toISOString();
-    await run('UPDATE loyalty_members SET name = ?, updated_at = ? WHERE phone = ?', [name.trim(), now, cleanPhone]);
-    member = await getLoyaltyMember(cleanPhone);
+  const cleanPin = pin !== undefined && pin !== null ? String(pin).trim() : '';
+  if (raw.pin_hash) {
+    if (!cleanPin) {
+      throw new Error('Veuillez saisir votre code PIN à 4 chiffres.');
+    }
+    if (!bcrypt.compareSync(cleanPin, raw.pin_hash)) {
+      throw new Error('Code PIN incorrect.');
+    }
+  } else {
+    // Ancien membre fidélité sans PIN : activation transparente si un PIN valide est fourni
+    if (/^\d{4}$/.test(cleanPin)) {
+      const pinHash = bcrypt.hashSync(cleanPin, bcrypt.genSaltSync(10));
+      await run('UPDATE loyalty_members SET pin_hash = ?, updated_at = ? WHERE phone = ?', [
+        pinHash,
+        new Date().toISOString(),
+        cleanPhone
+      ]);
+    } else {
+      const safeMember = await getLoyaltyMember(cleanPhone);
+      return { needsPinSetup: true, member: safeMember };
+    }
   }
 
-  return member;
+  if (name && name.trim() && name.trim() !== raw.name) {
+    const now = new Date().toISOString();
+    await run('UPDATE loyalty_members SET name = ?, updated_at = ? WHERE phone = ?', [name.trim(), now, cleanPhone]);
+  }
+
+  const member = await getLoyaltyMember(cleanPhone);
+  return { needsPinSetup: false, member };
+}
+
+export async function updateLoyaltyProfile(rawPhone, { name, defaultAddress, currentPin, newPin }) {
+  const cleanPhone = normalizeBurkinaPhone(rawPhone);
+  if (!cleanPhone) throw new Error('Numéro de téléphone invalide');
+
+  const raw = await get('SELECT * FROM loyalty_members WHERE phone = ?', [cleanPhone]);
+  if (!raw) throw new Error('Compte introuvable');
+
+  const now = new Date().toISOString();
+  const nextName = name && name.trim() ? name.trim() : raw.name;
+  const nextAddress = defaultAddress !== undefined ? String(defaultAddress).trim() : raw.default_address;
+  let nextPinHash = raw.pin_hash;
+
+  if (newPin !== undefined && String(newPin).trim() !== '') {
+    const cleanNewPin = String(newPin).trim();
+    if (!/^\d{4}$/.test(cleanNewPin)) {
+      throw new Error('Le nouveau code PIN doit comporter exactement 4 chiffres.');
+    }
+    if (raw.pin_hash) {
+      if (!currentPin || !bcrypt.compareSync(String(currentPin).trim(), raw.pin_hash)) {
+        throw new Error('Code PIN actuel incorrect.');
+      }
+    }
+    nextPinHash = bcrypt.hashSync(cleanNewPin, bcrypt.genSaltSync(10));
+  }
+
+  await run(
+    'UPDATE loyalty_members SET name = ?, default_address = ?, pin_hash = ?, updated_at = ? WHERE phone = ?',
+    [nextName, nextAddress || null, nextPinHash, now, cleanPhone]
+  );
+
+  return getLoyaltyMember(cleanPhone);
+}
+
+export async function getCustomerOrders(rawPhone) {
+  const cleanPhone = normalizeBurkinaPhone(rawPhone);
+  if (!cleanPhone) return [];
+
+  const rows = await all(
+    `SELECT id, customer_name, customer_phone, items, montant_total, statut, code_reference, mode_paiement, notes, created_at, paid_at
+     FROM orders
+     WHERE REPLACE(REPLACE(REPLACE(COALESCE(customer_phone, ''), ' ', ''), '+226', ''), '00226', '') LIKE ?
+     ORDER BY created_at DESC
+     LIMIT 30`,
+    [`%${cleanPhone}`]
+  );
+
+  return (rows || []).map((row) => {
+    let parsedItems = [];
+    try {
+      parsedItems = JSON.parse(row.items || '[]');
+    } catch (_) {}
+    return {
+      id: row.id,
+      customerName: row.customer_name,
+      customerPhone: row.customer_phone,
+      items: parsedItems,
+      totalAmount: row.montant_total,
+      statut: row.statut,
+      codeReference: row.code_reference,
+      paymentMethod: row.mode_paiement,
+      notes: row.notes,
+      createdAt: row.created_at,
+      paidAt: row.paid_at
+    };
+  });
 }
 
 export async function getAllLoyaltyMembers() {
@@ -2119,6 +2223,8 @@ export default {
   getLoyaltyMember,
   registerLoyaltyMember,
   loginLoyaltyMember,
+  updateLoyaltyProfile,
+  getCustomerOrders,
   getAllLoyaltyMembers,
   creditOrderPoints,
   redeemPoints,

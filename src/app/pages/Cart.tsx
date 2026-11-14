@@ -25,6 +25,7 @@ import { useCart } from '../context/CartContext';
 import {
   createOrder,
   getLoyaltyMember,
+  getCustomerMe,
   redeemLoyaltyPoints,
   LoyaltyMember
 } from '../services/api';
@@ -218,6 +219,20 @@ export const Cart: React.FC = () => {
 
   // 4. Lieu de livraison (Quartier uniquement, champ géolocalisation supprimé)
   const [deliveryQuarter, setDeliveryQuarter] = useState<string>(savedPref?.deliveryQuarter || '');
+
+  // Pré-remplissage automatique depuis le compte client connecté (Compte = Fidélité)
+  useEffect(() => {
+    getCustomerMe()
+      .then((m) => {
+        if (!m) return;
+        setRecipientPhone((prev) => prev || m.phone || '');
+        setRecipientName((prev) => prev || m.name || '');
+        if (m.default_address) {
+          setDeliveryQuarter((prev) => prev || m.default_address || '');
+        }
+      })
+      .catch(() => null);
+  }, []);
 
   // Carte de vœux manuscrite (+200 FCFA) — uniquement quand il s'agit d'un gâteau
   const [hasGreetingCard, setHasGreetingCard] = useState<boolean>(Boolean(savedPref?.hasGreetingCard));

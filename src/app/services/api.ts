@@ -318,6 +318,8 @@ export interface LoyaltyMember {
   tier: 'BRONZE' | 'SILVER' | 'GOLD';
   total_spent: number;
   orders_count: number;
+  has_pin?: boolean;
+  default_address?: string;
   created_at: string;
   updated_at: string;
   history?: Array<{
@@ -564,10 +566,63 @@ export async function recordClientVisit(data: {
   return res.json();
 }
 
+const CUSTOMER_TOKEN_KEY = 'le_ci_customer_token';
+
+export function getCustomerToken(): string | null {
+  try {
+    return localStorage.getItem(CUSTOMER_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setCustomerToken(token: string) {
+  try {
+    localStorage.setItem(CUSTOMER_TOKEN_KEY, token);
+  } catch {}
+}
+
+export function removeCustomerToken() {
+  try {
+    localStorage.removeItem(CUSTOMER_TOKEN_KEY);
+  } catch {}
+}
+
+export function logoutCustomer() {
+  removeCustomerToken();
+  try {
+    localStorage.removeItem('le_ci_customer_loyalty');
+  } catch {}
+}
+
+function customerAuthHeaders(): Record<string, string> {
+  const token = getCustomerToken();
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {})
+  };
+}
+
+export interface CustomerOrderSummary {
+  id: string;
+  customerName: string;
+  customerPhone: string;
+  items: any[];
+  totalAmount: number;
+  statut: string;
+  codeReference?: string;
+  paymentMethod?: string;
+  notes?: string;
+  createdAt: string;
+  paidAt?: string;
+}
+
 export async function registerLoyaltyMember(data: {
   phone: string;
   name: string;
-}): Promise<{ success: boolean; member: LoyaltyMember; message: string }> {
+  pin: string;
+  defaultAddress?: string;
+}): Promise<{ success: boolean; member: LoyaltyMember; token?: string; message: string }> {
   const res = await fetch(`${API_BASE}/loyalty/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -575,15 +630,30 @@ export async function registerLoyaltyMember(data: {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || 'Erreur lors de l\'inscription au programme de fidélité');
+    throw new Error(err.error || 'Erreur lors de la création du compte');
   }
-  return res.json();
+  const payload = await res.json();
+  if (payload.token) {
+    setCustomerToken(payload.token);
+  }
+  if (payload.member) {
+    try {
+      localStorage.setItem('le_ci_customer_loyalty', JSON.stringify({
+        phone: payload.member.phone,
+        name: payload.member.name,
+        points: payload.member.points,
+        default_address: payload.member.default_address || ''
+      }));
+    } catch {}
+  }
+  return payload;
 }
 
 export async function loginLoyaltyMember(data: {
   phone: string;
+  pin?: string;
   name?: string;
-}): Promise<{ success: boolean; member: LoyaltyMember }> {
+}): Promise<{ success: boolean; member: LoyaltyMember; token?: string; needsPinSetup?: boolean; message?: string }> {
   const res = await fetch(`${API_BASE}/loyalty/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -593,7 +663,89 @@ export async function loginLoyaltyMember(data: {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || 'Compte introuvable');
   }
-  return res.json();
+  const payload = await res.json();
+  if (payload.token) {
+    setCustomerToken(payload.token);
+  }
+  if (payload.success && payload.member) {
+    try {
+      localStorage.setItem('le_ci_customer_loyalty', JSON.stringify({
+        phone: payload.member.phone,
+        name: payload.member.name,
+        points: payload.member.points,
+        default_address: payload.member.default_address || ''
+      }));
+    } catch {}
+  }
+  return payload;
+}
+
+export async function getCustomerMe(): Promise<LoyaltyMember | null> {
+  const token = getCustomerToken();
+  if (!token) return null;
+  const res = await fetch(`${API_BASE}/customer/me`, {
+    headers: customerAuthHeaders()
+  });
+  if (res.status === 401 || res.status === 403) {
+    removeCustomerToken();
+    return null;
+  }
+  if (!res.ok) return null;
+  const payload = await res.json();
+  if (payload.member) {
+    try {
+      localStorage.setItem('le_ci_customer_loyalty', JSON.stringify({
+        phone: payload.member.phone,
+        name: payload.member.name,
+        points: payload.member.points,
+        default_address: payload.member.default_address || ''
+      }));
+    } catch {}
+  }
+  return payload.member || null;
+}
+
+export async function updateCustomerProfile(data: {
+  name?: string;
+  defaultAddress?: string;
+  currentPin?: string;
+  newPin?: string;
+}): Promise<{ success: boolean; member: LoyaltyMember; token?: string; message?: string }> {
+  const res = await fetch(`${API_BASE}/customer/profile`, {
+    method: 'PUT',
+    headers: customerAuthHeaders(),
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Erreur lors de la mise à jour du profil');
+  }
+  const payload = await res.json();
+  if (payload.token) {
+    setCustomerToken(payload.token);
+  }
+  if (payload.member) {
+    try {
+      localStorage.setItem('le_ci_customer_loyalty', JSON.stringify({
+        phone: payload.member.phone,
+        name: payload.member.name,
+        points: payload.member.points,
+        default_address: payload.member.default_address || ''
+      }));
+    } catch {}
+  }
+  return payload;
+}
+
+export async function getCustomerOrders(): Promise<CustomerOrderSummary[]> {
+  const token = getCustomerToken();
+  if (!token) return [];
+  const res = await fetch(`${API_BASE}/customer/orders`, {
+    headers: customerAuthHeaders()
+  });
+  if (!res.ok) return [];
+  const payload = await res.json();
+  return payload.orders || [];
 }
 
 // ==========================================

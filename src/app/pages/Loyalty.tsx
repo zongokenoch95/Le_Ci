@@ -16,7 +16,11 @@ import {
   ShoppingBag,
   ShieldCheck,
   Check,
-  UserPlus
+  UserPlus,
+  Lock,
+  MapPin,
+  Package,
+  Settings
 } from 'lucide-react';
 import { 
   getLoyaltySettings, 
@@ -26,10 +30,15 @@ import {
   getMemberCoupons, 
   registerLoyaltyMember,
   loginLoyaltyMember,
+  getCustomerMe,
+  getCustomerOrders,
+  updateCustomerProfile,
+  logoutCustomer,
   LoyaltySettings, 
   LoyaltyMember, 
   LoyaltyReward, 
-  LoyaltyCoupon 
+  LoyaltyCoupon,
+  CustomerOrderSummary
 } from '../services/api';
 import { validateBurkinaPhone } from '../utils/phoneValidation';
 import { useCart } from '../context/CartContext';
@@ -45,9 +54,24 @@ export function Loyalty() {
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [formName, setFormName] = useState('');
   const [formPhone, setFormPhone] = useState('');
+  const [formPin, setFormPin] = useState('');
+  const [needsPinSetup, setNeedsPinSetup] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState('');
   const [authSuccessMsg, setAuthSuccessMsg] = useState('');
+
+  // Onglets Espace Client
+  const [activeTab, setActiveTab] = useState<'loyalty' | 'orders' | 'profile'>('loyalty');
+  const [myOrders, setMyOrders] = useState<CustomerOrderSummary[]>([]);
+
+  // Édition profil
+  const [profileName, setProfileName] = useState('');
+  const [profileAddress, setProfileAddress] = useState('');
+  const [currentPin, setCurrentPin] = useState('');
+  const [newPin, setNewPin] = useState('');
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileMsg, setProfileMsg] = useState('');
+  const [profileError, setProfileError] = useState('');
 
   // Récompenses
   const [claimingRewardId, setClaimingRewardId] = useState<number | null>(null);
@@ -56,33 +80,42 @@ export function Loyalty() {
   const { openCart } = useCart();
   const navigate = useNavigate();
 
-  // Chargement des paramètres et vérification session existante
+  const loadAuthenticatedMember = (m: LoyaltyMember) => {
+    setMember(m);
+    setProfileName(m.name || '');
+    setProfileAddress(m.default_address || '');
+    fetchCoupons(m.phone);
+    getCustomerOrders().then(setMyOrders).catch(() => []);
+  };
+
+  // Chargement des paramètres et vérification session JWT client existante
   useEffect(() => {
     getLoyaltySettings().then(setSettings).catch(() => null);
     getLoyaltyRewards().then(setRewards).catch(() => []);
 
-    // Vérifier si le client était déjà connecté dans le navigateur
-    try {
-      const savedSession = localStorage.getItem('le_ci_customer_loyalty');
-      if (savedSession) {
-        const { phone } = JSON.parse(savedSession);
-        if (phone) {
-          getLoyaltyMember(phone).then((m) => {
-            if (m) {
-              setMember(m);
-              fetchCoupons(m.phone);
+    getCustomerMe()
+      .then((m) => {
+        if (m) {
+          loadAuthenticatedMember(m);
+        } else {
+          try {
+            const savedSession = localStorage.getItem('le_ci_customer_loyalty');
+            if (savedSession) {
+              const parsed = JSON.parse(savedSession);
+              if (parsed.phone) setFormPhone(parsed.phone);
+              if (parsed.name) setFormName(parsed.name);
             }
-          }).catch(() => null);
+          } catch {}
         }
-      }
-    } catch (e) {}
+      })
+      .catch(() => null);
   }, []);
 
   const fetchCoupons = (phone: string) => {
     getMemberCoupons(phone).then(setMyCoupons).catch(() => []);
   };
 
-  // Connexion ou Inscription (Portail 2)
+  // Connexion ou Inscription (Compte Client = Fidélité)
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const phoneVal = validateBurkinaPhone(formPhone);
@@ -94,46 +127,52 @@ export function Loyalty() {
       setAuthError('Veuillez renseigner votre nom complet.');
       return;
     }
+    if (!/^\d{4}$/.test(formPin.trim())) {
+      setAuthError('Veuillez saisir un code PIN à 4 chiffres.');
+      return;
+    }
 
     setAuthLoading(true);
     setAuthError('');
     setAuthSuccessMsg('');
 
     try {
-      let loggedMember: LoyaltyMember | null = null;
-
       if (authMode === 'register') {
         const res = await registerLoyaltyMember({
           phone: formPhone.trim(),
-          name: formName.trim()
+          name: formName.trim(),
+          pin: formPin.trim()
         });
-        loggedMember = res.member;
-        setAuthSuccessMsg(`🎉 Bienvenue dans le Programme de Fidélité ! Vous recevez vos points offerts !`);
+        setAuthSuccessMsg(`🎉 Bienvenue ! Votre compte client & fidélité est créé avec vos points offerts !`);
         confetti({
           particleCount: 80,
           spread: 60,
           origin: { y: 0.6 },
           colors: ['#D4AF37', '#10B981', '#F59E0B']
         });
-      } else {
-        // Mode Connexion
-        const res = await loginLoyaltyMember({
-          phone: formPhone.trim(),
-          name: formName.trim() || undefined
-        });
-        loggedMember = res.member;
-      }
-
-      if (loggedMember) {
-        setMember(loggedMember);
-        fetchCoupons(loggedMember.phone);
-        // Mémoriser la session client
-        localStorage.setItem('le_ci_customer_loyalty', JSON.stringify({
-          phone: loggedMember.phone,
-          name: loggedMember.name
-        }));
+        loadAuthenticatedMember(res.member);
         setFormPhone('');
         setFormName('');
+        setFormPin('');
+        setNeedsPinSetup(false);
+      } else {
+        const res = await loginLoyaltyMember({
+          phone: formPhone.trim(),
+          pin: formPin.trim(),
+          name: formName.trim() || undefined
+        });
+        if (res.needsPinSetup) {
+          setNeedsPinSetup(true);
+          setAuthError(res.message || 'Définissez un code PIN à 4 chiffres pour activer votre compte.');
+          return;
+        }
+        if (res.member) {
+          loadAuthenticatedMember(res.member);
+          setFormPhone('');
+          setFormName('');
+          setFormPin('');
+          setNeedsPinSetup(false);
+        }
       }
     } catch (err: any) {
       setAuthError(err.message || 'Erreur lors de la connexion. Vérifiez vos informations.');
@@ -145,7 +184,40 @@ export function Loyalty() {
   const handleLogout = () => {
     setMember(null);
     setMyCoupons([]);
-    localStorage.removeItem('le_ci_customer_loyalty');
+    setMyOrders([]);
+    setActiveTab('loyalty');
+    logoutCustomer();
+  };
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!profileName.trim()) {
+      setProfileError('Le nom complet est obligatoire.');
+      return;
+    }
+    if (newPin && !/^\d{4}$/.test(newPin.trim())) {
+      setProfileError('Le nouveau code PIN doit comporter exactement 4 chiffres.');
+      return;
+    }
+    setProfileSaving(true);
+    setProfileError('');
+    setProfileMsg('');
+    try {
+      const res = await updateCustomerProfile({
+        name: profileName.trim(),
+        defaultAddress: profileAddress.trim(),
+        currentPin: currentPin.trim() || undefined,
+        newPin: newPin.trim() || undefined
+      });
+      setMember(res.member);
+      setCurrentPin('');
+      setNewPin('');
+      setProfileMsg('Profil mis à jour avec succès.');
+    } catch (err: any) {
+      setProfileError(err.message || 'Erreur lors de la mise à jour.');
+    } finally {
+      setProfileSaving(false);
+    }
   };
 
   // Échange de points contre un coupon de récompense (fidelity.md §2)
@@ -227,12 +299,12 @@ export function Loyalty() {
             <span>Programme de Fidélisation RestoBoost</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-black text-gray-900 tracking-tight mb-3">
-            Espace Fidélisation & Récompenses
+            Mon Compte & Fidélité
           </h1>
           <p className="text-gray-600 max-w-xl mx-auto text-sm">
             {member 
-              ? `Bienvenue dans votre espace personnel, ${member.name}. Profitez de vos réductions et douceurs offertes.`
-              : 'Connectez-vous avec votre Nom et votre Numéro pour accéder à vos points et échanger vos récompenses.'}
+              ? `Bienvenue dans votre espace personnel, ${member.name}. Retrouvez vos commandes, vos points et vos avantages.`
+              : 'Connectez-vous avec votre numéro WhatsApp et votre code PIN à 4 chiffres pour accéder à vos commandes et vos points fidélité.'}
           </p>
         </motion.div>
 
@@ -280,26 +352,28 @@ export function Loyalty() {
             )}
 
             <form onSubmit={handleAuthSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">
-                  Votre Nom complet *
-                </label>
-                <div className="relative">
-                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ex: Amina Kaboré"
-                    value={formName}
-                    onChange={(e) => setFormName(e.target.value)}
-                    className="w-full pl-10 pr-3 py-2.5 text-xs border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#D4AF37]"
-                  />
+              {authMode === 'register' && (
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    Votre Nom complet *
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ex: Amina Kaboré"
+                      value={formName}
+                      onChange={(e) => setFormName(e.target.value)}
+                      className="w-full pl-10 pr-3 py-2.5 text-xs border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#D4AF37]"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">
-                  Numéro de téléphone (Orange Money / WhatsApp) *
+                  Numéro de téléphone (WhatsApp / Mobile Money) *
                 </label>
                 <div className="relative">
                   <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
@@ -312,8 +386,29 @@ export function Loyalty() {
                     className="w-full pl-10 pr-3 py-2.5 text-xs border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#D4AF37] font-semibold"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  {needsPinSetup ? 'Choisissez votre Code PIN (4 chiffres) *' : 'Code PIN (4 chiffres) *'}
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={4}
+                    required
+                    placeholder="••••"
+                    value={formPin}
+                    onChange={(e) => setFormPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                    className="w-full pl-10 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#D4AF37] font-bold tracking-[0.4em]"
+                  />
+                </div>
                 <span className="text-[10px] text-gray-400 mt-1 block">
-                  Identifiant direct sans mot de passe complexe
+                  {authMode === 'register'
+                    ? 'Ce code PIN à 4 chiffres sécurise votre compte client et vos points.'
+                    : 'Saisissez votre code PIN à 4 chiffres.'}
                 </span>
               </div>
 
@@ -371,6 +466,204 @@ export function Loyalty() {
               </div>
             </div>
 
+            {/* Onglets de l'Espace Client Unifié */}
+            <div className="flex flex-wrap gap-2 bg-white p-2 rounded-2xl border border-gray-100 shadow-sm">
+              <button
+                type="button"
+                onClick={() => setActiveTab('loyalty')}
+                className={`flex-1 min-w-[140px] py-2.5 px-4 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-2 cursor-pointer ${
+                  activeTab === 'loyalty'
+                    ? 'bg-[#2B1204] text-[#FDF8F2] shadow-sm'
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <Crown size={15} />
+                <span>Fidélité & Avantages</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('orders')}
+                className={`flex-1 min-w-[140px] py-2.5 px-4 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-2 cursor-pointer ${
+                  activeTab === 'orders'
+                    ? 'bg-[#2B1204] text-[#FDF8F2] shadow-sm'
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <Package size={15} />
+                <span>Mes Commandes ({myOrders.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('profile')}
+                className={`flex-1 min-w-[140px] py-2.5 px-4 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-2 cursor-pointer ${
+                  activeTab === 'profile'
+                    ? 'bg-[#2B1204] text-[#FDF8F2] shadow-sm'
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <Settings size={15} />
+                <span>Mon Profil</span>
+              </button>
+            </div>
+
+            {activeTab === 'orders' && (
+              <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-gray-100 space-y-4">
+                <h3 className="text-xl font-black text-gray-900 flex items-center gap-2">
+                  <Package size={20} className="text-[#F8BE40]" />
+                  <span>Historique de mes commandes</span>
+                </h3>
+                {myOrders.length === 0 ? (
+                  <div className="text-center py-10 space-y-3">
+                    <p className="text-sm text-gray-500">Vous n'avez pas encore passé de commande avec ce numéro.</p>
+                    <button
+                      onClick={() => navigate('/catalogue')}
+                      className="px-6 py-2.5 rounded-full bg-[#F8BE40] text-[#2B1204] font-bold text-xs cursor-pointer"
+                    >
+                      Découvrir le catalogue
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {myOrders.map((ord) => {
+                      const statusLabel =
+                        ord.statut === 'PAYEE' || ord.statut === 'EN_PREPARATION'
+                          ? 'Payée / En préparation'
+                          : ord.statut === 'PRETE'
+                          ? 'Prête'
+                          : ord.statut === 'LIVREE'
+                          ? 'Livrée'
+                          : ord.statut === 'ANNULEE'
+                          ? 'Annulée'
+                          : 'En attente de paiement';
+                      const statusColor =
+                        ord.statut === 'PAYEE' || ord.statut === 'EN_PREPARATION' || ord.statut === 'PRETE' || ord.statut === 'LIVREE'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : ord.statut === 'ANNULEE'
+                          ? 'bg-red-50 text-red-700 border-red-200'
+                          : 'bg-amber-50 text-amber-800 border-amber-200';
+                      return (
+                        <div
+                          key={ord.id}
+                          className="p-4 rounded-2xl border border-gray-200 bg-[#FAF8F5] flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                        >
+                          <div className="space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-mono text-xs font-black text-[#2B1204]">
+                                {ord.codeReference || ord.id}
+                              </span>
+                              <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${statusColor}`}>
+                                {statusLabel}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-600">
+                              {new Date(ord.createdAt).toLocaleDateString('fr-FR', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}{' '}
+                              • {ord.items.length} article{ord.items.length > 1 ? 's' : ''}
+                            </p>
+                          </div>
+                          <div className="flex items-center justify-between sm:justify-end gap-3">
+                            <span className="font-black text-sm text-[#2B1204]">
+                              {ord.totalAmount.toLocaleString('fr-FR')} FCFA
+                            </span>
+                            <button
+                              onClick={() => navigate(`/paiement/${ord.id}`)}
+                              className="px-4 py-2 rounded-full bg-white border border-gray-200 hover:border-[#F8BE40] text-xs font-bold text-[#2B1204] transition cursor-pointer"
+                            >
+                              Voir détails
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'profile' && (
+              <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-gray-100 max-w-xl">
+                <h3 className="text-xl font-black text-gray-900 mb-4 flex items-center gap-2">
+                  <Settings size={20} className="text-[#F8BE40]" />
+                  <span>Paramètres de mon compte</span>
+                </h3>
+                {profileError && (
+                  <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-xs font-semibold">
+                    {profileError}
+                  </div>
+                )}
+                {profileMsg && (
+                  <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold">
+                    {profileMsg}
+                  </div>
+                )}
+                <form onSubmit={handleSaveProfile} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">Nom complet</label>
+                    <input
+                      type="text"
+                      required
+                      value={profileName}
+                      onChange={(e) => setProfileName(e.target.value)}
+                      className="w-full px-3.5 py-2.5 text-xs border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#F8BE40]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center gap-1.5">
+                      <MapPin size={14} className="text-gray-400" />
+                      <span>Adresse / Lieu de livraison habituel (pré-rempli dans le panier)</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Ouaga 2000, près de la pharmacie..."
+                      value={profileAddress}
+                      onChange={(e) => setProfileAddress(e.target.value)}
+                      className="w-full px-3.5 py-2.5 text-xs border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#F8BE40]"
+                    />
+                  </div>
+                  <div className="pt-3 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">Code PIN actuel (optionnel)</label>
+                      <input
+                        type="password"
+                        inputMode="numeric"
+                        maxLength={4}
+                        placeholder="••••"
+                        value={currentPin}
+                        onChange={(e) => setCurrentPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                        className="w-full px-3.5 py-2.5 text-xs border border-gray-200 rounded-xl tracking-widest"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">Nouveau Code PIN (4 chiffres)</label>
+                      <input
+                        type="password"
+                        inputMode="numeric"
+                        maxLength={4}
+                        placeholder="••••"
+                        value={newPin}
+                        onChange={(e) => setNewPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                        className="w-full px-3.5 py-2.5 text-xs border border-gray-200 rounded-xl tracking-widest"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={profileSaving}
+                    className="px-6 py-3 rounded-full bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] font-black text-xs shadow-md transition cursor-pointer"
+                  >
+                    {profileSaving ? 'Enregistrement...' : 'Enregistrer les modifications'}
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {activeTab === 'loyalty' && (
+            <>
             {/* CARTE VIP & PROGRESSION */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
               {/* Carte Numérique VIP */}
@@ -575,6 +868,9 @@ export function Loyalty() {
                   ))}
                 </div>
               </div>
+            )}
+
+            </>
             )}
 
           </div>

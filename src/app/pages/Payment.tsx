@@ -86,6 +86,7 @@ export function Payment() {
   const [enrolledSuccess, setEnrolledSuccess] = useState(false);
   const [enrollName, setEnrollName] = useState('');
   const [enrollPhone, setEnrollPhone] = useState('');
+  const [enrollPin, setEnrollPin] = useState('');
 
   // Vérifier statut fidélité dès que la commande est payée
   useEffect(() => {
@@ -105,18 +106,19 @@ export function Payment() {
   const handleEnrollLoyalty = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!enrollName.trim() || !enrollPhone.trim()) return;
+    if (!/^\d{4}$/.test(enrollPin.trim())) {
+      alert('Veuillez choisir un code PIN à 4 chiffres.');
+      return;
+    }
     setEnrolling(true);
     try {
       const res = await registerLoyaltyMember({
         name: enrollName.trim(),
-        phone: enrollPhone.trim()
+        phone: enrollPhone.trim(),
+        pin: enrollPin.trim()
       });
       setLoyaltyMember(res.member);
       setEnrolledSuccess(true);
-      localStorage.setItem('le_ci_customer_loyalty', JSON.stringify({
-        phone: res.member.phone,
-        name: res.member.name
-      }));
     } catch (err: any) {
       alert(err.message || 'Erreur lors de l\'inscription');
     } finally {
@@ -490,7 +492,7 @@ export function Payment() {
                     </p>
 
                     <form onSubmit={handleEnrollLoyalty} className="space-y-3">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <div>
                           <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Votre Nom</label>
                           <input
@@ -498,7 +500,7 @@ export function Payment() {
                             required
                             value={enrollName}
                             onChange={(e) => setEnrollName(e.target.value)}
-                            className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#581C87]"
+                            className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#5DBA68]"
                           />
                         </div>
                         <div>
@@ -508,7 +510,20 @@ export function Payment() {
                             required
                             value={enrollPhone}
                             onChange={(e) => setEnrollPhone(e.target.value)}
-                            className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#581C87]"
+                            className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#5DBA68]"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Code PIN (4 chiffres)</label>
+                          <input
+                            type="password"
+                            inputMode="numeric"
+                            maxLength={4}
+                            required
+                            placeholder="••••"
+                            value={enrollPin}
+                            onChange={(e) => setEnrollPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                            className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#5DBA68] tracking-widest text-center font-bold"
                           />
                         </div>
                       </div>

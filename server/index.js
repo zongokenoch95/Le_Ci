@@ -84,6 +84,39 @@ export function requireRole(allowedRoles = ['gerant']) {
   };
 }
 
+export function signCustomerToken(member) {
+  return jwt.sign(
+    {
+      role: 'client',
+      phone: member.phone,
+      name: member.name
+    },
+    JWT_SECRET,
+    { expiresIn: '30d' }
+  );
+}
+
+export function authenticateCustomerJwt(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  if (!authHeader) {
+    return res.status(401).json({ error: 'Authentification client requise' });
+  }
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : authHeader.trim();
+  if (!token) {
+    return res.status(401).json({ error: 'Jeton client invalide' });
+  }
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.role !== 'client' || !decoded.phone) {
+      return res.status(403).json({ error: 'Accès réservé aux comptes clients' });
+    }
+    req.customer = { phone: decoded.phone, name: decoded.name };
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: 'Session expirée, veuillez vous reconnecter.', expired: true });
+  }
+}
+
 
 // ==========================================
 // RATE LIMITING (anti-DoS / anti-SMS bombing)
@@ -820,28 +853,83 @@ app.get('/api/audit-stats', async (req, res) => {
 // ==========================================
 
 
-// Inscription au programme de fidélité (Portail 1 après commande ou Portail 2)
+// Inscription au programme de fidélité & Compte Client (Portail 1 après commande ou Portail 2)
 app.post('/api/loyalty/register', async (req, res) => {
   try {
-    const { phone, name } = req.body;
-    const member = await db.registerLoyaltyMember({ phone, name });
-    res.status(201).json({ success: true, member, message: 'Inscription au programme de fidélité réussie !' });
+    const { phone, name, pin, defaultAddress } = req.body;
+    const member = await db.registerLoyaltyMember({ phone, name, pin, defaultAddress });
+    const token = signCustomerToken(member);
+    res.status(201).json({
+      success: true,
+      member,
+      token,
+      message: 'Compte client et fidélité créé avec succès !'
+    });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
   }
 });
 
-// Connexion à l'espace fidélité client (Portail 2 avec Nom + Téléphone)
+// Connexion à l'espace client & fidélité (Téléphone + Code PIN à 4 chiffres)
 app.post('/api/loyalty/login', async (req, res) => {
   try {
-    const { phone, name } = req.body;
-    const member = await db.loginLoyaltyMember({ phone, name });
+    const { phone, pin, name } = req.body;
+    const result = await db.loginLoyaltyMember({ phone, pin, name });
+    if (!result) {
+      return res.status(404).json({ success: false, error: 'Aucun compte trouvé pour ce numéro. Créez votre compte ci-dessous.' });
+    }
+    if (result.needsPinSetup) {
+      return res.json({
+        success: false,
+        needsPinSetup: true,
+        member: result.member,
+        message: 'Définissez un code PIN à 4 chiffres pour activer votre compte client.'
+      });
+    }
+    const token = signCustomerToken(result.member);
+    res.json({ success: true, member: result.member, token });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// Profil client connecté (Compte Client = Compte Fidélité)
+app.get('/api/customer/me', authenticateCustomerJwt, async (req, res) => {
+  try {
+    const member = await db.getLoyaltyMember(req.customer.phone);
     if (!member) {
-      return res.status(404).json({ success: false, error: 'Aucun compte fidélité trouvé pour ce numéro.' });
+      return res.status(404).json({ error: 'Compte client introuvable' });
     }
     res.json({ success: true, member });
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Mise à jour du profil client (nom, adresse par défaut, code PIN)
+app.put('/api/customer/profile', authenticateCustomerJwt, async (req, res) => {
+  try {
+    const { name, defaultAddress, currentPin, newPin } = req.body;
+    const member = await db.updateLoyaltyProfile(req.customer.phone, {
+      name,
+      defaultAddress,
+      currentPin,
+      newPin
+    });
+    const token = signCustomerToken(member);
+    res.json({ success: true, member, token, message: 'Profil mis à jour avec succès.' });
+  } catch (err) {
     res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// Historique des commandes du client connecté
+app.get('/api/customer/orders', authenticateCustomerJwt, async (req, res) => {
+  try {
+    const orders = await db.getCustomerOrders(req.customer.phone);
+    res.json({ success: true, orders });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
