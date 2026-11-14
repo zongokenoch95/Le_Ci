@@ -855,7 +855,7 @@ export async function createOrder(data = {}) {
   }
 
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + 10 * 60 * 1000); // TTL 10 minutes
+  const expiresAt = new Date(now.getTime() + 20 * 60 * 1000); // TTL 20 minutes
 
   const rawItems = Array.isArray(data.items)
     ? data.items
@@ -2539,7 +2539,7 @@ export async function ensureOrderPayToken(orderId) {
   }
 
   const { payToken, payTokenHash } = generatePayToken();
-  const expiresAt = row.expires_at || new Date(Date.now() + 10 * 60 * 1000).toISOString();
+  const expiresAt = row.expires_at || new Date(Date.now() + 20 * 60 * 1000).toISOString();
 
   await run(
     `UPDATE orders SET pay_token_hash = ?, pay_token_expires_at = ? WHERE id = ?`,

@@ -202,7 +202,7 @@ export function emitHighValueFlagged(order) {
   io.to('staff:admin').emit('order:high_value_flagged', order);
 }
 
-// Vérification continue de l'expiration TTL (10 min)
+// Vérification continue de l'expiration TTL (20 min)
 setInterval(async () => {
   try {
     const expiredIds = await db.checkAndExpireOrders();
@@ -448,7 +448,7 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', server: 'Les Douceurs de Lê Ci Payment API', time: new Date() });
 });
 
-// Créer une commande (avec codeReference et TTL 10 min)
+// Créer une commande (avec codeReference et TTL 20 min)
 // La commande n'apparaît dans le Dashboard qu'à partir du moment où le client saisit le nom et le numéro de transfert
 app.post('/api/orders', async (req, res) => {
   try {

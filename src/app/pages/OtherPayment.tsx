@@ -33,7 +33,6 @@ export function OtherPayment() {
   const [info, setInfo] = useState<PayTokenPublicInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [invalidOrExpiredError, setInvalidOrExpiredError] = useState<string | null>(null);
-  const [remainingSeconds, setRemainingSeconds] = useState<number>(600);
 
   const [newPhone, setNewPhone] = useState('');
   const [addedPhone, setAddedPhone] = useState<string | null>(null);
@@ -57,7 +56,6 @@ export function OtherPayment() {
     getPayTokenInfo(token)
       .then((data) => {
         setInfo(data);
-        setRemainingSeconds(data.remainingSeconds ?? 600);
       })
       .catch((err) => {
         setInvalidOrExpiredError(err.message || 'Lien invalide ou expiré');
@@ -65,23 +63,7 @@ export function OtherPayment() {
       .finally(() => setLoading(false));
   }, [token]);
 
-  // Décompte du temps restant
-  useEffect(() => {
-    if (!info || info.status !== 'EN_ATTENTE_DE_PAIEMENT') return;
-    const timer = setInterval(() => {
-      setRemainingSeconds((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          setInfo((curr) => (curr ? { ...curr, status: 'EXPIREE', remainingSeconds: 0 } : curr));
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [info?.status]);
-
-  // Synchronisation temps réel via Socket.io + Polling 3s
+  // Synchronisation temps réel via Socket.io + Polling 3s (sans compte à rebours affiché)
   useEffect(() => {
     if (!info?.reference || !token) return;
 
@@ -102,9 +84,6 @@ export function OtherPayment() {
         getPayTokenInfo(token)
           .then((fresh) => {
             setInfo(fresh);
-            if (fresh.remainingSeconds !== undefined) {
-              setRemainingSeconds(fresh.remainingSeconds);
-            }
           })
           .catch(() => {});
       }
@@ -129,16 +108,10 @@ export function OtherPayment() {
         particleCount: 90,
         spread: 70,
         origin: { y: 0.6 },
-        colors: ['#581C87', '#10B981', '#F59E0B']
+        colors: ['#2B1204', '#F8BE40', '#5DBA68']
       });
     }
   }, [info?.status]);
-
-  const formatTimer = (sec: number) => {
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  };
 
   const handleAddPhone = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -258,7 +231,7 @@ export function OtherPayment() {
   const whatsappShareHref = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
 
   return (
-    <div className="min-h-screen py-10 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-[#FDFBF7] to-[#F5F0E6] text-gray-900">
+    <div className="min-h-screen py-10 px-4 sm:px-6 lg:px-8 bg-[#FDF8F2] text-[#2B1204] font-fredoka">
       <div className="max-w-2xl mx-auto">
         <AnimatePresence mode="wait">
           {/* ========================================================================= */}
@@ -269,21 +242,20 @@ export function OtherPayment() {
               key="other_paid"
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-white rounded-3xl shadow-2xl border border-emerald-200 overflow-hidden text-center p-8 sm:p-10 space-y-6"
+              className="bg-white rounded-3xl shadow-2xl border-2 border-[#5DBA68] overflow-hidden text-center p-8 sm:p-10 space-y-6 font-fredoka"
             >
-              <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
+              <div className="w-20 h-20 bg-emerald-100 text-[#5DBA68] rounded-full flex items-center justify-center mx-auto shadow-inner">
                 <CheckCircle2 className="w-12 h-12" />
               </div>
               <div className="space-y-2">
                 <span className="inline-block px-3.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-extrabold uppercase tracking-wider">
                   Paiement confirmé
                 </span>
-                <h1 className="text-2xl sm:text-3xl font-black text-gray-900">
+                <h1 className="font-fredoka text-2xl sm:text-3xl font-extrabold text-[#2B1204]">
                   Commande déjà payée !
                 </h1>
-                <p className="text-sm text-gray-600 max-w-md mx-auto">
-                  Le règlement de <span className="font-bold text-gray-900">{info.amount.toLocaleString('fr-FR')} FCFA</span> pour la commande{' '}
-                  <span className="font-mono font-bold text-[#581C87]">{info.reference}</span> a bien été reçu et validé automatiquement.
+                <p className="text-sm text-[#2B1204]/75 max-w-md mx-auto">
+                  Le règlement de <span className="font-bold text-[#2B1204]">{info.amount.toLocaleString('fr-FR')} FCFA</span> a bien été reçu et validé automatiquement.
                 </p>
               </div>
 
@@ -293,7 +265,7 @@ export function OtherPayment() {
 
               <button
                 onClick={() => navigate('/catalogue')}
-                className="px-8 py-3.5 bg-[#581C87] hover:bg-[#6B21A8] text-white font-bold rounded-full shadow-lg transition cursor-pointer"
+                className="px-8 py-3.5 bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] border-2 border-[#F8BE40] font-extrabold rounded-full shadow-lg transition cursor-pointer"
               >
                 Découvrir Les Douceurs de Lê Ci
               </button>
@@ -308,15 +280,15 @@ export function OtherPayment() {
               key="other_expired"
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-white rounded-3xl shadow-xl border border-red-200 overflow-hidden text-center p-8 sm:p-10 space-y-6"
+              className="bg-white rounded-3xl shadow-xl border-2 border-[#C20A0A]/40 overflow-hidden text-center p-8 sm:p-10 space-y-6 font-fredoka"
             >
-              <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto">
+              <div className="w-16 h-16 bg-red-50 text-[#C20A0A] rounded-full flex items-center justify-center mx-auto">
                 <XCircle className="w-10 h-10" />
               </div>
               <div className="space-y-2">
-                <h1 className="text-2xl font-black text-gray-900">Lien expiré</h1>
-                <p className="text-sm text-gray-600 max-w-md mx-auto">
-                  Le délai de réservation de la commande <span className="font-mono font-bold">{info.reference}</span> est écoulé ou la commande a été annulée.
+                <h1 className="font-fredoka text-2xl font-extrabold text-[#2B1204]">Lien expiré</h1>
+                <p className="text-sm text-[#2B1204]/75 max-w-md mx-auto">
+                  Le délai de réservation de cette commande est écoulé ou la commande a été annulée.
                 </p>
               </div>
               <button
@@ -338,41 +310,19 @@ export function OtherPayment() {
               animate={{ opacity: 1, y: 0 }}
               className="bg-white rounded-3xl shadow-2xl border-2 border-[#F8BE40] overflow-hidden font-fredoka"
             >
-              {/* En-tête Charte Brun Cacao & Or */}
+              {/* En-tête Charte Brun Cacao & Or (sans compte à rebours ni section informations de commande) */}
               <div className="bg-[#2B1204] text-[#FDF8F2] p-6 sm:p-8 border-b-2 border-[#F8BE40]">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex flex-wrap items-center justify-between gap-4">
                   <div>
-                    <span className="font-adapt text-xs uppercase tracking-wider text-[#F8BE40] font-semibold flex items-center gap-1.5 mb-1">
+                    <span className="font-fredoka text-xs uppercase tracking-wider text-[#F8BE40] font-semibold flex items-center gap-1.5 mb-1">
                       <ShieldCheck size={15} className="text-[#F8BE40]" /> {info.shopName} • Lien sécurisé
                     </span>
-                    <h1 className="font-adapt text-xl sm:text-2xl font-extrabold text-[#FDF8F2]">
+                    <h1 className="font-fredoka text-xl sm:text-2xl font-extrabold text-[#FDF8F2]">
                       Payer avec un autre numéro
                     </h1>
                   </div>
 
-                  {/* Compte à rebours */}
-                  <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-[#F8BE40]/40 self-start sm:self-auto">
-                    <Clock size={18} className="text-[#F8BE40] animate-pulse" />
-                    <div>
-                      <div className="text-[10px] uppercase text-[#F6C58E] font-semibold tracking-wider">Expiration</div>
-                      <div className="text-base font-mono font-bold text-white">{formatTimer(remainingSeconds)}</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Récapitulatif minimal : référence & montant */}
-                <div className="mt-6 pt-4 border-t border-[#F8BE40]/25 flex flex-wrap items-center justify-between gap-3">
-                  <div className="space-y-0.5">
-                    <div className="text-xs text-[#F6C58E]">
-                      Référence : <span className="font-mono font-bold text-white">{info.reference}</span>
-                      {info.codeReference && (
-                        <span className="ml-2 px-2 py-0.5 rounded bg-white/15 text-[#F8BE40] font-mono text-xs font-bold">
-                          Code {info.codeReference}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="font-adapt text-2xl sm:text-3xl font-black text-[#F8BE40]">
+                  <div className="font-fredoka text-2xl sm:text-3xl font-black text-[#F8BE40]">
                     {info.amount.toLocaleString('fr-FR')} FCFA
                   </div>
                 </div>
@@ -390,12 +340,12 @@ export function OtherPayment() {
                 )}
 
                 {/* Bloc partage à un proche */}
-                <div className="bg-purple-50/70 border border-purple-100 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="bg-[#FDF8F2] border border-[#F6C58E] rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="space-y-0.5">
-                    <div className="text-xs font-extrabold text-[#581C87] flex items-center gap-1.5">
-                      <Share2 size={14} /> Un proche paie à votre place ?
+                    <div className="text-xs font-extrabold text-[#2B1204] flex items-center gap-1.5">
+                      <Share2 size={14} className="text-[#C20A0A]" /> Un proche paie à votre place ?
                     </div>
-                    <p className="text-[11px] text-gray-600">
+                    <p className="text-[11px] text-[#2B1204]/75">
                       Partagez-lui cette page : aucune donnée personnelle ni adresse n'y est affichée.
                     </p>
                   </div>
@@ -412,7 +362,7 @@ export function OtherPayment() {
                     <button
                       type="button"
                       onClick={handleShareLink}
-                      className="px-3.5 py-2 rounded-xl bg-white hover:bg-purple-100 text-[#581C87] border border-purple-200 font-bold text-xs inline-flex items-center gap-1.5 transition cursor-pointer"
+                      className="px-3.5 py-2 rounded-xl bg-white hover:bg-[#FDF6EC] text-[#2B1204] border border-[#F8BE40] font-bold text-xs inline-flex items-center gap-1.5 transition cursor-pointer"
                     >
                       <Copy size={14} />
                       {copiedLink ? 'Lien copié !' : 'Copier le lien'}
@@ -503,8 +453,8 @@ export function OtherPayment() {
                 {addedPhone ? (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <label className="text-xs font-extrabold uppercase tracking-wider text-gray-700 flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full bg-[#581C87] text-white text-[11px] font-black flex items-center justify-center">
+                      <label className="text-xs font-extrabold uppercase tracking-wider text-[#2B1204] flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-[#2B1204] text-[#F8BE40] text-[11px] font-black flex items-center justify-center">
                           2
                         </span>
                         Lancer le paiement Orange Money

@@ -25,18 +25,18 @@ import {
   RefreshCw,
   Share2
 } from 'lucide-react';
-import { 
-  getOrder, 
-  getOrderStatus, 
-  cancelOrder, 
-  registerLoyaltyMember, 
-  getLoyaltyMember, 
+import {
+  getOrder,
+  getOrderStatus,
+  cancelOrder,
+  registerLoyaltyMember,
+  getLoyaltyMember,
   getLoyaltySettings,
   updateOrderPaymentInfo,
   generateOrderPayToken,
-  Order, 
-  LoyaltyMember, 
-  LoyaltySettings 
+  Order,
+  LoyaltyMember,
+  LoyaltySettings
 } from '../services/api';
 import { getSocket, joinOrder, leaveOrder } from '../services/socket';
 import { validateBurkinaPhone } from '../utils/phoneValidation';
@@ -51,7 +51,6 @@ export function Payment() {
   const [copied, setCopied] = useState(false);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
   const [selectedOperator, setSelectedOperator] = useState<'orange' | 'wave' | 'moov'>('orange');
-  const [remainingSeconds, setRemainingSeconds] = useState(600);
 
   // État de confirmation du paiement (Étape 1 : Choix moyen + saisie nom & numéro VS Étape 2 : Page d'attente)
   const [payerName, setPayerName] = useState(() => {
@@ -230,9 +229,6 @@ export function Payment() {
       .then((data) => {
         if (!isMounted) return;
         setOrder(data);
-        if (data.remainingSeconds !== undefined) {
-          setRemainingSeconds(data.remainingSeconds);
-        }
         if (data.modePaiement === 'moov' || data.modePaiement === 'wave' || data.modePaiement === 'orange') {
           setSelectedOperator(data.modePaiement);
         }
@@ -327,22 +323,6 @@ export function Payment() {
       .catch(console.error);
   }, [order, selectedOperator, omUssdMarchand]);
 
-  // Décompte temps restant (10:00) sur la page d'attente
-  useEffect(() => {
-    if (!order || order.statut !== 'EN_ATTENTE_DE_PAIEMENT' || !isPaymentConfirmed) return;
-    const timer = setInterval(() => {
-      setRemainingSeconds((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          getOrderStatus(order.id).then((res) => setOrder(res.order));
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [order, isPaymentConfirmed]);
-
   // Écoute WebSockets temps réel + Polling 3s
   useEffect(() => {
     if (!orderId) return;
@@ -410,12 +390,6 @@ export function Payment() {
     }
   };
 
-  const formatTimer = (sec: number) => {
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FAF8F5]">
@@ -451,7 +425,7 @@ export function Payment() {
   return (
     <div className="min-h-screen py-10 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-[#FDFBF7] to-[#F5F0E6] text-gray-900">
       <div className="max-w-3xl mx-auto">
-        
+
         {/* Navigation retour */}
         <button
           onClick={() => navigate('/catalogue')}
@@ -461,7 +435,7 @@ export function Payment() {
         </button>
 
         <AnimatePresence mode="wait">
-          
+
           {/* ========================================================================= */}
           {/* ÉCRAN SUCCÈS : COMMANDE PAYÉE & VALIDÉE */}
           {/* ========================================================================= */}
@@ -710,10 +684,7 @@ export function Payment() {
                   <div>
                     <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                       <label className="font-adapt text-xs font-extrabold uppercase tracking-wider text-[#2B1204] flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full bg-[#F8BE40] text-[#2B1204] text-[11px] font-black flex items-center justify-center">
-                          1
-                        </span>
-                        Choisissez votre moyen de paiement mobile *
+                        Choix du moyen de paiement mobile
                       </label>
                       <span className="font-adapt text-sm sm:text-base font-black text-[#C20A0A] bg-[#FDF8F2] px-3 py-1 rounded-full border border-[#F8BE40]">
                         {amount.toLocaleString('fr-FR')} FCFA
@@ -726,11 +697,10 @@ export function Payment() {
                         type="button"
                         onClick={() => setSelectedOperator('orange')}
                         aria-label="Orange Money"
-                        className={`h-24 sm:h-28 p-3 rounded-lg border-2 bg-white transition-all cursor-pointer flex items-center justify-center ${
-                          selectedOperator === 'orange'
-                            ? 'border-[#FF6600] shadow-md ring-2 ring-orange-400/30 scale-[1.02]'
-                            : 'border-gray-200 hover:border-orange-200'
-                        }`}
+                        className={`h-24 sm:h-28 p-3 rounded-lg border-2 bg-white transition-all cursor-pointer flex items-center justify-center ${selectedOperator === 'orange'
+                          ? 'border-[#FF6600] shadow-md ring-2 ring-orange-400/30 scale-[1.02]'
+                          : 'border-gray-200 hover:border-orange-200'
+                          }`}
                       >
                         <img
                           src="/img/Orange.jpg"
@@ -744,11 +714,10 @@ export function Payment() {
                         type="button"
                         onClick={() => setSelectedOperator('moov')}
                         aria-label="Moov Money"
-                        className={`h-24 sm:h-28 p-3 rounded-lg border-2 bg-white transition-all cursor-pointer flex items-center justify-center ${
-                          selectedOperator === 'moov'
-                            ? 'border-[#0055A5] shadow-md ring-2 ring-blue-400/30 scale-[1.02]'
-                            : 'border-gray-200 hover:border-blue-200'
-                        }`}
+                        className={`h-24 sm:h-28 p-3 rounded-lg border-2 bg-white transition-all cursor-pointer flex items-center justify-center ${selectedOperator === 'moov'
+                          ? 'border-[#0055A5] shadow-md ring-2 ring-blue-400/30 scale-[1.02]'
+                          : 'border-gray-200 hover:border-blue-200'
+                          }`}
                       >
                         <img
                           src="/img/moov.jpg"
@@ -762,11 +731,10 @@ export function Payment() {
                         type="button"
                         onClick={() => setSelectedOperator('wave')}
                         aria-label="Wave"
-                        className={`h-24 sm:h-28 p-3 rounded-lg border-2 bg-white transition-all cursor-pointer flex items-center justify-center ${
-                          selectedOperator === 'wave'
-                            ? 'border-[#1DA1F2] shadow-md ring-2 ring-sky-400/30 scale-[1.02]'
-                            : 'border-gray-200 hover:border-sky-200'
-                        }`}
+                        className={`h-24 sm:h-28 p-3 rounded-lg border-2 bg-white transition-all cursor-pointer flex items-center justify-center ${selectedOperator === 'wave'
+                          ? 'border-[#1DA1F2] shadow-md ring-2 ring-sky-400/30 scale-[1.02]'
+                          : 'border-gray-200 hover:border-sky-200'
+                          }`}
                       >
                         <img
                           src="/img/wave.png"
@@ -780,10 +748,8 @@ export function Payment() {
                   {/* 2. Saisie du numéro de transfert (validation en temps réel vert / rouge) */}
                   <div className="bg-[#FDF8F2] p-6 rounded-2xl border border-[#F6C58E] space-y-3">
                     <label className="font-adapt block text-xs font-extrabold uppercase tracking-wider text-[#2B1204] flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-full bg-[#F8BE40] text-[#2B1204] text-[11px] font-black flex items-center justify-center">
-                        2
-                      </span>
-                      Votre Numéro Mobile Money de transfert *
+
+                      Votre Numéro de transfert
                     </label>
                     <input
                       type="tel"
@@ -797,7 +763,7 @@ export function Payment() {
                         } else {
                           const res = validateBurkinaPhone(val);
                           setPaymentError(
-                            res.isValid ? '' : res.error || 'Numéro Mobile Money invalide (8 chiffres du Burkina Faso requis).'
+                            res.isValid ? '' : res.error || 'Numéro Mobile Money invalide .'
                           );
                         }
                       }}
@@ -811,14 +777,13 @@ export function Payment() {
                           }
                         }
                       }}
-                      placeholder="Ex: 70 00 00 00 ou 76 00 00 00"
-                      className={`w-full px-4 py-3.5 rounded-2xl bg-white outline-none text-sm font-semibold transition ${
-                        paymentError
-                          ? 'border-2 border-[#C20A0A] bg-red-50/20 ring-2 ring-red-200'
-                          : payerPhone.trim() && validateBurkinaPhone(payerPhone).isValid
-                            ? 'border-2 border-[#5DBA68] bg-emerald-50/20'
-                            : 'border border-[#F6C58E] focus:border-[#F8BE40]'
-                      }`}
+                      placeholder="Ex: 70 00 00 00"
+                      className={`w-full px-4 py-3.5 rounded-2xl bg-white outline-none text-sm font-semibold transition ${paymentError
+                        ? 'border-2 border-[#C20A0A] bg-red-50/20 ring-2 ring-red-200'
+                        : payerPhone.trim() && validateBurkinaPhone(payerPhone).isValid
+                          ? 'border-2 border-[#5DBA68] bg-emerald-50/20'
+                          : 'border border-[#F6C58E] focus:border-[#F8BE40]'
+                        }`}
                     />
                   </div>
 
@@ -843,7 +808,7 @@ export function Payment() {
                         </>
                       ) : (
                         <>
-                          <span>Confirmer et passer à l'attente de paiement</span>
+                          <span>Confirmer </span>
                           <ArrowRight size={18} />
                         </>
                       )}
@@ -879,13 +844,13 @@ export function Payment() {
               exit={{ opacity: 0, y: -15 }}
               className="bg-white rounded-3xl shadow-2xl border-2 border-[#F8BE40] overflow-hidden font-fredoka"
             >
-              {/* En-tête épuré Charte Brun Cacao & Or */}
+              {/* En-tête épuré Charte Brun Cacao & Or (sans informations de commande ni minuteur) */}
               <div className="bg-[#2B1204] text-[#FDF8F2] p-6 sm:p-8 border-b-2 border-[#F8BE40]">
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <div className="text-xs sm:text-sm text-[#F6C58E]">
-                    Commande <span className="font-mono font-bold text-white">{order.id}</span>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="text-sm font-bold text-[#F6C58E]">
+                    Validation du paiement
                   </div>
-                  <div className="font-adapt text-2xl font-black text-[#F8BE40]">
+                  <div className="font-fredoka text-2xl font-black text-[#F8BE40]">
                     {amount.toLocaleString('fr-FR')} FCFA
                   </div>
                 </div>
@@ -977,7 +942,7 @@ export function Payment() {
                         className="w-full py-4 px-6 bg-[#FF6600] hover:bg-[#e65c00] text-white font-bold rounded-lg shadow-xl shadow-orange-500/25 flex items-center justify-center gap-3 transition transform active:scale-[0.98]"
                       >
                         <PhoneCall size={22} />
-                        Lancer le paiement USSD Orange (*144#)
+                        Lancer le paiement
                       </a>
                     )}
 
@@ -1040,7 +1005,7 @@ export function Payment() {
                 {/* État de synchronisation en direct */}
                 <div className="flex items-center justify-center gap-2 text-xs font-medium text-gray-500 bg-gray-50 py-3 rounded-2xl border border-gray-200/50">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
-                  <span>En attente de détection automatique de votre transfert...</span>
+                  <span>En attente de confirmation de votre paiement...</span>
                 </div>
 
                 {/* Bouton Annulation en rectangle avec coins légèrement arrondis */}
