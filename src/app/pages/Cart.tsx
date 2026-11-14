@@ -548,11 +548,9 @@ export const Cart: React.FC = () => {
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-purple-100 text-[#581C87] uppercase tracking-wider mb-2">
-                <ShoppingBag size={13} /> Finalisation de commande
-              </span>
+
               <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">
-                Votre Panier Gourmand
+                Votre Panier
               </h1>
             </div>
 
@@ -617,7 +615,7 @@ export const Cart: React.FC = () => {
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-base sm:text-lg font-black text-[#2B1204] flex items-center gap-2">
                     <ShoppingBag size={18} className="text-[#C20A0A]" />
-                    <span>Votre sélection gourmande</span>
+                    <span>Votre sélection</span>
                   </h2>
                   <Link
                     to="/catalogue"
@@ -637,39 +635,41 @@ export const Cart: React.FC = () => {
                     return (
                       <div
                         key={`top-preview-${item.id}`}
-                        className="bg-[#FDF8F2] rounded-2xl p-3 sm:p-4 border border-[#F6C58E]/60 flex items-center gap-3.5 sm:gap-4 shadow-xs"
+                        className="bg-[#FDF8F2] rounded-2xl p-3 sm:p-4 border border-[#F6C58E]/60 flex flex-col gap-3 shadow-xs"
                       >
-                        {/* 1. IMAGE MINIATURE EN PREMIER */}
-                        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-white border border-[#F6C58E]/40 shrink-0">
-                          <img
-                            src={item.image || '/products/gateau_1.jpeg'}
-                            alt={item.name}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
+                        <div className="flex items-start gap-3.5 sm:gap-4">
+                          {/* 1. IMAGE MINIATURE EN PREMIER */}
+                          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-white border border-[#F6C58E]/40 shrink-0">
+                            <img
+                              src={item.image || '/products/gateau_1.jpeg'}
+                              alt={item.name}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
 
-                        {/* 2. TITRE, SAVEUR & PRIX EN ROUGE */}
-                        <div className="min-w-0 flex-1">
-                          <h3 className="text-sm sm:text-base font-black text-[#2B1204] leading-snug truncate">
-                            {item.name}
-                          </h3>
-                          {flavorLabel && (
-                            <p className="text-xs text-[#2B1204]/75 mt-0.5 truncate">
-                              Saveur : <strong className="text-[#2B1204]">{flavorLabel}</strong>
-                            </p>
-                          )}
-                          <div className="text-[#C20A0A] text-sm sm:text-base font-black mt-1">
-                            {(safePrice * safeQty).toLocaleString('fr-FR')} FCFA
-                            {safeQty > 1 && (
-                              <span className="text-[11px] font-semibold text-[#C20A0A]/80 ml-1.5">
-                                ({safePrice.toLocaleString('fr-FR')} F / u)
-                              </span>
+                          {/* 2. TITRE, SAVEUR & PRIX EN ROUGE */}
+                          <div className="min-w-0 flex-1">
+                            <h3 className="text-sm sm:text-base font-black text-[#2B1204] leading-snug">
+                              {item.name}
+                            </h3>
+                            {flavorLabel && (
+                              <p className="text-xs text-[#2B1204]/75 mt-0.5">
+                                Saveur : <strong className="text-[#2B1204]">{flavorLabel}</strong>
+                              </p>
                             )}
+                            <div className="text-[#C20A0A] text-sm sm:text-base font-black mt-1">
+                              {(safePrice * safeQty).toLocaleString('fr-FR')} FCFA
+                              {safeQty > 1 && (
+                                <span className="text-[11px] font-semibold text-[#C20A0A]/80 ml-1.5">
+                                  ({safePrice.toLocaleString('fr-FR')} F / u)
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
 
-                        {/* 3. QUANTITÉ SIMPLE & SUPPRIMER */}
-                        <div className="flex items-center gap-2 shrink-0">
+                        {/* 3. QUANTITÉ EN DESSOUS DE L'IMAGE & SUPPRIMER */}
+                        <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#F6C58E]/30">
                           <div className="py-1 px-2.5 rounded-full border border-[#F8BE40] bg-white flex items-center gap-2">
                             <button
                               type="button"
@@ -973,14 +973,13 @@ export const Cart: React.FC = () => {
                     Personne qui reçoit le colis
                   </h2>
                   <p className="text-xs text-gray-500 mb-6 font-light">
-                    Le livreur contactera ce numéro pour la remise en main propre.
                   </p>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
                         <Phone size={14} className="text-[#581C87]" />
-                        WhatsApp / Téléphone *
+                        Numéro whatsapp de préference
                       </label>
                       <input
                         id="field-cart-phone"
@@ -1024,9 +1023,7 @@ export const Cart: React.FC = () => {
                           <span>{fieldErrors.recipientPhone}</span>
                         </p>
                       )}
-                      <span className="block text-[11px] text-gray-400 mt-1">
-                        Numéro du Burkina Faso à 8 chiffres (Orange, Moov, Telecel).
-                      </span>
+
                     </div>
 
                     <div>
@@ -1223,18 +1220,7 @@ export const Cart: React.FC = () => {
 
                 {/* Badges de réassurance */}
                 <div className="mt-6 pt-6 border-t border-gray-100 grid grid-cols-3 gap-2 text-center text-[10px] text-gray-500 font-medium">
-                  <div className="flex flex-col items-center gap-1">
-                    <Sparkles size={16} className="text-[#581C87]" />
-                    <span>Fraîcheur du jour</span>
-                  </div>
-                  <div className="flex flex-col items-center gap-1">
-                    <Truck size={16} className="text-[#581C87]" />
-                    <span>Livraison soignée</span>
-                  </div>
-                  <div className="flex flex-col items-center gap-1">
-                    <Gift size={16} className="text-[#581C87]" />
-                    <span>Emballage festif</span>
-                  </div>
+
                 </div>
               </div>
 

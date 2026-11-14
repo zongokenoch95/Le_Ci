@@ -361,7 +361,7 @@ export function Home() {
           <h2 className="font-fredoka text-3xl sm:text-5xl font-extrabold text-[#2B1204] tracking-tight">
             Nos Douceurs
           </h2>
-          <p className="font-barcelony text-2xl sm:text-3xl text-[#F8BE40] max-w-2xl mx-auto mt-3 leading-relaxed drop-shadow-[0_1px_4px_rgba(43,18,4,0.35)]">
+          <p className="font-barcelony text-2xl sm:text-3xl text-white max-w-2xl mx-auto mt-3 leading-relaxed drop-shadow-[0_2px_6px_rgba(43,18,4,0.45)]">
             Explorez toutes nos créations confectionnées avec des ingrédients frais et locaux.
           </p>
         </motion.div>
