@@ -1,7 +1,6 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import confetti from 'canvas-confetti';
 import QRCode from 'qrcode';
 import {
   CheckCircle2,
@@ -118,19 +117,12 @@ export function Payment() {
         phone: res.member.phone,
         name: res.member.name
       }));
-      confetti({
-        particleCount: 70,
-        spread: 60,
-        origin: { y: 0.7 },
-        colors: ['#D4AF37', '#10B981', '#F59E0B']
-      });
     } catch (err: any) {
       alert(err.message || 'Erreur lors de l\'inscription');
     } finally {
       setEnrolling(false);
     }
   };
-  const hasTriggeredConfetti = useRef(false);
 
   // Détection navigateurs in-app (TikTok, Instagram, Facebook, etc.)
   const userAgent = typeof window !== 'undefined' ? (window.navigator.userAgent || '') : '';
@@ -358,19 +350,6 @@ export function Payment() {
     };
   }, [orderId, order]);
 
-  // Effet Confetti lors de la validation
-  useEffect(() => {
-    if (order && (order.statut === 'EN_PREPARATION' || order.statut === 'PAYEE') && !hasTriggeredConfetti.current) {
-      hasTriggeredConfetti.current = true;
-      confetti({
-        particleCount: 90,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ['#581C87', '#10B981', '#3B82F6', '#F59E0B']
-      });
-    }
-  }, [order?.statut]);
-
   const copyCode = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopied(true);
@@ -445,26 +424,24 @@ export function Payment() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0 }}
-              className="bg-white rounded-3xl p-8 sm:p-10 shadow-2xl border border-emerald-100 text-center relative overflow-hidden"
+              className="bg-white rounded-3xl p-8 sm:p-10 shadow-2xl border-2 border-[#5DBA68] text-center relative overflow-hidden"
             >
-              <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-emerald-400 via-teal-500 to-emerald-600" />
+              <div className="absolute top-0 left-0 w-full h-2 bg-[#5DBA68]" />
 
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: 'spring', damping: 12, delay: 0.1 }}
-                className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-100"
+                className="w-20 h-20 bg-[#5DBA68]/15 text-[#5DBA68] rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-[#5DBA68]/15"
               >
                 <CheckCircle2 size={48} />
               </motion.div>
 
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 mb-3">
-                <Sparkles size={14} /> Paiement Validé avec Succès
-              </span>
 
-              <h1 className="text-3xl font-extrabold text-gray-900 mb-2">Paiement Reçu avec Succès !</h1>
+
+              <h1 className="text-3xl font-extrabold text-[#5DBA68] mb-2">Paiement réussi avec succès !</h1>
               <p className="text-gray-600 max-w-lg mx-auto mb-8 text-sm font-light">
-                Merci <span className="font-semibold text-gray-900">{payerName || order.customerName}</span>. Votre commande est confirmée et nos chefs pâtissiers préparent vos délices.
+                Votre commande est confirmée et en cours de préparation . Un livreur vous contactera sous peu..
               </p>
 
               {/* Programme de Fidélité */}
@@ -476,9 +453,7 @@ export function Payment() {
                         <Crown size={16} />
                         <span>Club Fidélité ({loyaltyMember.tier})</span>
                       </div>
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-purple-500 text-white">
-                        Membre Actif
-                      </span>
+
                     </div>
 
                     <h3 className="text-lg font-black text-white mb-1">
@@ -504,11 +479,8 @@ export function Payment() {
                     </button>
                   </div>
                 ) : (
-                  <div className="bg-white p-6 rounded-3xl border-2 border-purple-200 shadow-xl text-left relative overflow-hidden">
-                    <div className="flex items-center gap-2 text-[#581C87] font-extrabold text-xs uppercase tracking-wider mb-2">
-                      <Gift size={18} />
-                      <span>Club Fidélité Les Douceurs de Lê Ci</span>
-                    </div>
+                  <div className="bg-white p-6 rounded-3xl border-2 border-[#5DBA68] shadow-xl text-left relative overflow-hidden">
+
 
                     <h3 className="text-lg font-black text-gray-900 mb-1">
                       Rejoignez notre Club de Fidélité !
@@ -530,7 +502,7 @@ export function Payment() {
                           />
                         </div>
                         <div>
-                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Numéro Mobile / WhatsApp</label>
+                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Whatsapp</label>
                           <input
                             type="tel"
                             required
@@ -547,7 +519,7 @@ export function Payment() {
                         className="w-full py-3 px-4 rounded-full bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] border-2 border-[#F8BE40] font-extrabold text-xs shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
                       >
                         <UserCheck size={16} />
-                        <span>{enrolling ? 'Inscription en cours...' : `M'inscrire & Récupérer mes points offerts`}</span>
+                        <span>{enrolling ? 'Inscription en cours...' : `M'inscrire`}</span>
                       </button>
                     </form>
                   </div>
@@ -555,7 +527,7 @@ export function Payment() {
               </div>
 
               {/* Récapitulatif ticket (Reçu officiel en 3 sections) */}
-              <div className="bg-[#FAF8F5] rounded-2xl p-6 border border-gray-200 text-left max-w-lg mx-auto mb-8 space-y-5">
+              <div className="bg-[#FAF8F5] rounded-2xl p-6 border border-[#5DBA68] text-left max-w-lg mx-auto mb-8 space-y-5">
                 <div className="flex justify-between items-center text-xs pb-3 border-b border-gray-200">
                   <span className="font-mono font-bold text-gray-700">Commande {order.id}</span>
                   <span className="font-mono font-bold text-[#581C87] bg-purple-100 px-2.5 py-0.5 rounded-full">Réf : {order.codeReference}</span>
@@ -629,12 +601,13 @@ export function Payment() {
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <div className="flex justify-center">
                 <button
                   onClick={() => navigate('/catalogue')}
-                  className="px-8 py-3.5 bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] border-2 border-[#F8BE40] font-extrabold rounded-full transition shadow-lg cursor-pointer"
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-[#2B1204]/80 hover:text-[#2B1204] transition cursor-pointer"
                 >
-                  Continuer mes achats
+                  <ArrowLeft size={16} />
+                  <span>Retourner à mes achats</span>
                 </button>
               </div>
             </motion.div>

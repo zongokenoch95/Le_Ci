@@ -1,7 +1,6 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import confetti from 'canvas-confetti';
 import {
   CheckCircle2,
   Clock,
@@ -42,8 +41,6 @@ export function OtherPayment() {
 
   const [copiedUssd, setCopiedUssd] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
-
-  const hasTriggeredConfetti = useRef(false);
 
   // Chargement initial via GET /api/pay/:token (Zéro donnée personnelle exposée)
   useEffect(() => {
@@ -95,23 +92,6 @@ export function OtherPayment() {
       clearInterval(pollInterval);
     };
   }, [info?.reference, info?.status, token]);
-
-  // Effet Confetti dès que la commande passe en PAYEE / EN_PREPARATION
-  useEffect(() => {
-    if (
-      info &&
-      (info.status === 'EN_PREPARATION' || info.status === 'PAYEE' || info.status === 'PRETE') &&
-      !hasTriggeredConfetti.current
-    ) {
-      hasTriggeredConfetti.current = true;
-      confetti({
-        particleCount: 90,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ['#2B1204', '#F8BE40', '#5DBA68']
-      });
-    }
-  }, [info?.status]);
 
   const handleAddPhone = async (e: React.FormEvent) => {
     e.preventDefault();
