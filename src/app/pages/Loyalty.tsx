@@ -1,42 +1,41 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import confetti from 'canvas-confetti';
-import { 
-  Crown, 
-  Gift, 
-  ArrowRight, 
-  CheckCircle2, 
-  TrendingUp, 
-  Clock, 
-  Ticket, 
-  LogOut, 
-  User, 
-  Phone, 
-  Sparkles, 
+import {
+  Crown,
+  Gift,
+  ArrowRight,
+  CheckCircle2,
+  TrendingUp,
+  Clock,
+  Ticket,
+  LogOut,
+  User,
+  Phone,
+  Sparkles,
   ShoppingBag,
   ShieldCheck,
   Check,
   UserPlus,
   Lock,
-  MapPin,
   Package,
   Settings
 } from 'lucide-react';
-import { 
-  getLoyaltySettings, 
-  getLoyaltyMember, 
-  getLoyaltyRewards, 
-  claimRewardCoupon, 
-  getMemberCoupons, 
+import {
+  getLoyaltySettings,
+  getLoyaltyMember,
+  getLoyaltyRewards,
+  claimRewardCoupon,
+  getMemberCoupons,
   registerLoyaltyMember,
   loginLoyaltyMember,
   getCustomerMe,
   getCustomerOrders,
   updateCustomerProfile,
   logoutCustomer,
-  LoyaltySettings, 
-  LoyaltyMember, 
-  LoyaltyReward, 
+  LoyaltySettings,
+  LoyaltyMember,
+  LoyaltyReward,
   LoyaltyCoupon,
   CustomerOrderSummary
 } from '../services/api';
@@ -66,7 +65,6 @@ export function Loyalty() {
 
   // Édition profil
   const [profileName, setProfileName] = useState('');
-  const [profileAddress, setProfileAddress] = useState('');
   const [currentPin, setCurrentPin] = useState('');
   const [newPin, setNewPin] = useState('');
   const [profileSaving, setProfileSaving] = useState(false);
@@ -83,7 +81,6 @@ export function Loyalty() {
   const loadAuthenticatedMember = (m: LoyaltyMember) => {
     setMember(m);
     setProfileName(m.name || '');
-    setProfileAddress(m.default_address || '');
     fetchCoupons(m.phone);
     getCustomerOrders().then(setMyOrders).catch(() => []);
   };
@@ -105,7 +102,7 @@ export function Loyalty() {
               if (parsed.phone) setFormPhone(parsed.phone);
               if (parsed.name) setFormName(parsed.name);
             }
-          } catch {}
+          } catch { }
         }
       })
       .catch(() => null);
@@ -205,7 +202,6 @@ export function Loyalty() {
     try {
       const res = await updateCustomerProfile({
         name: profileName.trim(),
-        defaultAddress: profileAddress.trim(),
         currentPin: currentPin.trim() || undefined,
         newPin: newPin.trim() || undefined
       });
@@ -287,22 +283,19 @@ export function Loyalty() {
   return (
     <div className="min-h-screen py-12 bg-[#FAF8F5]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+
         {/* En-tête Page Fidélisation */}
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-10"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#D4AF37]/15 border border-[#D4AF37]/30 text-[#D4AF37] text-xs font-extrabold uppercase tracking-widest mb-3">
-            <Crown size={15} />
-            <span>Programme de Fidélisation RestoBoost</span>
-          </div>
+
           <h1 className="text-4xl sm:text-5xl font-black text-gray-900 tracking-tight mb-3">
-            Mon Compte & Fidélité
+            {member ? `Bienvenue ${member.name}` : 'Espace Fidélité'}
           </h1>
           <p className="text-gray-600 max-w-xl mx-auto text-sm">
-            {member 
+            {member
               ? `Bienvenue dans votre espace personnel, ${member.name}. Retrouvez vos commandes, vos points et vos avantages.`
               : 'Connectez-vous avec votre numéro WhatsApp (et votre mot de passe si vous en avez créé un) pour accéder à vos commandes et vos points fidélité.'}
           </p>
@@ -322,18 +315,16 @@ export function Loyalty() {
               <button
                 type="button"
                 onClick={() => { setAuthMode('login'); setAuthError(''); }}
-                className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition ${
-                  authMode === 'login' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'
-                }`}
+                className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition ${authMode === 'login' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                  }`}
               >
                 Se connecter
               </button>
               <button
                 type="button"
                 onClick={() => { setAuthMode('register'); setAuthError(''); }}
-                className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition ${
-                  authMode === 'register' ? 'bg-[#D4AF37] text-white shadow-sm' : 'text-gray-500 hover:text-gray-900'
-                }`}
+                className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition ${authMode === 'register' ? 'bg-[#D4AF37] text-white shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                  }`}
               >
                 S'inscrire (+{settings?.welcome_bonus_points || 50} pts)
               </button>
@@ -434,264 +425,14 @@ export function Loyalty() {
         {/* ========================================================================= */}
         {member && tierInfo && (
           <div className="space-y-10">
-            
-            {/* Barre de bienvenue & déconnexion */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-[#D4AF37]/15 text-[#D4AF37] flex items-center justify-center font-black text-base shadow-sm">
-                  {member.name.charAt(0)}
-                </div>
-                <div>
-                  <h2 className="text-lg font-black text-gray-900">Bonjour, {member.name} !</h2>
-                  <p className="text-xs text-gray-500 font-mono">📱 +226 {member.phone} • Membre depuis {new Date(member.created_at).toLocaleDateString('fr-FR')}</p>
-                </div>
-              </div>
 
-              <div className="flex items-center gap-3 w-full sm:w-auto">
-                <button
-                  onClick={() => navigate('/panier')}
-                  className="flex-1 sm:flex-none px-5 py-2.5 bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] border-2 border-[#F8BE40] font-bold text-xs rounded-full shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <ShoppingBag size={15} />
-                  <span>Mon Panier</span>
-                </button>
-                <button
-                  onClick={handleLogout}
-                  className="px-4 py-2.5 rounded-full border border-gray-200 text-gray-600 hover:text-red-600 hover:bg-red-50 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
-                >
-                  <LogOut size={14} />
-                  <span>Déconnexion</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Onglets de l'Espace Client Unifié */}
-            <div className="flex flex-wrap gap-2 bg-white p-2 rounded-2xl border border-gray-100 shadow-sm">
-              <button
-                type="button"
-                onClick={() => setActiveTab('loyalty')}
-                className={`flex-1 min-w-[140px] py-2.5 px-4 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-2 cursor-pointer ${
-                  activeTab === 'loyalty'
-                    ? 'bg-[#2B1204] text-[#FDF8F2] shadow-sm'
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <Crown size={15} />
-                <span>Fidélité & Avantages</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('orders')}
-                className={`flex-1 min-w-[140px] py-2.5 px-4 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-2 cursor-pointer ${
-                  activeTab === 'orders'
-                    ? 'bg-[#2B1204] text-[#FDF8F2] shadow-sm'
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <Package size={15} />
-                <span>Mes Commandes ({myOrders.length})</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('profile')}
-                className={`flex-1 min-w-[140px] py-2.5 px-4 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-2 cursor-pointer ${
-                  activeTab === 'profile'
-                    ? 'bg-[#2B1204] text-[#FDF8F2] shadow-sm'
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <Settings size={15} />
-                <span>Mon Profil</span>
-              </button>
-            </div>
-
-            {activeTab === 'orders' && (
-              <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-gray-100 space-y-4">
-                <h3 className="text-xl font-black text-gray-900 flex items-center gap-2">
-                  <Package size={20} className="text-[#F8BE40]" />
-                  <span>Historique de mes commandes</span>
-                </h3>
-                {myOrders.length === 0 ? (
-                  <div className="text-center py-10 space-y-3">
-                    <p className="text-sm text-gray-500">Vous n'avez pas encore passé de commande avec ce numéro.</p>
-                    <button
-                      onClick={() => navigate('/catalogue')}
-                      className="px-6 py-2.5 rounded-full bg-[#F8BE40] text-[#2B1204] font-bold text-xs cursor-pointer"
-                    >
-                      Découvrir le catalogue
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {myOrders.map((ord) => {
-                      const statusLabel =
-                        ord.statut === 'PAYEE' || ord.statut === 'EN_PREPARATION'
-                          ? 'Payée / En préparation'
-                          : ord.statut === 'PRETE'
-                          ? 'Prête'
-                          : ord.statut === 'LIVREE'
-                          ? 'Livrée'
-                          : ord.statut === 'ANNULEE'
-                          ? 'Annulée'
-                          : 'En attente de paiement';
-                      const statusColor =
-                        ord.statut === 'PAYEE' || ord.statut === 'EN_PREPARATION' || ord.statut === 'PRETE' || ord.statut === 'LIVREE'
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          : ord.statut === 'ANNULEE'
-                          ? 'bg-red-50 text-red-700 border-red-200'
-                          : 'bg-amber-50 text-amber-800 border-amber-200';
-                      return (
-                        <div
-                          key={ord.id}
-                          className="p-4 rounded-2xl border border-gray-200 bg-[#FAF8F5] flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-                        >
-                          <div className="space-y-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="font-mono text-xs font-black text-[#2B1204]">
-                                {ord.codeReference || ord.id}
-                              </span>
-                              <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${statusColor}`}>
-                                {statusLabel}
-                              </span>
-                            </div>
-                            <p className="text-xs text-gray-600">
-                              {new Date(ord.createdAt).toLocaleDateString('fr-FR', {
-                                day: '2-digit',
-                                month: 'short',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}{' '}
-                              • {ord.items.length} article{ord.items.length > 1 ? 's' : ''}
-                            </p>
-                          </div>
-                          <div className="flex items-center justify-between sm:justify-end gap-3">
-                            <span className="font-black text-sm text-[#2B1204]">
-                              {ord.totalAmount.toLocaleString('fr-FR')} FCFA
-                            </span>
-                            <button
-                              onClick={() => navigate(`/paiement/${ord.id}`)}
-                              className="px-4 py-2 rounded-full bg-white border border-gray-200 hover:border-[#F8BE40] text-xs font-bold text-[#2B1204] transition cursor-pointer"
-                            >
-                              Voir détails
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {activeTab === 'profile' && (
-              <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-gray-100 max-w-xl">
-                <h3 className="text-xl font-black text-gray-900 mb-4 flex items-center gap-2">
-                  <Settings size={20} className="text-[#F8BE40]" />
-                  <span>Paramètres de mon compte</span>
-                </h3>
-                {profileError && (
-                  <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-xs font-semibold">
-                    {profileError}
-                  </div>
-                )}
-                {profileMsg && (
-                  <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold">
-                    {profileMsg}
-                  </div>
-                )}
-                <form onSubmit={handleSaveProfile} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">Nom complet</label>
-                    <input
-                      type="text"
-                      required
-                      value={profileName}
-                      onChange={(e) => setProfileName(e.target.value)}
-                      className="w-full px-3.5 py-2.5 text-xs border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#F8BE40]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center gap-1.5">
-                      <MapPin size={14} className="text-gray-400" />
-                      <span>Adresse / Lieu de livraison habituel (pré-rempli dans le panier)</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Ex: Ouaga 2000, près de la pharmacie..."
-                      value={profileAddress}
-                      onChange={(e) => setProfileAddress(e.target.value)}
-                      className="w-full px-3.5 py-2.5 text-xs border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#F8BE40]"
-                    />
-                  </div>
-                  <div className="pt-3 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {member.has_pin && (
-                      <div>
-                        <label className="block text-xs font-bold text-gray-700 mb-1">Mot de passe actuel</label>
-                        <input
-                          type="password"
-                          placeholder="••••"
-                          value={currentPin}
-                          onChange={(e) => setCurrentPin(e.target.value)}
-                          className="w-full px-3.5 py-2.5 text-xs border border-gray-200 rounded-xl"
-                        />
-                      </div>
-                    )}
-                    <div className={member.has_pin ? '' : 'sm:col-span-2'}>
-                      <label className="block text-xs font-bold text-gray-700 mb-1">
-                        {member.has_pin ? 'Nouveau mot de passe (min. 4 caractères)' : 'Sécuriser mon espace avec un mot de passe (min. 4 caractères)'}
-                      </label>
-                      <input
-                        type="password"
-                        placeholder="••••"
-                        value={newPin}
-                        onChange={(e) => setNewPin(e.target.value)}
-                        className="w-full px-3.5 py-2.5 text-xs border border-gray-200 rounded-xl"
-                      />
-                    </div>
-                  </div>
-                  <button
-                    type="submit"
-                    disabled={profileSaving}
-                    className="px-6 py-3 rounded-full bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] font-black text-xs shadow-md transition cursor-pointer"
-                  >
-                    {profileSaving ? 'Enregistrement...' : 'Enregistrer les modifications'}
-                  </button>
-                </form>
-              </div>
-            )}
-
-            {activeTab === 'loyalty' && (
-            <>
-            {!member.has_pin && (
-              <div className="bg-amber-50 border border-[#F8BE40] rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-start gap-3">
-                  <ShieldCheck className="text-[#2B1204] shrink-0 mt-0.5" size={20} />
-                  <div>
-                    <p className="text-xs font-extrabold text-[#2B1204]">
-                      Protégez votre espace fidélité et vos points
-                    </p>
-                    <p className="text-[11px] text-[#2B1204]/75">
-                      Créez un mot de passe dans votre profil pour éviter qu'un autre appareil accède à vos points.
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('profile')}
-                  className="px-4 py-2 rounded-full bg-[#2B1204] text-[#FDF8F2] text-xs font-bold shrink-0 cursor-pointer"
-                >
-                  Créer un mot de passe
-                </button>
-              </div>
-            )}
-            {/* CARTE VIP & PROGRESSION */}
+            {/* CARTE VIP & PROGRESSION EN PREMIER */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
               {/* Carte Numérique VIP */}
               <div className="lg:col-span-6 flex flex-col items-center">
                 <div className="w-full max-w-md aspect-[1.6/1] rounded-3xl p-7 relative overflow-hidden shadow-2xl bg-gradient-to-br from-[#1F2937] via-[#111827] to-[#030712] text-white border border-[#D4AF37]/30 flex flex-col justify-between group">
                   <div className="absolute -right-20 -top-20 w-60 h-60 bg-[#D4AF37]/20 rounded-full blur-3xl pointer-events-none group-hover:scale-125 transition-transform duration-700" />
-                  
+
                   <div className="flex justify-between items-start relative z-10">
                     <div>
                       <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block">Les Douceurs de Lê Ci</span>
@@ -777,121 +518,266 @@ export function Loyalty() {
               </div>
             </div>
 
-            {/* MES COUPONS PRÊTS À L'EMPLOI (fidelity.md §2) */}
-            {myCoupons.filter(c => c.status === 'ACTIVE').length > 0 && (
-              <div className="bg-white p-7 rounded-3xl shadow-sm border border-gray-100">
-                <h3 className="text-lg font-extrabold text-gray-900 mb-4 flex items-center gap-2">
-                  <Ticket size={22} className="text-[#D4AF37]" />
-                  <span>Mes Coupons de Récompense Actifs</span>
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                  {myCoupons.filter(c => c.status === 'ACTIVE').map(c => (
-                    <div key={c.id} className="p-5 rounded-2xl bg-gradient-to-br from-[#111827] to-[#1F2937] text-white border border-[#D4AF37]/40 shadow-md flex flex-col justify-between">
-                      <div>
-                        <span className="text-[10px] font-bold uppercase text-[#D4AF37]">Coupon RestoBoost</span>
-                        <h4 className="text-sm font-bold text-white mt-1">{c.reward_title}</h4>
-                        <div className="mt-3 p-3 bg-white/10 rounded-xl text-center border border-white/15">
-                          <span className="text-[10px] text-gray-300 block mb-0.5">Code à présenter en caisse :</span>
-                          <span className="text-xl font-mono font-black text-[#D4AF37] tracking-widest">{c.code}</span>
-                        </div>
-                      </div>
-                      <p className="text-[10px] text-emerald-400 font-semibold mt-3 text-center">
-                        ✓ Prêt à être validé par le personnel
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* CATALOGUE DES RÉCOMPENSES (fidelity.md §2) */}
-            <div className="bg-white p-7 rounded-3xl shadow-sm border border-gray-100">
-              <div className="flex justify-between items-center mb-6">
-                <div>
-                  <h3 className="text-lg font-extrabold text-gray-900 flex items-center gap-2">
-                    <Gift size={22} className="text-[#D4AF37]" />
-                    <span>Catalogue des Récompenses Disponibles</span>
-                  </h3>
-                  <p className="text-xs text-gray-500">Échangez vos points contre ces délices artisanaux</p>
-                </div>
-                <span className="text-xs font-bold text-gray-700 bg-gray-100 px-3 py-1.5 rounded-full">
-                  Points disponibles : <strong className="text-[#D4AF37]">{member.points} pts</strong>
-                </span>
-              </div>
-
-              {claimSuccessMsg && (
-                <div className="mb-6 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2">
-                  <CheckCircle2 size={18} className="text-emerald-600 flex-shrink-0" />
-                  <span>{claimSuccessMsg}</span>
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {rewards.map(reward => {
-                  const canAfford = member.points >= reward.points_cost;
-                  const isClaiming = claimingRewardId === reward.id;
-
-                  return (
-                    <div key={reward.id} className="bg-[#FAF8F5] rounded-3xl overflow-hidden border border-gray-100 p-4 flex flex-col justify-between group hover:shadow-md transition">
-                      {reward.image && (
-                        <div className="h-36 rounded-2xl overflow-hidden mb-3 bg-gray-200">
-                          <img src={reward.image} alt={reward.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                        </div>
-                      )}
-                      <div>
-                        <span className="text-[10px] font-bold text-gray-400 uppercase">{reward.category}</span>
-                        <h4 className="text-sm font-bold text-gray-900 mt-0.5">{reward.title}</h4>
-                        {reward.description && (
-                          <p className="text-xs text-gray-500 mt-1 line-clamp-2">{reward.description}</p>
-                        )}
-                        <span className="inline-block mt-3 px-3 py-1 rounded-xl bg-[#D4AF37]/15 text-[#D4AF37] font-black text-xs">
-                          {reward.points_cost} points
-                        </span>
-                      </div>
-
-                      <button
-                        onClick={() => handleClaimReward(reward)}
-                        disabled={!canAfford || isClaiming}
-                        className={`mt-4 w-full py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm ${
-                          canAfford
-                            ? 'bg-[#111827] hover:bg-black text-white cursor-pointer'
-                            : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                        }`}
-                      >
-                        {isClaiming ? 'Génération...' : (canAfford ? 'Obtenir ce coupon' : `Manque ${reward.points_cost - member.points} pts`)}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
+            {/* Onglets de l'Espace Client Unifié */}
+            <div className="flex flex-wrap gap-2 bg-white p-2 rounded-2xl border border-gray-100 shadow-sm">
+              <button
+                type="button"
+                onClick={() => setActiveTab('loyalty')}
+                className={`flex-1 min-w-[140px] py-2.5 px-4 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-2 cursor-pointer ${activeTab === 'loyalty'
+                  ? 'bg-[#2B1204] text-[#FDF8F2] shadow-sm'
+                  : 'text-gray-600 hover:bg-gray-50'
+                  }`}
+              >
+                <Crown size={15} />
+                <span>Fidélité & Avantages</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('orders')}
+                className={`flex-1 min-w-[140px] py-2.5 px-4 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-2 cursor-pointer ${activeTab === 'orders'
+                  ? 'bg-[#2B1204] text-[#FDF8F2] shadow-sm'
+                  : 'text-gray-600 hover:bg-gray-50'
+                  }`}
+              >
+                <Package size={15} />
+                <span>Mes Commandes ({myOrders.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('profile')}
+                className={`flex-1 min-w-[140px] py-2.5 px-4 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-2 cursor-pointer ${activeTab === 'profile'
+                  ? 'bg-[#2B1204] text-[#FDF8F2] shadow-sm'
+                  : 'text-gray-600 hover:bg-gray-50'
+                  }`}
+              >
+                <Settings size={15} />
+                <span>Mon Profil</span>
+              </button>
             </div>
 
-            {/* HISTORIQUE RÉCENT DES POINTS */}
-            {member.history && member.history.length > 0 && (
-              <div className="bg-white p-7 rounded-3xl shadow-sm border border-gray-100">
-                <h4 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-                  <Clock size={16} className="text-gray-400" />
-                  <span>Historique des Points & Coupons</span>
-                </h4>
-                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                  {member.history.map((h) => (
-                    <div key={h.id} className="flex justify-between items-center text-xs p-3 rounded-2xl bg-gray-50 border border-gray-100">
-                      <div>
-                        <p className="font-semibold text-gray-800">{h.description}</p>
-                        <span className="text-[10px] text-gray-400">
-                          {new Date(h.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                      <span className={`font-black text-sm ${h.points > 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
-                        {h.points > 0 ? `+${h.points}` : h.points} pts
-                      </span>
-                    </div>
-                  ))}
-                </div>
+            {activeTab === 'orders' && (
+              <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-gray-100 space-y-4">
+                <h3 className="text-xl font-black text-gray-900 flex items-center gap-2">
+                  <Package size={20} className="text-[#F8BE40]" />
+                  <span>Historique de mes commandes</span>
+                </h3>
+                {myOrders.length === 0 ? (
+                  <div className="text-center py-10 space-y-3">
+                    <p className="text-sm text-gray-500">Vous n'avez pas encore passé de commande avec ce numéro.</p>
+                    <button
+                      onClick={() => navigate('/catalogue')}
+                      className="px-6 py-2.5 rounded-full bg-[#F8BE40] text-[#2B1204] font-bold text-xs cursor-pointer"
+                    >
+                      Découvrir le catalogue
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {myOrders.map((ord) => {
+                      const statusLabel =
+                        ord.statut === 'PAYEE' || ord.statut === 'EN_PREPARATION'
+                          ? 'Payée / En préparation'
+                          : ord.statut === 'PRETE'
+                            ? 'Prête'
+                            : ord.statut === 'LIVREE'
+                              ? 'Livrée'
+                              : ord.statut === 'ANNULEE'
+                                ? 'Annulée'
+                                : 'En attente de paiement';
+                      const statusColor =
+                        ord.statut === 'PAYEE' || ord.statut === 'EN_PREPARATION' || ord.statut === 'PRETE' || ord.statut === 'LIVREE'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : ord.statut === 'ANNULEE'
+                            ? 'bg-red-50 text-red-700 border-red-200'
+                            : 'bg-amber-50 text-amber-800 border-amber-200';
+                      return (
+                        <div
+                          key={ord.id}
+                          className="p-4 rounded-2xl border border-gray-200 bg-[#FAF8F5] flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                        >
+                          <div className="space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-mono text-xs font-black text-[#2B1204]">
+                                {ord.codeReference || ord.id}
+                              </span>
+                              <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${statusColor}`}>
+                                {statusLabel}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-600">
+                              {new Date(ord.createdAt).toLocaleDateString('fr-FR', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}{' '}
+                              • {ord.items.length} article{ord.items.length > 1 ? 's' : ''}
+                            </p>
+                          </div>
+                          <div className="flex items-center justify-between sm:justify-end gap-3">
+                            <span className="font-black text-sm text-[#2B1204]">
+                              {ord.totalAmount.toLocaleString('fr-FR')} FCFA
+                            </span>
+                            <button
+                              onClick={() => navigate(`/paiement/${ord.id}`)}
+                              className="px-4 py-2 rounded-full bg-white border border-gray-200 hover:border-[#F8BE40] text-xs font-bold text-[#2B1204] transition cursor-pointer"
+                            >
+                              Voir détails
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 
-            </>
+            {activeTab === 'profile' && (
+              <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-gray-100 max-w-xl">
+                <h3 className="text-xl font-black text-gray-900 mb-4 flex items-center gap-2">
+                  <Settings size={20} className="text-[#F8BE40]" />
+                  <span>Paramètres de mon compte</span>
+                </h3>
+                {profileError && (
+                  <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-xs font-semibold">
+                    {profileError}
+                  </div>
+                )}
+                {profileMsg && (
+                  <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold">
+                    {profileMsg}
+                  </div>
+                )}
+                <form onSubmit={handleSaveProfile} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">Nom complet</label>
+                    <input
+                      type="text"
+                      required
+                      value={profileName}
+                      onChange={(e) => setProfileName(e.target.value)}
+                      className="w-full px-3.5 py-2.5 text-xs border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#F8BE40]"
+                    />
+                  </div>
+                  <div className="pt-3 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {member.has_pin && (
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">Mot de passe actuel</label>
+                        <input
+                          type="password"
+                          placeholder="••••"
+                          value={currentPin}
+                          onChange={(e) => setCurrentPin(e.target.value)}
+                          className="w-full px-3.5 py-2.5 text-xs border border-gray-200 rounded-xl"
+                        />
+                      </div>
+                    )}
+                    <div className={member.has_pin ? '' : 'sm:col-span-2'}>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">
+                        {member.has_pin ? 'Nouveau mot de passe (min. 4 caractères)' : 'Sécuriser mon espace avec un mot de passe (min. 4 caractères)'}
+                      </label>
+                      <input
+                        type="password"
+                        placeholder="••••"
+                        value={newPin}
+                        onChange={(e) => setNewPin(e.target.value)}
+                        className="w-full px-3.5 py-2.5 text-xs border border-gray-200 rounded-xl"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={profileSaving}
+                    className="px-6 py-3 rounded-full bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] font-black text-xs shadow-md transition cursor-pointer"
+                  >
+                    {profileSaving ? 'Enregistrement...' : 'Enregistrer les modifications'}
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {activeTab === 'loyalty' && (
+              <>
+                {!member.has_pin && (
+                  <div className="bg-amber-50 border border-[#F8BE40] rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                      <ShieldCheck className="text-[#2B1204] shrink-0 mt-0.5" size={20} />
+                      <div>
+                        <p className="text-xs font-extrabold text-[#2B1204]">
+                          Protégez votre espace fidélité et vos points
+                        </p>
+                        <p className="text-[11px] text-[#2B1204]/75">
+                          Créez un mot de passe dans votre profil pour éviter qu'un autre appareil accède à vos points.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('profile')}
+                      className="px-4 py-2 rounded-full bg-[#2B1204] text-[#FDF8F2] text-xs font-bold shrink-0 cursor-pointer"
+                    >
+                      Créer un mot de passe
+                    </button>
+                  </div>
+                )}
+
+                {/* MES COUPONS PRÊTS À L'EMPLOI (fidelity.md §2) */}
+                {myCoupons.filter(c => c.status === 'ACTIVE').length > 0 && (
+                  <div className="bg-white p-7 rounded-3xl shadow-sm border border-gray-100">
+                    <h3 className="text-lg font-extrabold text-gray-900 mb-4 flex items-center gap-2">
+                      <Ticket size={22} className="text-[#D4AF37]" />
+                      <span>Mes Coupons de Récompense Actifs</span>
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                      {myCoupons.filter(c => c.status === 'ACTIVE').map(c => (
+                        <div key={c.id} className="p-5 rounded-2xl bg-gradient-to-br from-[#111827] to-[#1F2937] text-white border border-[#D4AF37]/40 shadow-md flex flex-col justify-between">
+                          <div>
+                            <span className="text-[10px] font-bold uppercase text-[#D4AF37]">Coupon RestoBoost</span>
+                            <h4 className="text-sm font-bold text-white mt-1">{c.reward_title}</h4>
+                            <div className="mt-3 p-3 bg-white/10 rounded-xl text-center border border-white/15">
+                              <span className="text-[10px] text-gray-300 block mb-0.5">Code à présenter en caisse :</span>
+                              <span className="text-xl font-mono font-black text-[#D4AF37] tracking-widest">{c.code}</span>
+                            </div>
+                          </div>
+                          <p className="text-[10px] text-emerald-400 font-semibold mt-3 text-center">
+                            ✓ Prêt à être validé par le personnel
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+
+
+                {/* HISTORIQUE RÉCENT DES POINTS */}
+                {member.history && member.history.length > 0 && (
+                  <div className="bg-white p-7 rounded-3xl shadow-sm border border-gray-100">
+                    <h4 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                      <Clock size={16} className="text-gray-400" />
+                      <span>Historique des Points & Coupons</span>
+                    </h4>
+                    <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                      {member.history.map((h) => (
+                        <div key={h.id} className="flex justify-between items-center text-xs p-3 rounded-2xl bg-gray-50 border border-gray-100">
+                          <div>
+                            <p className="font-semibold text-gray-800">{h.description}</p>
+                            <span className="text-[10px] text-gray-400">
+                              {new Date(h.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <span className={`font-black text-sm ${h.points > 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                            {h.points > 0 ? `+${h.points}` : h.points} pts
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+              </>
             )}
 
           </div>
