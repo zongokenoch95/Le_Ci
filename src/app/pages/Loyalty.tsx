@@ -298,8 +298,8 @@ export function Loyalty() {
             <Crown size={15} />
             <span>Programme de Fidélisation RestoBoost</span>
           </div>
-          <h1 className="text-4xl sm:text-5xl font-black text-gray-900 tracking-tight mb-3">
-            Mon Compte & Fidélité
+          <h1 className="text-xl sm:text-3xl font-black text-gray-900 tracking-tight mb-3 whitespace-nowrap truncate">
+            {member ? `Bienvenue ${member.name}` : 'Mon Compte & Fidélité'}
           </h1>
           <p className="text-gray-600 max-w-xl mx-auto text-sm">
             {member 
@@ -435,33 +435,117 @@ export function Loyalty() {
         {member && tierInfo && (
           <div className="space-y-10">
             
-            {/* Barre de bienvenue & déconnexion */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-[#D4AF37]/15 text-[#D4AF37] flex items-center justify-center font-black text-base shadow-sm">
-                  {member.name.charAt(0)}
+            {!member.has_pin && (
+              <div className="bg-red-50 border-2 border-[#C20A0A] rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <ShieldCheck className="text-[#C20A0A] shrink-0 mt-0.5" size={20} />
+                  <div>
+                    <p className="text-xs font-extrabold text-[#C20A0A]">
+                      Protégez votre espace fidélité et vos points
+                    </p>
+                    <p className="text-[11px] text-[#C20A0A]/85">
+                      Créez un mot de passe dans votre profil pour éviter qu'un autre appareil accède à vos points.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-lg font-black text-gray-900">Bonjour, {member.name} !</h2>
-                  <p className="text-xs text-gray-500 font-mono">📱 +226 {member.phone} • Membre depuis {new Date(member.created_at).toLocaleDateString('fr-FR')}</p>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('profile')}
+                  className="px-4 py-2 rounded-full bg-[#C20A0A] hover:bg-red-700 text-white text-xs font-bold shrink-0 cursor-pointer transition"
+                >
+                  Créer un mot de passe
+                </button>
+              </div>
+            )}
+            {/* CARTE VIP & PROGRESSION */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+              {/* Carte Numérique VIP */}
+              <div className="lg:col-span-6 flex flex-col items-center">
+                <div className="w-full max-w-md aspect-[1.6/1] rounded-3xl p-7 relative overflow-hidden shadow-2xl bg-gradient-to-br from-[#1F2937] via-[#111827] to-[#030712] text-white border border-[#D4AF37]/30 flex flex-col justify-between group">
+                  <div className="absolute -right-20 -top-20 w-60 h-60 bg-[#D4AF37]/20 rounded-full blur-3xl pointer-events-none group-hover:scale-125 transition-transform duration-700" />
+                  
+                  <div className="flex justify-between items-start relative z-10">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block">Les Douceurs de Lê Ci</span>
+                      <h3 className="text-xl font-black text-[#D4AF37] tracking-wider mt-0.5">CARTE FIDÉLITÉ</h3>
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-[10px] font-extrabold uppercase shadow-sm ${tierInfo.badge}`}>
+                      {member.tier}
+                    </span>
+                  </div>
+
+                  <div className="relative z-10 my-auto flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] text-gray-400 uppercase font-semibold">Solde de Points</p>
+                      <p className="text-4xl font-black text-white tracking-tight flex items-baseline gap-1.5">
+                        <span>{member.points.toLocaleString('fr-FR')}</span>
+                        <span className="text-sm font-bold text-[#D4AF37]">Pts</span>
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] text-gray-400 uppercase font-semibold">Remise Équivalente</p>
+                      <p className="text-xl font-extrabold text-emerald-400">
+                        {discountFcfa.toLocaleString('fr-FR')} FCFA
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="relative z-10 flex justify-between items-end pt-2 border-t border-white/10">
+                    <div>
+                      <p className="text-sm font-bold text-white tracking-wide uppercase">{member.name}</p>
+                      <p className="text-xs text-gray-400 font-mono">📱 +226 {member.phone}</p>
+                    </div>
+                    <div className="w-8 h-8 rounded-lg bg-white/10 border border-white/15 flex items-center justify-center text-[#D4AF37]">
+                      <Crown size={16} />
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 w-full sm:w-auto">
-                <button
-                  onClick={() => navigate('/panier')}
-                  className="flex-1 sm:flex-none px-5 py-2.5 bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] border-2 border-[#F8BE40] font-bold text-xs rounded-full shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <ShoppingBag size={15} />
-                  <span>Mon Panier</span>
-                </button>
-                <button
-                  onClick={handleLogout}
-                  className="px-4 py-2.5 rounded-full border border-gray-200 text-gray-600 hover:text-red-600 hover:bg-red-50 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
-                >
-                  <LogOut size={14} />
-                  <span>Déconnexion</span>
-                </button>
+              {/* Progression & Avantages du Palier */}
+              <div className="lg:col-span-6 space-y-4">
+                <div className="bg-white p-7 rounded-3xl shadow-sm border border-gray-100">
+                  <h3 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
+                    <TrendingUp className="text-[#D4AF37]" size={20} />
+                    <span>Statut : {tierInfo.title}</span>
+                  </h3>
+
+                  {tierInfo.discount > 0 && (
+                    <div className="mb-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold">
+                      <CheckCircle2 size={15} />
+                      <span>Vous bénéficiez de {tierInfo.discount}% de réduction automatique permanente sur vos commandes !</span>
+                    </div>
+                  )}
+
+                  {tierInfo.next && (
+                    <div className="space-y-2 mt-4">
+                      <div className="flex justify-between text-xs font-semibold text-gray-600">
+                        <span>Progression vers <strong>{tierInfo.next}</strong></span>
+                        <span className="text-[#D4AF37] font-bold">{tierInfo.progress}%</span>
+                      </div>
+                      <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+                        <div
+                          className="bg-gradient-to-r from-amber-500 to-[#D4AF37] h-full rounded-full transition-all duration-700"
+                          style={{ width: `${tierInfo.progress}%` }}
+                        />
+                      </div>
+                      <p className="text-[11px] text-gray-500">
+                        Plus que <strong>{tierInfo.nextPoints} points</strong> pour atteindre le statut {tierInfo.next}.
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-gray-100">
+                    <div className="p-3 bg-[#FAF8F5] rounded-2xl border border-gray-100">
+                      <span className="text-[11px] text-gray-500 font-semibold block">Total Dépensé</span>
+                      <span className="text-base font-black text-gray-900">{member.total_spent.toLocaleString('fr-FR')} FCFA</span>
+                    </div>
+                    <div className="p-3 bg-[#FAF8F5] rounded-2xl border border-gray-100">
+                      <span className="text-[11px] text-gray-500 font-semibold block">Commandes Réglées</span>
+                      <span className="text-base font-black text-gray-900">{member.orders_count} commandes</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -585,6 +669,37 @@ export function Loyalty() {
             )}
 
             {activeTab === 'profile' && (
+              <div className="space-y-6">
+            {/* Barre de bienvenue & déconnexion */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-[#D4AF37]/15 text-[#D4AF37] flex items-center justify-center font-black text-base shadow-sm">
+                  {member.name.charAt(0)}
+                </div>
+                <div>
+                  <h2 className="text-lg font-black text-gray-900">Bonjour, {member.name} !</h2>
+                  <p className="text-xs text-gray-500 font-mono">📱 +226 {member.phone} • Membre depuis {new Date(member.created_at).toLocaleDateString('fr-FR')}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <button
+                  onClick={() => navigate('/panier')}
+                  className="flex-1 sm:flex-none px-5 py-2.5 bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] border-2 border-[#F8BE40] font-bold text-xs rounded-full shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <ShoppingBag size={15} />
+                  <span>Mon Panier</span>
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="px-4 py-2.5 rounded-full border border-gray-200 text-gray-600 hover:text-red-600 hover:bg-red-50 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <LogOut size={14} />
+                  <span>Déconnexion</span>
+                </button>
+              </div>
+            </div>
+
               <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-gray-100 max-w-xl">
                 <h3 className="text-xl font-black text-gray-900 mb-4 flex items-center gap-2">
                   <Settings size={20} className="text-[#F8BE40]" />
@@ -659,124 +774,11 @@ export function Loyalty() {
                   </button>
                 </form>
               </div>
+              </div>
             )}
 
             {activeTab === 'loyalty' && (
             <>
-            {!member.has_pin && (
-              <div className="bg-amber-50 border border-[#F8BE40] rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-start gap-3">
-                  <ShieldCheck className="text-[#2B1204] shrink-0 mt-0.5" size={20} />
-                  <div>
-                    <p className="text-xs font-extrabold text-[#2B1204]">
-                      Protégez votre espace fidélité et vos points
-                    </p>
-                    <p className="text-[11px] text-[#2B1204]/75">
-                      Créez un mot de passe dans votre profil pour éviter qu'un autre appareil accède à vos points.
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('profile')}
-                  className="px-4 py-2 rounded-full bg-[#2B1204] text-[#FDF8F2] text-xs font-bold shrink-0 cursor-pointer"
-                >
-                  Créer un mot de passe
-                </button>
-              </div>
-            )}
-            {/* CARTE VIP & PROGRESSION */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-              {/* Carte Numérique VIP */}
-              <div className="lg:col-span-6 flex flex-col items-center">
-                <div className="w-full max-w-md aspect-[1.6/1] rounded-3xl p-7 relative overflow-hidden shadow-2xl bg-gradient-to-br from-[#1F2937] via-[#111827] to-[#030712] text-white border border-[#D4AF37]/30 flex flex-col justify-between group">
-                  <div className="absolute -right-20 -top-20 w-60 h-60 bg-[#D4AF37]/20 rounded-full blur-3xl pointer-events-none group-hover:scale-125 transition-transform duration-700" />
-                  
-                  <div className="flex justify-between items-start relative z-10">
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block">Les Douceurs de Lê Ci</span>
-                      <h3 className="text-xl font-black text-[#D4AF37] tracking-wider mt-0.5">CARTE FIDÉLITÉ</h3>
-                    </div>
-                    <span className={`px-3 py-1 rounded-full text-[10px] font-extrabold uppercase shadow-sm ${tierInfo.badge}`}>
-                      {member.tier}
-                    </span>
-                  </div>
-
-                  <div className="relative z-10 my-auto flex items-center justify-between">
-                    <div>
-                      <p className="text-[10px] text-gray-400 uppercase font-semibold">Solde de Points</p>
-                      <p className="text-4xl font-black text-white tracking-tight flex items-baseline gap-1.5">
-                        <span>{member.points.toLocaleString('fr-FR')}</span>
-                        <span className="text-sm font-bold text-[#D4AF37]">Pts</span>
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[10px] text-gray-400 uppercase font-semibold">Remise Équivalente</p>
-                      <p className="text-xl font-extrabold text-emerald-400">
-                        {discountFcfa.toLocaleString('fr-FR')} FCFA
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="relative z-10 flex justify-between items-end pt-2 border-t border-white/10">
-                    <div>
-                      <p className="text-sm font-bold text-white tracking-wide uppercase">{member.name}</p>
-                      <p className="text-xs text-gray-400 font-mono">📱 +226 {member.phone}</p>
-                    </div>
-                    <div className="w-8 h-8 rounded-lg bg-white/10 border border-white/15 flex items-center justify-center text-[#D4AF37]">
-                      <Crown size={16} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Progression & Avantages du Palier */}
-              <div className="lg:col-span-6 space-y-4">
-                <div className="bg-white p-7 rounded-3xl shadow-sm border border-gray-100">
-                  <h3 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
-                    <TrendingUp className="text-[#D4AF37]" size={20} />
-                    <span>Statut : {tierInfo.title}</span>
-                  </h3>
-
-                  {tierInfo.discount > 0 && (
-                    <div className="mb-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold">
-                      <CheckCircle2 size={15} />
-                      <span>Vous bénéficiez de {tierInfo.discount}% de réduction automatique permanente sur vos commandes !</span>
-                    </div>
-                  )}
-
-                  {tierInfo.next && (
-                    <div className="space-y-2 mt-4">
-                      <div className="flex justify-between text-xs font-semibold text-gray-600">
-                        <span>Progression vers <strong>{tierInfo.next}</strong></span>
-                        <span className="text-[#D4AF37] font-bold">{tierInfo.progress}%</span>
-                      </div>
-                      <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
-                        <div
-                          className="bg-gradient-to-r from-amber-500 to-[#D4AF37] h-full rounded-full transition-all duration-700"
-                          style={{ width: `${tierInfo.progress}%` }}
-                        />
-                      </div>
-                      <p className="text-[11px] text-gray-500">
-                        Plus que <strong>{tierInfo.nextPoints} points</strong> pour atteindre le statut {tierInfo.next}.
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-gray-100">
-                    <div className="p-3 bg-[#FAF8F5] rounded-2xl border border-gray-100">
-                      <span className="text-[11px] text-gray-500 font-semibold block">Total Dépensé</span>
-                      <span className="text-base font-black text-gray-900">{member.total_spent.toLocaleString('fr-FR')} FCFA</span>
-                    </div>
-                    <div className="p-3 bg-[#FAF8F5] rounded-2xl border border-gray-100">
-                      <span className="text-[11px] text-gray-500 font-semibold block">Commandes Réglées</span>
-                      <span className="text-base font-black text-gray-900">{member.orders_count} commandes</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             {/* MES COUPONS PRÊTS À L'EMPLOI (fidelity.md §2) */}
             {myCoupons.filter(c => c.status === 'ACTIVE').length > 0 && (
               <div className="bg-white p-7 rounded-3xl shadow-sm border border-gray-100">
@@ -803,68 +805,6 @@ export function Loyalty() {
                 </div>
               </div>
             )}
-
-            {/* CATALOGUE DES RÉCOMPENSES (fidelity.md §2) */}
-            <div className="bg-white p-7 rounded-3xl shadow-sm border border-gray-100">
-              <div className="flex justify-between items-center mb-6">
-                <div>
-                  <h3 className="text-lg font-extrabold text-gray-900 flex items-center gap-2">
-                    <Gift size={22} className="text-[#D4AF37]" />
-                    <span>Catalogue des Récompenses Disponibles</span>
-                  </h3>
-                  <p className="text-xs text-gray-500">Échangez vos points contre ces délices artisanaux</p>
-                </div>
-                <span className="text-xs font-bold text-gray-700 bg-gray-100 px-3 py-1.5 rounded-full">
-                  Points disponibles : <strong className="text-[#D4AF37]">{member.points} pts</strong>
-                </span>
-              </div>
-
-              {claimSuccessMsg && (
-                <div className="mb-6 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2">
-                  <CheckCircle2 size={18} className="text-emerald-600 flex-shrink-0" />
-                  <span>{claimSuccessMsg}</span>
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {rewards.map(reward => {
-                  const canAfford = member.points >= reward.points_cost;
-                  const isClaiming = claimingRewardId === reward.id;
-
-                  return (
-                    <div key={reward.id} className="bg-[#FAF8F5] rounded-3xl overflow-hidden border border-gray-100 p-4 flex flex-col justify-between group hover:shadow-md transition">
-                      {reward.image && (
-                        <div className="h-36 rounded-2xl overflow-hidden mb-3 bg-gray-200">
-                          <img src={reward.image} alt={reward.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                        </div>
-                      )}
-                      <div>
-                        <span className="text-[10px] font-bold text-gray-400 uppercase">{reward.category}</span>
-                        <h4 className="text-sm font-bold text-gray-900 mt-0.5">{reward.title}</h4>
-                        {reward.description && (
-                          <p className="text-xs text-gray-500 mt-1 line-clamp-2">{reward.description}</p>
-                        )}
-                        <span className="inline-block mt-3 px-3 py-1 rounded-xl bg-[#D4AF37]/15 text-[#D4AF37] font-black text-xs">
-                          {reward.points_cost} points
-                        </span>
-                      </div>
-
-                      <button
-                        onClick={() => handleClaimReward(reward)}
-                        disabled={!canAfford || isClaiming}
-                        className={`mt-4 w-full py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm ${
-                          canAfford
-                            ? 'bg-[#111827] hover:bg-black text-white cursor-pointer'
-                            : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                        }`}
-                      >
-                        {isClaiming ? 'Génération...' : (canAfford ? 'Obtenir ce coupon' : `Manque ${reward.points_cost - member.points} pts`)}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
 
             {/* HISTORIQUE RÉCENT DES POINTS */}
             {member.history && member.history.length > 0 && (
