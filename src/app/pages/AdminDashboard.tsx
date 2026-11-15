@@ -53,7 +53,11 @@ import {
   Phone,
   User,
   CreditCard,
-  Upload
+  Upload,
+  Menu,
+  Sun,
+  Moon,
+  ExternalLink
 } from 'lucide-react';
 import { 
   getAdminOrders, 
@@ -163,6 +167,40 @@ export function AdminDashboard() {
   const isGerant = currentUser?.role === 'gerant';
 
   const [activeTab, setActiveTab] = useState<'orders' | 'menu' | 'stats' | 'loyalty' | 'team' | 'simulator' | 'delivery' | 'banner'>('orders');
+  const [adminTheme, setAdminTheme] = useState<'dark' | 'light'>(() => {
+    try {
+      return localStorage.getItem('le_ci_admin_theme') === 'light' ? 'light' : 'dark';
+    } catch {
+      return 'dark';
+    }
+  });
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const toggleAdminTheme = () => {
+    setAdminTheme((prev) => {
+      const next = prev === 'dark' ? 'light' : 'dark';
+      try {
+        localStorage.setItem('le_ci_admin_theme', next);
+      } catch {}
+      return next;
+    });
+  };
+
+  const selectTab = (tab: typeof activeTab) => {
+    setActiveTab(tab);
+    setMobileMenuOpen(false);
+  };
+
+  const tabTitles: Record<typeof activeTab, string> = {
+    orders: 'Commande',
+    menu: 'Gestion des Plats',
+    stats: 'Statistiques & Ventes',
+    loyalty: 'Fidélité & Coupons',
+    team: "Gestion de l'Équipe",
+    banner: 'Bandeau & Promo',
+    delivery: 'Livraison',
+    simulator: 'Simulateur OM'
+  };
   const [orders, setOrders] = useState<Order[]>([]);
   const [unmatchedPayments, setUnmatchedPayments] = useState<UnmatchedPayment[]>([]);
   const [selectedOrderForPayment, setSelectedOrderForPayment] = useState<Record<number, string>>({});
@@ -1028,160 +1066,263 @@ export function AdminDashboard() {
     return o.statut === filterStatus;
   });
 
-  return (
-    <div className="min-h-screen bg-[#0F172A] text-white flex flex-col md:flex-row">
-      {/* SIDEBAR NAVIGATION GÉRANCE & ÉQUIPE */}
-      <aside className="w-full md:w-72 bg-[#1E293B] border-r border-white/10 flex flex-col justify-between shrink-0">
-        <div>
-          {/* Logo & Info Session */}
-          <div className="p-6 border-b border-white/10">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#D4AF37] to-[#F3E5AB] text-black flex items-center justify-center font-black shadow-lg">
+  const pendingOrdersCount = visibleOrders.filter(
+    (o) => o.statut === 'EN_ATTENTE_DE_PAIEMENT' || o.statut === 'EN_PREPARATION'
+  ).length;
+
+  const renderSidebarContent = () => (
+    <>
+      <div className="overflow-y-auto flex-1">
+        {/* Logo & Info Session */}
+        <div className="p-5 sm:p-6 border-b border-white/10">
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#D4AF37] to-[#F3E5AB] text-black flex items-center justify-center font-black shadow-lg shrink-0">
                 <UtensilsCrossed size={20} />
               </div>
               <div>
-                <h1 className="font-extrabold text-sm text-white tracking-wide">Les Douceurs de Lê Ci</h1>
+                <h1 className="font-extrabold text-sm text-white tracking-wide">Les Douceurs de Lissi</h1>
                 <span className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">Back-Office Sécurisé</span>
               </div>
             </div>
-
-            {/* Badge Rôle Utilisateur */}
-            <div className="mt-3 p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold ${
-                  isGerant ? 'bg-[#D4AF37]/20 text-[#D4AF37]' : 'bg-sky-500/20 text-sky-400'
-                }`}>
-                  {isGerant ? <Crown size={15} /> : <ChefHat size={15} />}
-                </div>
-                <div className="truncate max-w-[130px]">
-                  <div className="text-xs font-bold text-white truncate">{currentUser?.name}</div>
-                  <div className="text-[10px] text-gray-400 capitalize">{currentUser?.role === 'gerant' ? '👑 Gérant' : '👨‍🍳 Employé'}</div>
-                </div>
-              </div>
-              <button
-                onClick={handleLogout}
-                title="Se déconnecter"
-                className="p-1.5 text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition cursor-pointer"
-              >
-                <LogOut size={16} />
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={toggleAdminTheme}
+              title={adminTheme === 'dark' ? 'Passer en mode clair' : 'Passer en mode sombre'}
+              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-amber-400 transition cursor-pointer shrink-0"
+            >
+              {adminTheme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+            </button>
           </div>
 
-          {/* Onglets Navigation RBAC */}
-          <nav className="p-4 space-y-1.5">
-            <button
-              onClick={() => setActiveTab('orders')}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
-                activeTab === 'orders' ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30'
-                  : 'text-gray-300 hover:bg-white/5 hover:text-white'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Package size={17} />
-                <span>Commandes & KDS</span>
+          {/* Badge Rôle Utilisateur */}
+          <div className="mt-3 p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold ${
+                isGerant ? 'bg-[#D4AF37]/20 text-[#D4AF37]' : 'bg-sky-500/20 text-sky-400'
+              }`}>
+                {isGerant ? <Crown size={15} /> : <ChefHat size={15} />}
               </div>
-              {visibleOrders.filter(o => o.statut === 'EN_ATTENTE_DE_PAIEMENT' || o.statut === 'EN_PREPARATION').length > 0 && (
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${
-                  activeTab === 'orders' ? 'bg-black text-white' : 'bg-[#D4AF37] text-black'
-                }`}>
-                  {visibleOrders.filter(o => o.statut === 'EN_ATTENTE_DE_PAIEMENT' || o.statut === 'EN_PREPARATION').length}
-                </span>
-              )}
-            </button>
-
-            {/* Onglets réservés au Gérant */}
-            {isGerant && (
-              <>
-                <button
-                  onClick={() => setActiveTab('menu')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
-                    activeTab === 'menu' ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30'
-                      : 'text-gray-300 hover:bg-white/5 hover:text-white'
-                  }`}
-                >
-                  <UtensilsCrossed size={17} />
-                  <span>Gestion des Plats</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveTab('stats')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
-                    activeTab === 'stats' ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30'
-                      : 'text-gray-300 hover:bg-white/5 hover:text-white'
-                  }`}
-                >
-                  <BarChart3 size={17} />
-                  <span>Statistiques & Ventes</span>
-                </button>
-              </>
-            )}
-
+              <div className="truncate max-w-[130px]">
+                <div className="text-xs font-bold text-white truncate">{currentUser?.name}</div>
+                <div className="text-[10px] text-gray-400 capitalize">{currentUser?.role === 'gerant' ? '👑 Gérant' : '👨‍🍳 Employé'}</div>
+              </div>
+            </div>
             <button
-              onClick={() => setActiveTab('loyalty')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
-                activeTab === 'loyalty' ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30'
-                  : 'text-gray-300 hover:bg-white/5 hover:text-white'
-              }`}
+              type="button"
+              onClick={handleLogout}
+              title="Se déconnecter"
+              className="p-2 text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition cursor-pointer"
             >
-              <Award size={17} />
-              <span>Fidélité & Coupons</span>
+              <LogOut size={16} />
             </button>
-
-            {/* Onglet Équipe - Réservé au Gérant */}
-            {isGerant && (
-              <>
-                <button
-                  onClick={() => setActiveTab('team')}
-                  className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
-                    activeTab === 'team' ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30'
-                      : 'text-gray-300 hover:bg-white/5 hover:text-white'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <Users size={17} />
-                    <span>Gestion de l'Équipe</span>
-                  </div>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 font-bold">
-                    {teamUsers.length}
-                  </span>
-                </button>
-
-                <button
-                  onClick={() => setActiveTab('banner')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
-                    activeTab === 'banner'
-                      ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30'
-                      : 'text-gray-300 hover:bg-white/5 hover:text-white'
-                  }`}
-                >
-                  <Sparkles size={17} className={activeTab === 'banner' ? 'text-purple-300' : ''} />
-                  <span>Bandeau & Promo</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveTab('simulator')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
-                    activeTab === 'simulator' ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30'
-                      : 'text-gray-300 hover:bg-white/5 hover:text-white'
-                  }`}
-                >
-                  <Zap size={17} />
-                  <span>Simulateur OM</span>
-                </button>
-              </>
-            )}
-          </nav>
+          </div>
         </div>
 
-        {/* Pied de sidebar */}
-        <div className="p-4 border-t border-white/10 text-[11px] text-gray-500 flex flex-col gap-1">
-          <div className="flex items-center gap-1.5 text-emerald-400 font-semibold">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+        {/* Onglets Navigation RBAC */}
+        <nav className="p-4 space-y-1.5">
+          <button
+            type="button"
+            onClick={() => selectTab('orders')}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
+              activeTab === 'orders' ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30'
+                : 'text-gray-300 hover:bg-white/5 hover:text-white'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <Package size={17} />
+              <span>Commande</span>
+            </div>
+            {pendingOrdersCount > 0 && (
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${
+                activeTab === 'orders' ? 'bg-black text-white' : 'bg-[#D4AF37] text-black'
+              }`}>
+                {pendingOrdersCount}
+              </span>
+            )}
+          </button>
+
+          {/* Onglets réservés au Gérant */}
+          {isGerant && (
+            <>
+              <button
+                type="button"
+                onClick={() => selectTab('menu')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
+                  activeTab === 'menu' ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30'
+                    : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                <UtensilsCrossed size={17} />
+                <span>Gestion des Plats</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => selectTab('stats')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
+                  activeTab === 'stats' ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30'
+                    : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                <BarChart3 size={17} />
+                <span>Statistiques & Ventes</span>
+              </button>
+            </>
+          )}
+
+          <button
+            type="button"
+            onClick={() => selectTab('loyalty')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
+              activeTab === 'loyalty' ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30'
+                : 'text-gray-300 hover:bg-white/5 hover:text-white'
+            }`}
+          >
+            <Award size={17} />
+            <span>Fidélité & Coupons</span>
+          </button>
+
+          {/* Onglet Équipe - Réservé au Gérant */}
+          {isGerant && (
+            <>
+              <button
+                type="button"
+                onClick={() => selectTab('team')}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
+                  activeTab === 'team' ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30'
+                    : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Users size={17} />
+                  <span>Gestion de l'Équipe</span>
+                </div>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 font-bold">
+                  {teamUsers.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => selectTab('banner')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
+                  activeTab === 'banner'
+                    ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30'
+                    : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                <Sparkles size={17} className={activeTab === 'banner' ? 'text-purple-300' : ''} />
+                <span>Bandeau & Promo</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => selectTab('simulator')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
+                  activeTab === 'simulator' ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30'
+                    : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                <Zap size={17} />
+                <span>Simulateur OM</span>
+              </button>
+            </>
+          )}
+        </nav>
+      </div>
+
+      {/* Pied de sidebar */}
+      <div className="p-4 border-t border-white/10 space-y-3">
+        <button
+          type="button"
+          onClick={() => {
+            setMobileMenuOpen(false);
+            navigate('/');
+          }}
+          className="w-full py-2.5 px-4 rounded-2xl bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] font-extrabold text-xs shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
+        >
+          <ExternalLink size={15} />
+          <span>Accéder à l'espace client</span>
+        </button>
+
+        <div className="text-[11px] text-gray-500 flex flex-col gap-1 px-1">
+          <div className="flex items-center gap-1.5 text-emerald-500 font-semibold">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span>Connecté • RBAC Actif</span>
           </div>
           <span>Expiration automatique après 4h</span>
         </div>
+      </div>
+    </>
+  );
+
+  return (
+    <div
+      className="admin-shell min-h-screen bg-[#0F172A] text-white flex flex-col md:flex-row"
+      data-admin-theme={adminTheme}
+    >
+      {/* HEADER MOBILE-FIRST AVEC MENU BURGER */}
+      <header className="md:hidden sticky top-0 z-30 admin-mobile-header bg-[#1E293B] border-b border-white/10 px-4 py-3 flex items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={() => setMobileMenuOpen(true)}
+          aria-label="Ouvrir le menu"
+          className="w-11 h-11 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-white transition cursor-pointer shrink-0"
+        >
+          <Menu size={20} />
+        </button>
+
+        <div className="text-center min-w-0 flex-1">
+          <p className="text-xs font-black text-white truncate">{tabTitles[activeTab]}</p>
+          <p className="text-[10px] text-gray-400 truncate">Les Douceurs de Lissi</p>
+        </div>
+
+        <button
+          type="button"
+          onClick={toggleAdminTheme}
+          aria-label="Changer de thème"
+          className="w-11 h-11 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-amber-400 transition cursor-pointer shrink-0"
+        >
+          {adminTheme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+        </button>
+      </header>
+
+      {/* DRAWER BURGER MOBILE */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setMobileMenuOpen(false)}
+            className="md:hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex"
+          >
+            <motion.aside
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 280 }}
+              onClick={(e) => e.stopPropagation()}
+              className="admin-mobile-drawer w-72 max-w-[85vw] h-full bg-[#1E293B] border-r border-white/10 flex flex-col justify-between relative"
+            >
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(false)}
+                aria-label="Fermer le menu"
+                className="absolute top-3 right-3 z-10 p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+              {renderSidebarContent()}
+            </motion.aside>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* SIDEBAR DESKTOP */}
+      <aside className="hidden md:flex md:w-72 md:sticky md:top-0 md:h-screen admin-sidebar bg-[#1E293B] border-r border-white/10 flex-col justify-between shrink-0">
+        {renderSidebarContent()}
       </aside>
 
       {/* CONTENU PRINCIPAL */}
@@ -1194,7 +1335,7 @@ export function AdminDashboard() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h2 className="text-2xl font-black text-white flex items-center gap-2">
-                  <span>Commandes en Cuisine</span>
+                  <span>Commande</span>
                   {!isGerant && (
                     <span className="text-xs px-3 py-1 rounded-full bg-sky-500/20 text-sky-400 font-semibold border border-sky-500/30">
                       Vue Opérationnelle Employé

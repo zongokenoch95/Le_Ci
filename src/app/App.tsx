@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Header } from './components/Header';
 import { ScrollToTop } from './components/ScrollToTop';
 import { Footer } from './components/Footer';
@@ -19,44 +19,53 @@ import { LegalMentions } from './pages/LegalMentions';
 import { Cart } from './pages/Cart';
 import '../styles/index.css';
 
+function AppShell() {
+  const location = useLocation();
+  const isAdminRoute = location.pathname.startsWith('/admin');
+
+  return (
+    <div className="flex flex-col min-h-screen">
+      {!isAdminRoute && <Header />}
+      <main className="flex-1">
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/catalogue" element={<Catalogue />} />
+          <Route path="/nos-douceurs" element={<Catalogue />} />
+          <Route path="/nos-produits" element={<Catalogue />} />
+          <Route path="/sur-commande" element={<CustomOrder />} />
+          <Route path="/promotions" element={<Promotions />} />
+          <Route path="/panier" element={<Cart />} />
+          
+          {/* Espace Administration Isolé (Authentification Forte & RBAC) */}
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin" element={<AdminDashboard />} />
+
+          {/* Fidélité & Paiement */}
+          <Route path="/fidelite" element={<Loyalty />} />
+          <Route path="/fidelisation" element={<Loyalty />} />
+          <Route path="/paiement/:orderId" element={<Payment />} />
+          <Route path="/pay/:token" element={<OtherPayment />} />
+
+          {/* Redirections et pages légales */}
+          <Route path="/a-propos" element={<About />} />
+          <Route path="/mentions-legales" element={<LegalMentions />} />
+          <Route path="/contact" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </main>
+      {!isAdminRoute && <Footer />}
+      <FloatingCartButton />
+    </div>
+  );
+}
+
 export default function App() {
   return (
     <Router>
       <CartProvider>
         <PageLoader />
         <ScrollToTop />
-        <div className="flex flex-col min-h-screen">
-          <Header />
-          <main className="flex-1">
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/catalogue" element={<Catalogue />} />
-              <Route path="/nos-douceurs" element={<Catalogue />} />
-              <Route path="/nos-produits" element={<Catalogue />} />
-              <Route path="/sur-commande" element={<CustomOrder />} />
-              <Route path="/promotions" element={<Promotions />} />
-              <Route path="/panier" element={<Cart />} />
-              
-              {/* Espace Administration Isolé (Authentification Forte & RBAC) */}
-              <Route path="/admin/login" element={<AdminLogin />} />
-              <Route path="/admin" element={<AdminDashboard />} />
-
-              {/* Fidélité & Paiement */}
-              <Route path="/fidelite" element={<Loyalty />} />
-              <Route path="/fidelisation" element={<Loyalty />} />
-              <Route path="/paiement/:orderId" element={<Payment />} />
-              <Route path="/pay/:token" element={<OtherPayment />} />
-
-              {/* Redirections et pages légales */}
-              <Route path="/a-propos" element={<About />} />
-              <Route path="/mentions-legales" element={<LegalMentions />} />
-              <Route path="/contact" element={<Navigate to="/" replace />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </main>
-          <Footer />
-          <FloatingCartButton />
-        </div>
+        <AppShell />
       </CartProvider>
     </Router>
   );

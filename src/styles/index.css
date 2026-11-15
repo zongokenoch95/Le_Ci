@@ -3,3 +3,86 @@
 @import 'tw-animate-css';
 @import './default_theme.css';
 @import './globals.css';
+
+/* ========================================================================= */
+/* ADMIN DASHBOARD — MODE CLAIR (LIGHT THEME OVERRIDES)                      */
+/* ========================================================================= */
+.admin-shell[data-admin-theme='light'] {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+.admin-shell[data-admin-theme='light'] .admin-sidebar,
+.admin-shell[data-admin-theme='light'] .admin-mobile-header,
+.admin-shell[data-admin-theme='light'] .admin-mobile-drawer {
+  background-color: #ffffff;
+  border-color: #e2e8f0;
+  color: #0f172a;
+}
+
+.admin-shell[data-admin-theme='light'] .bg-\[\#0F172A\],
+.admin-shell[data-admin-theme='light'] .bg-\[\#0F172A\]\/60,
+.admin-shell[data-admin-theme='light'] .bg-\[\#0F172A\]\/80 {
+  background-color: #f1f5f9 !important;
+}
+
+.admin-shell[data-admin-theme='light'] .bg-\[\#1E293B\],
+.admin-shell[data-admin-theme='light'] .bg-\[\#1E293B\]\/80 {
+  background-color: #ffffff !important;
+}
+
+.admin-shell[data-admin-theme='light'] .bg-white\/5,
+.admin-shell[data-admin-theme='light'] .bg-white\/10 {
+  background-color: #f1f5f9 !important;
+}
+
+.admin-shell[data-admin-theme='light'] .hover\:bg-white\/5:hover,
+.admin-shell[data-admin-theme='light'] .hover\:bg-white\/10:hover,
+.admin-shell[data-admin-theme='light'] .hover\:bg-white\/20:hover {
+  background-color: #e2e8f0 !important;
+}
+
+.admin-shell[data-admin-theme='light'] .border-white\/5,
+.admin-shell[data-admin-theme='light'] .border-white\/10,
+.admin-shell[data-admin-theme='light'] .border-white\/15,
+.admin-shell[data-admin-theme='light'] .border-white\/20 {
+  border-color: #e2e8f0 !important;
+}
+
+.admin-shell[data-admin-theme='light'] .text-white {
+  color: #0f172a !important;
+}
+
+/* Preserve white text on solid colored buttons/badges in light mode */
+.admin-shell[data-admin-theme='light'] .bg-\[\#581C87\],
+.admin-shell[data-admin-theme='light'] .bg-\[\#581C87\] *,
+.admin-shell[data-admin-theme='light'] .bg-emerald-600,
+.admin-shell[data-admin-theme='light'] .bg-emerald-600 *,
+.admin-shell[data-admin-theme='light'] .bg-rose-600,
+.admin-shell[data-admin-theme='light'] .bg-rose-600 *,
+.admin-shell[data-admin-theme='light'] .bg-sky-600,
+.admin-shell[data-admin-theme='light'] .bg-sky-600 *,
+.admin-shell[data-admin-theme='light'] .bg-purple-600,
+.admin-shell[data-admin-theme='light'] .bg-purple-600 *,
+.admin-shell[data-admin-theme='light'] .bg-amber-600,
+.admin-shell[data-admin-theme='light'] .bg-amber-600 * {
+  color: #ffffff !important;
+}
+
+.admin-shell[data-admin-theme='light'] .text-gray-300,
+.admin-shell[data-admin-theme='light'] .text-gray-200 {
+  color: #334155 !important;
+}
+
+.admin-shell[data-admin-theme='light'] .text-gray-400,
+.admin-shell[data-admin-theme='light'] .text-gray-500 {
+  color: #64748b !important;
+}
+
+.admin-shell[data-admin-theme='light'] input,
+.admin-shell[data-admin-theme='light'] select,
+.admin-shell[data-admin-theme='light'] textarea {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
