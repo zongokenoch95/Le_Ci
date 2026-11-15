@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, ShoppingBag, Sparkles } from 'lucide-react';
+import { Menu, X, ShoppingBag } from 'lucide-react';
 import { useCart } from '../context/CartContext';
-import { getAnnouncementBanner, AnnouncementBanner } from '../services/api';
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [banner, setBanner] = useState<AnnouncementBanner | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
   const { totalItems } = useCart();
@@ -45,61 +43,14 @@ export function Header() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Chargement du bandeau paramétrable
-  useEffect(() => {
-    getAnnouncementBanner()
-      .then((data) => {
-        if (data && data.success) {
-          setBanner(data);
-        }
-      })
-      .catch((err) => {
-        console.warn('Utilisation du bandeau par défaut', err);
-      });
-  }, []);
-
-  const bannerText = banner?.message || '✦ OFFRE DOUCEURS : -10% sur votre commande avec le code « DOUCEUR10 » ✦ Pâtisserie saine au Moringa & Bissap ✦ Livraison soignée à domicile ✦';
-  const bannerTextColor = banner?.text_color || '#2B1204';
-  const bannerBgColor = banner?.bg_color && banner.bg_color !== '#3B0764' ? banner.bg_color : '#F8BE40';
-  const showBanner = false;
-
   return (
     <>
-      {/* BANDEAU LUMINEUX DE PROMOTION DÉFILANT (Jaune doré #F8BE40 & Brun cacao #2B1204 / Rouge gourmand #C20A0A - Charte Graphique) */}
-      {showBanner && (
-        <div
-          className="w-full overflow-hidden text-xs py-2 shadow-inner z-50 select-none border-b border-[#2B1204]/15"
-          style={{ backgroundColor: bannerBgColor, color: bannerTextColor }}
-        >
-          <div className="animate-marquee whitespace-nowrap flex items-center gap-10 font-extrabold uppercase tracking-wider text-[11px]">
-            <div className="flex items-center gap-6">
-              <span className="flex items-center gap-1.5"><Sparkles size={13} className="text-[#C20A0A] animate-spin" /> {bannerText}</span>
-              <span className="text-[#C20A0A]">•</span>
-              <span>ARZANIER AU MORINGA & BISSAP — LE BURKINA DANS TON ASSIETTE</span>
-              <span className="text-[#C20A0A]">•</span>
-              <span>PAIEMENT INSTANTANÉ MOBILE MONEY</span>
-              <span className="text-[#C20A0A]">•</span>
-              <span>LIVRAISON EXPRESS & RETRAIT BOUTIQUE</span>
-            </div>
-            <div className="flex items-center gap-6" aria-hidden="true">
-              <span className="flex items-center gap-1.5"><Sparkles size={13} className="text-[#C20A0A] animate-spin" /> {bannerText}</span>
-              <span className="text-[#C20A0A]">•</span>
-              <span>ARZANIER AU MORINGA & BISSAP — LE BURKINA DANS TON ASSIETTE</span>
-              <span className="text-[#C20A0A]">•</span>
-              <span>PAIEMENT INSTANTANÉ MOBILE MONEY</span>
-              <span className="text-[#C20A0A]">•</span>
-              <span>LIVRAISON EXPRESS & RETRAIT BOUTIQUE</span>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* HEADER PRINCIPAL AVEC LOGO CENTRÉ — Brun cacao #2B1204 & Jaune doré #F8BE40 */}
       <header className={`w-full transition-all duration-300 z-40 ${
         isHome
           ? (scrolled 
               ? 'sticky top-0 bg-[#2B1204] shadow-xl text-white border-b border-[#F8BE40]/30 backdrop-blur-md' 
-              : `absolute ${showBanner ? 'top-9' : 'top-0'} left-0 bg-gradient-to-b from-[#2B1204]/90 via-[#2B1204]/50 to-transparent text-white`)
+              : 'absolute top-0 left-0 bg-gradient-to-b from-[#2B1204]/90 via-[#2B1204]/50 to-transparent text-white')
           : (scrolled
               ? 'sticky top-0 bg-[#2B1204] shadow-xl text-white border-b border-[#F8BE40]/30'
               : 'sticky top-0 bg-[#2B1204] shadow-md text-white border-b border-[#F8BE40]/25')
