@@ -779,6 +779,17 @@ app.post('/api/orders/:id/finish', async (req, res) => {
   }
 });
 
+// Marquer comme livrée / récupérée
+app.post('/api/orders/:id/deliver', async (req, res) => {
+  try {
+    const order = await db.deliverOrder(req.params.id);
+    emitOrderReady(order);
+    res.json({ success: true, message: 'Commande livrée / récupérée', order });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // ==========================================
 // ROUTES MONTANT ÉLEVÉ (vérification manuelle)
 // ==========================================

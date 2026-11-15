@@ -955,6 +955,11 @@ export async function finishOrder(id) {
   return getOrderById(id);
 }
 
+export async function deliverOrder(id) {
+  await run(`UPDATE orders SET statut = 'LIVREE' WHERE id = ?`, [id]);
+  return getOrderById(id);
+}
+
 /**
  * Approuve un paiement de montant élevé marqué EN_VERIFICATION_MANUELLE
  * Le caissier valide manuellement → passage en EN_PREPARATION
@@ -2261,6 +2266,7 @@ export default {
   cancelOrder,
   validateOrder,
   finishOrder,
+  deliverOrder,
   checkAndExpireOrders,
   reconcilePaymentWebhook,
   logAuditEvent,

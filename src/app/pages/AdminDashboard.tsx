@@ -64,6 +64,7 @@ import {
   getAdminOrders, 
   validateOrder, 
   finishOrder, 
+  deliverOrder, 
   cancelOrder, 
   simulateWebhook, 
   Order, 
@@ -1482,12 +1483,12 @@ export function AdminDashboard() {
             {/* Filtres de statut (scroll horizontal sur mobile) */}
             <div className="flex items-center gap-2 overflow-x-auto pb-1">
               {[
-                { id: 'ALL', label: 'Toutes', count: visibleOrders.length },
                 { id: 'EN_ATTENTE_DE_PAIEMENT', label: 'En attente de validation', count: visibleOrders.filter(o => o.statut === 'EN_ATTENTE_DE_PAIEMENT').length },
                 { id: 'EN_PREPARATION', label: 'En préparation', count: visibleOrders.filter(o => o.statut === 'EN_PREPARATION').length },
                 { id: 'PRETE', label: 'Prêtes', count: visibleOrders.filter(o => o.statut === 'PRETE').length, green: true },
                 { id: 'LIVREE', label: 'Livrées', count: visibleOrders.filter(o => o.statut === 'LIVREE').length },
-                { id: 'ANNULEE', label: 'Annulées', count: visibleOrders.filter(o => o.statut === 'ANNULEE').length }
+                { id: 'ANNULEE', label: 'Annulées', count: visibleOrders.filter(o => o.statut === 'ANNULEE').length },
+                { id: 'ALL', label: 'Tous', count: visibleOrders.length }
               ].map(f => {
                 const isActive = filterStatus === f.id;
                 return (
@@ -1782,14 +1783,21 @@ export function AdminDashboard() {
                         <button
                           type="button"
                           onClick={async () => {
-                            await finishOrder(order.id);
+                            await deliverOrder(order.id);
                             loadOrders();
                           }}
                           className="w-full py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-lg transition cursor-pointer"
                         >
                           <Check size={16} />
-                          <span>Commande Récupérée</span>
+                          <span>Commande Récupérée / Livrée</span>
                         </button>
+                      )}
+
+                      {order.statut === 'LIVREE' && (
+                        <div className="w-full py-2.5 rounded-2xl bg-slate-500/15 border border-slate-500/25 text-gray-300 font-bold text-xs flex items-center justify-center gap-1.5">
+                          <CheckCircle2 size={15} className="text-emerald-400" />
+                          <span>Commande Livrée / Récupérée</span>
+                        </div>
                       )}
                     </div>
                   </div>

@@ -280,6 +280,12 @@ export async function finishOrder(id: string): Promise<{ success: boolean; order
   return res.json();
 }
 
+export async function deliverOrder(id: string): Promise<{ success: boolean; order: Order }> {
+  const res = await fetch(`${API_BASE}/orders/${id}/deliver`, { method: 'POST' });
+  if (!res.ok) throw new Error('Erreur marquage commande livrée');
+  return res.json();
+}
+
 export async function simulateWebhook(payload: {
   message?: string;
   amount?: number;
