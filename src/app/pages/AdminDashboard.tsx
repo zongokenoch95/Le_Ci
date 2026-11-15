@@ -727,6 +727,18 @@ export function AdminDashboard() {
     }
   };
 
+  const handleDeliverOrder = async (id: string) => {
+    try {
+      const res = await deliverOrder(id);
+      if (res?.order) {
+        setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, statut: res.order.statut || 'LIVREE' } : o)));
+      }
+      await loadOrders();
+    } catch (err: any) {
+      alert(err.message || 'Erreur lors du passage en statut livré');
+    }
+  };
+
   // Actions Gestion de l'équipe (RBAC)
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1782,10 +1794,7 @@ export function AdminDashboard() {
                       {order.statut === 'PRETE' && (
                         <button
                           type="button"
-                          onClick={async () => {
-                            await deliverOrder(order.id);
-                            loadOrders();
-                          }}
+                          onClick={() => handleDeliverOrder(order.id)}
                           className="w-full py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-lg transition cursor-pointer"
                         >
                           <Check size={16} />
