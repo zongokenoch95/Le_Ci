@@ -856,8 +856,8 @@ app.get('/api/audit-stats', async (req, res) => {
 // Inscription au programme de fidélité & Compte Client (Portail 1 après commande ou Portail 2)
 app.post('/api/loyalty/register', async (req, res) => {
   try {
-    const { phone, name, pin, defaultAddress } = req.body;
-    const member = await db.registerLoyaltyMember({ phone, name, pin, defaultAddress });
+    const { phone, name, pin, defaultAddress, orderId } = req.body;
+    const member = await db.registerLoyaltyMember({ phone, name, pin, defaultAddress, orderId });
     const token = signCustomerToken(member);
     res.status(201).json({
       success: true,

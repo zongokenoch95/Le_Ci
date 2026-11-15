@@ -127,8 +127,8 @@ export function Loyalty() {
       setAuthError('Veuillez renseigner votre nom complet.');
       return;
     }
-    if (!/^\d{4}$/.test(formPin.trim())) {
-      setAuthError('Veuillez saisir un code PIN à 4 chiffres.');
+    if (formPin.trim() && formPin.trim().length < 4) {
+      setAuthError('Le mot de passe / code PIN doit comporter au moins 4 caractères.');
       return;
     }
 
@@ -141,7 +141,7 @@ export function Loyalty() {
         const res = await registerLoyaltyMember({
           phone: formPhone.trim(),
           name: formName.trim(),
-          pin: formPin.trim()
+          pin: formPin.trim() || undefined
         });
         setAuthSuccessMsg(`🎉 Bienvenue ! Votre compte client & fidélité est créé avec vos points offerts !`);
         confetti({
@@ -195,8 +195,8 @@ export function Loyalty() {
       setProfileError('Le nom complet est obligatoire.');
       return;
     }
-    if (newPin && !/^\d{4}$/.test(newPin.trim())) {
-      setProfileError('Le nouveau code PIN doit comporter exactement 4 chiffres.');
+    if (newPin && newPin.trim().length < 4) {
+      setProfileError('Le mot de passe / code PIN doit comporter au moins 4 caractères.');
       return;
     }
     setProfileSaving(true);
@@ -304,7 +304,7 @@ export function Loyalty() {
           <p className="text-gray-600 max-w-xl mx-auto text-sm">
             {member 
               ? `Bienvenue dans votre espace personnel, ${member.name}. Retrouvez vos commandes, vos points et vos avantages.`
-              : 'Connectez-vous avec votre numéro WhatsApp et votre code PIN à 4 chiffres pour accéder à vos commandes et vos points fidélité.'}
+              : 'Connectez-vous avec votre numéro WhatsApp (et votre mot de passe si vous en avez créé un) pour accéder à vos commandes et vos points fidélité.'}
           </p>
         </motion.div>
 
@@ -390,25 +390,24 @@ export function Loyalty() {
 
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">
-                  {needsPinSetup ? 'Choisissez votre Code PIN (4 chiffres) *' : 'Code PIN (4 chiffres) *'}
+                  {authMode === 'register'
+                    ? 'Mot de passe (optionnel)'
+                    : 'Mot de passe / Code PIN (si déjà défini)'}
                 </label>
                 <div className="relative">
                   <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                   <input
                     type="password"
-                    inputMode="numeric"
-                    maxLength={4}
-                    required
                     placeholder="••••"
                     value={formPin}
-                    onChange={(e) => setFormPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                    className="w-full pl-10 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#D4AF37] font-bold tracking-[0.4em]"
+                    onChange={(e) => setFormPin(e.target.value)}
+                    className="w-full pl-10 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#D4AF37]"
                   />
                 </div>
                 <span className="text-[10px] text-gray-400 mt-1 block">
                   {authMode === 'register'
-                    ? 'Ce code PIN à 4 chiffres sécurise votre compte client et vos points.'
-                    : 'Saisissez votre code PIN à 4 chiffres.'}
+                    ? 'Facultatif : vous pourrez aussi créer un mot de passe plus tard dans votre espace.'
+                    : 'Laissez vide si vous n\'avez pas encore défini de mot de passe.'}
                 </span>
               </div>
 
@@ -626,28 +625,28 @@ export function Loyalty() {
                     />
                   </div>
                   <div className="pt-3 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1">Code PIN actuel (optionnel)</label>
+                    {member.has_pin && (
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">Mot de passe actuel</label>
+                        <input
+                          type="password"
+                          placeholder="••••"
+                          value={currentPin}
+                          onChange={(e) => setCurrentPin(e.target.value)}
+                          className="w-full px-3.5 py-2.5 text-xs border border-gray-200 rounded-xl"
+                        />
+                      </div>
+                    )}
+                    <div className={member.has_pin ? '' : 'sm:col-span-2'}>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">
+                        {member.has_pin ? 'Nouveau mot de passe (min. 4 caractères)' : 'Sécuriser mon espace avec un mot de passe (min. 4 caractères)'}
+                      </label>
                       <input
                         type="password"
-                        inputMode="numeric"
-                        maxLength={4}
-                        placeholder="••••"
-                        value={currentPin}
-                        onChange={(e) => setCurrentPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                        className="w-full px-3.5 py-2.5 text-xs border border-gray-200 rounded-xl tracking-widest"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1">Nouveau Code PIN (4 chiffres)</label>
-                      <input
-                        type="password"
-                        inputMode="numeric"
-                        maxLength={4}
                         placeholder="••••"
                         value={newPin}
-                        onChange={(e) => setNewPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                        className="w-full px-3.5 py-2.5 text-xs border border-gray-200 rounded-xl tracking-widest"
+                        onChange={(e) => setNewPin(e.target.value)}
+                        className="w-full px-3.5 py-2.5 text-xs border border-gray-200 rounded-xl"
                       />
                     </div>
                   </div>
@@ -664,6 +663,28 @@ export function Loyalty() {
 
             {activeTab === 'loyalty' && (
             <>
+            {!member.has_pin && (
+              <div className="bg-amber-50 border border-[#F8BE40] rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <ShieldCheck className="text-[#2B1204] shrink-0 mt-0.5" size={20} />
+                  <div>
+                    <p className="text-xs font-extrabold text-[#2B1204]">
+                      Protégez votre espace fidélité et vos points
+                    </p>
+                    <p className="text-[11px] text-[#2B1204]/75">
+                      Créez un mot de passe dans votre profil pour éviter qu'un autre appareil accède à vos points.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('profile')}
+                  className="px-4 py-2 rounded-full bg-[#2B1204] text-[#FDF8F2] text-xs font-bold shrink-0 cursor-pointer"
+                >
+                  Créer un mot de passe
+                </button>
+              </div>
+            )}
             {/* CARTE VIP & PROGRESSION */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
               {/* Carte Numérique VIP */}

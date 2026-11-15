@@ -33,6 +33,7 @@ import {
   getLoyaltySettings,
   updateOrderPaymentInfo,
   generateOrderPayToken,
+  getCustomerMe,
   Order,
   LoyaltyMember,
   LoyaltySettings
@@ -86,36 +87,45 @@ export function Payment() {
   const [enrolledSuccess, setEnrolledSuccess] = useState(false);
   const [enrollName, setEnrollName] = useState('');
   const [enrollPhone, setEnrollPhone] = useState('');
-  const [enrollPin, setEnrollPin] = useState('');
 
-  // Vérifier statut fidélité dès que la commande est payée
+  // Pré-remplir le nom et le numéro de transfert si le client est déjà reconnu dans le navigateur
   useEffect(() => {
-    if (order && (order.statut === 'EN_PREPARATION' || order.statut === 'PAYEE') && order.customerPhone) {
-      setEnrollName(order.customerName || '');
-      setEnrollPhone(order.customerPhone || '');
+    getCustomerMe()
+      .then((m) => {
+        if (!m) return;
+        setPayerName((prev) => prev || m.name || '');
+        setPayerPhone((prev) => prev || m.phone || '');
+      })
+      .catch(() => null);
+  }, []);
+
+  // Vérifier statut fidélité dès que la commande est payée (priorité au numéro de transfert)
+  useEffect(() => {
+    const targetPhone = order?.payerPhone || order?.customerPhone || '';
+    if (order && (order.statut === 'EN_PREPARATION' || order.statut === 'PAYEE' || order.statut === 'PRETE')) {
+      setEnrollName(order.payerName || order.customerName || '');
+      setEnrollPhone(targetPhone);
 
       getLoyaltySettings().then(setLoyaltySettings).catch(() => null);
-      getLoyaltyMember(order.customerPhone)
-        .then((m) => {
-          setLoyaltyMember(m);
-        })
-        .catch(() => setLoyaltyMember(null));
+      if (targetPhone) {
+        getLoyaltyMember(targetPhone)
+          .then((m) => {
+            setLoyaltyMember(m);
+          })
+          .catch(() => setLoyaltyMember(null));
+      }
     }
-  }, [order?.statut, order?.customerPhone]);
+  }, [order?.statut, order?.payerPhone, order?.customerPhone]);
 
   const handleEnrollLoyalty = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!enrollName.trim() || !enrollPhone.trim()) return;
-    if (!/^\d{4}$/.test(enrollPin.trim())) {
-      alert('Veuillez choisir un code PIN à 4 chiffres.');
-      return;
-    }
     setEnrolling(true);
     try {
       const res = await registerLoyaltyMember({
         name: enrollName.trim(),
         phone: enrollPhone.trim(),
-        pin: enrollPin.trim()
+        orderId: order?.id
       });
       setLoyaltyMember(res.member);
       setEnrolledSuccess(true);
@@ -492,7 +502,7 @@ export function Payment() {
                     </p>
 
                     <form onSubmit={handleEnrollLoyalty} className="space-y-3">
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <div>
                           <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Votre Nom</label>
                           <input
@@ -504,26 +514,13 @@ export function Payment() {
                           />
                         </div>
                         <div>
-                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Whatsapp</label>
+                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Numéro de transfert</label>
                           <input
                             type="tel"
                             required
                             value={enrollPhone}
                             onChange={(e) => setEnrollPhone(e.target.value)}
                             className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#5DBA68]"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Code PIN (4 chiffres)</label>
-                          <input
-                            type="password"
-                            inputMode="numeric"
-                            maxLength={4}
-                            required
-                            placeholder="••••"
-                            value={enrollPin}
-                            onChange={(e) => setEnrollPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                            className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#5DBA68] tracking-widest text-center font-bold"
                           />
                         </div>
                       </div>

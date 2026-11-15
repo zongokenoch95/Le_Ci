@@ -620,8 +620,9 @@ export interface CustomerOrderSummary {
 export async function registerLoyaltyMember(data: {
   phone: string;
   name: string;
-  pin: string;
+  pin?: string;
   defaultAddress?: string;
+  orderId?: string;
 }): Promise<{ success: boolean; member: LoyaltyMember; token?: string; message: string }> {
   const res = await fetch(`${API_BASE}/loyalty/register`, {
     method: 'POST',

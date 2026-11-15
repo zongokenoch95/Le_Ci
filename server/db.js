@@ -1365,16 +1365,19 @@ export async function getLoyaltyMember(rawPhone) {
 }
 
 
-export async function registerLoyaltyMember({ phone, name, pin, defaultAddress }) {
+export async function registerLoyaltyMember({ phone, name, pin, defaultAddress, orderId }) {
   if (!phone || !name) throw new Error('Nom et numéro de téléphone obligatoires');
   const cleanPhone = normalizeBurkinaPhone(phone);
   if (!cleanPhone) throw new Error('Numéro de téléphone invalide : doit comporter 8 chiffres (avec ou sans +226 ou 00226)');
 
   const cleanPin = pin !== undefined && pin !== null ? String(pin).trim() : '';
-  if (!/^\d{4}$/.test(cleanPin)) {
-    throw new Error('Veuillez choisir un code PIN à 4 chiffres pour sécuriser votre compte.');
+  let pinHash = null;
+  if (cleanPin !== '') {
+    if (cleanPin.length < 4) {
+      throw new Error('Le mot de passe / code PIN doit comporter au moins 4 caractères.');
+    }
+    pinHash = bcrypt.hashSync(cleanPin, bcrypt.genSaltSync(10));
   }
-  const pinHash = bcrypt.hashSync(cleanPin, bcrypt.genSaltSync(10));
 
   const settings = await getLoyaltySettings();
   let existing = await get('SELECT * FROM loyalty_members WHERE phone = ?', [cleanPhone]);
@@ -1385,9 +1388,15 @@ export async function registerLoyaltyMember({ phone, name, pin, defaultAddress }
       throw new Error('Un compte existe déjà avec ce numéro. Veuillez vous connecter.');
     }
     await run(
-      'UPDATE loyalty_members SET name = ?, pin_hash = ?, default_address = COALESCE(?, default_address), updated_at = ? WHERE phone = ?',
+      'UPDATE loyalty_members SET name = ?, pin_hash = COALESCE(?, pin_hash), default_address = COALESCE(?, default_address), updated_at = ? WHERE phone = ?',
       [name.trim(), pinHash, defaultAddress ? defaultAddress.trim() : null, now, cleanPhone]
     );
+    if (orderId) {
+      const ord = await get('SELECT * FROM orders WHERE id = ?', [orderId]);
+      if (ord && ['PAYEE', 'EN_PREPARATION', 'PRETE', 'LIVREE'].includes(ord.statut)) {
+        await creditOrderPoints({ ...ord, payerPhone: cleanPhone });
+      }
+    }
     return getLoyaltyMember(cleanPhone);
   }
 
@@ -1402,6 +1411,13 @@ export async function registerLoyaltyMember({ phone, name, pin, defaultAddress }
       INSERT INTO loyalty_history (phone, order_id, type, points, description, created_at)
       VALUES (?, NULL, 'BONUS', ?, 'Bonus de bienvenue Club Fidélisation', ?)
     `, [cleanPhone, welcomePts, now]);
+  }
+
+  if (orderId) {
+    const ord = await get('SELECT * FROM orders WHERE id = ?', [orderId]);
+    if (ord && ['PAYEE', 'EN_PREPARATION', 'PRETE', 'LIVREE'].includes(ord.statut)) {
+      await creditOrderPoints({ ...ord, payerPhone: cleanPhone });
+    }
   }
 
   return getLoyaltyMember(cleanPhone);
@@ -1420,23 +1436,10 @@ export async function loginLoyaltyMember({ phone, pin, name }) {
   const cleanPin = pin !== undefined && pin !== null ? String(pin).trim() : '';
   if (raw.pin_hash) {
     if (!cleanPin) {
-      throw new Error('Veuillez saisir votre code PIN à 4 chiffres.');
+      throw new Error('Ce compte est sécurisé : veuillez saisir votre mot de passe / code PIN.');
     }
     if (!bcrypt.compareSync(cleanPin, raw.pin_hash)) {
-      throw new Error('Code PIN incorrect.');
-    }
-  } else {
-    // Ancien membre fidélité sans PIN : activation transparente si un PIN valide est fourni
-    if (/^\d{4}$/.test(cleanPin)) {
-      const pinHash = bcrypt.hashSync(cleanPin, bcrypt.genSaltSync(10));
-      await run('UPDATE loyalty_members SET pin_hash = ?, updated_at = ? WHERE phone = ?', [
-        pinHash,
-        new Date().toISOString(),
-        cleanPhone
-      ]);
-    } else {
-      const safeMember = await getLoyaltyMember(cleanPhone);
-      return { needsPinSetup: true, member: safeMember };
+      throw new Error('Mot de passe / code PIN incorrect.');
     }
   }
 
@@ -1463,12 +1466,12 @@ export async function updateLoyaltyProfile(rawPhone, { name, defaultAddress, cur
 
   if (newPin !== undefined && String(newPin).trim() !== '') {
     const cleanNewPin = String(newPin).trim();
-    if (!/^\d{4}$/.test(cleanNewPin)) {
-      throw new Error('Le nouveau code PIN doit comporter exactement 4 chiffres.');
+    if (cleanNewPin.length < 4) {
+      throw new Error('Le mot de passe / code PIN doit comporter au moins 4 caractères.');
     }
     if (raw.pin_hash) {
       if (!currentPin || !bcrypt.compareSync(String(currentPin).trim(), raw.pin_hash)) {
-        throw new Error('Code PIN actuel incorrect.');
+        throw new Error('Mot de passe / code PIN actuel incorrect.');
       }
     }
     nextPinHash = bcrypt.hashSync(cleanNewPin, bcrypt.genSaltSync(10));
@@ -1522,71 +1525,58 @@ export async function getAllLoyaltyMembers() {
 }
 
 export async function creditOrderPoints(order) {
-  if (!order || !order.customerPhone) return null;
+  if (!order) return null;
+  const targetPhone = order.payerPhone || order.payer_phone || order.customerPhone || order.customer_phone;
+  if (!targetPhone) return null;
+
   const settings = await getLoyaltySettings();
   if (!settings.enabled) return null;
 
-  const cleanPhone = String(order.customerPhone).replace(/\D/g, '').slice(-8);
+  const cleanPhone = normalizeBurkinaPhone(targetPhone) || String(targetPhone).replace(/\D/g, '').slice(-8);
   if (!cleanPhone || cleanPhone.length < 8) return null;
+
+  // Éviter le double crédit pour une même commande
+  if (order.id) {
+    const alreadyCredited = await get(
+      "SELECT id FROM loyalty_history WHERE order_id = ? AND type = 'EARN' LIMIT 1",
+      [order.id]
+    );
+    if (alreadyCredited) {
+      return getLoyaltyMember(cleanPhone);
+    }
+  }
+
+  // Ne pas créer automatiquement de compte fidélité : le client doit s'inscrire volontairement
+  const member = await get('SELECT * FROM loyalty_members WHERE phone = ?', [cleanPhone]);
+  if (!member) return null;
 
   const now = new Date().toISOString();
   const amount = Number(order.montantTotal || order.montant_total) || 0;
   const pointsEarned = Math.floor(amount / (settings.fcfa_per_point || 100));
 
-  let member = await get('SELECT * FROM loyalty_members WHERE phone = ?', [cleanPhone]);
-  let isNew = false;
+  const newPoints = member.points + pointsEarned;
+  const newTotalSpent = member.total_spent + amount;
+  const newOrdersCount = member.orders_count + 1;
+  const newTier = calculateTier(newPoints, settings);
 
-  if (!member) {
-    isNew = true;
-    const initialPoints = (settings.welcome_bonus_points || 50) + pointsEarned;
-    const tier = calculateTier(initialPoints, settings);
-
-    await run(`
-      INSERT INTO loyalty_members (phone, name, points, tier, total_spent, orders_count, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, 1, ?, ?)
-    `, [
-      cleanPhone,
-      order.customerName || order.customer_name || 'Client Lê Ci',
-      initialPoints,
-      tier,
-      amount,
-      Math.max(0, Number(stock_quantity) || 0),
-      now,
-      now
-    ]);
-
-    // Historique bonus de bienvenue
-    if (settings.welcome_bonus_points > 0) {
-      await run(`
-        INSERT INTO loyalty_history (phone, order_id, type, points, description, created_at)
-        VALUES (?, ?, 'BONUS', ?, 'Bonus de bienvenue Club Privilège', ?)
-      `, [cleanPhone, order.id, settings.welcome_bonus_points, now]);
-    }
-  } else {
-    const newPoints = member.points + pointsEarned;
-    const newTotalSpent = member.total_spent + amount;
-    const newOrdersCount = member.orders_count + 1;
-    const newTier = calculateTier(newPoints, settings);
-
-    await run(`
-      UPDATE loyalty_members SET
-        name = COALESCE(?, name),
-        points = ?,
-        tier = ?,
-        total_spent = ?,
-        orders_count = ?,
-        updated_at = ?
-      WHERE phone = ?
-    `, [
-      order.customerName || order.customer_name,
-      newPoints,
-      newTier,
-      newTotalSpent,
-      newOrdersCount,
-      now,
-      cleanPhone
-    ]);
-  }
+  await run(`
+    UPDATE loyalty_members SET
+      name = COALESCE(?, name),
+      points = ?,
+      tier = ?,
+      total_spent = ?,
+      orders_count = ?,
+      updated_at = ?
+    WHERE phone = ?
+  `, [
+    order.customerName || order.customer_name,
+    newPoints,
+    newTier,
+    newTotalSpent,
+    newOrdersCount,
+    now,
+    cleanPhone
+  ]);
 
   // Historique gain commande
   if (pointsEarned > 0) {
