@@ -450,7 +450,12 @@ export function Loyalty() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setActiveTab('profile')}
+                  onClick={() => {
+                    setActiveTab('profile');
+                    setTimeout(() => {
+                      document.getElementById('profile-settings-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 80);
+                  }}
                   className="px-4 py-2 rounded-full bg-[#C20A0A] hover:bg-red-700 text-white text-xs font-bold shrink-0 cursor-pointer transition"
                 >
                   Créer un mot de passe
@@ -458,9 +463,9 @@ export function Loyalty() {
               </div>
             )}
             {/* CARTE VIP & PROGRESSION */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            <div className="flex justify-center">
               {/* Carte Numérique VIP */}
-              <div className="lg:col-span-6 flex flex-col items-center">
+              <div className="w-full flex flex-col items-center">
                 <div className="w-full max-w-md aspect-[1.6/1] rounded-3xl p-7 relative overflow-hidden shadow-2xl bg-gradient-to-br from-[#1F2937] via-[#111827] to-[#030712] text-white border border-[#D4AF37]/30 flex flex-col justify-between group">
                   <div className="absolute -right-20 -top-20 w-60 h-60 bg-[#D4AF37]/20 rounded-full blur-3xl pointer-events-none group-hover:scale-125 transition-transform duration-700" />
                   
@@ -502,51 +507,6 @@ export function Loyalty() {
                 </div>
               </div>
 
-              {/* Progression & Avantages du Palier */}
-              <div className="lg:col-span-6 space-y-4">
-                <div className="bg-white p-7 rounded-3xl shadow-sm border border-gray-100">
-                  <h3 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
-                    <TrendingUp className="text-[#D4AF37]" size={20} />
-                    <span>Statut : {tierInfo.title}</span>
-                  </h3>
-
-                  {tierInfo.discount > 0 && (
-                    <div className="mb-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold">
-                      <CheckCircle2 size={15} />
-                      <span>Vous bénéficiez de {tierInfo.discount}% de réduction automatique permanente sur vos commandes !</span>
-                    </div>
-                  )}
-
-                  {tierInfo.next && (
-                    <div className="space-y-2 mt-4">
-                      <div className="flex justify-between text-xs font-semibold text-gray-600">
-                        <span>Progression vers <strong>{tierInfo.next}</strong></span>
-                        <span className="text-[#D4AF37] font-bold">{tierInfo.progress}%</span>
-                      </div>
-                      <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
-                        <div
-                          className="bg-gradient-to-r from-amber-500 to-[#D4AF37] h-full rounded-full transition-all duration-700"
-                          style={{ width: `${tierInfo.progress}%` }}
-                        />
-                      </div>
-                      <p className="text-[11px] text-gray-500">
-                        Plus que <strong>{tierInfo.nextPoints} points</strong> pour atteindre le statut {tierInfo.next}.
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-gray-100">
-                    <div className="p-3 bg-[#FAF8F5] rounded-2xl border border-gray-100">
-                      <span className="text-[11px] text-gray-500 font-semibold block">Total Dépensé</span>
-                      <span className="text-base font-black text-gray-900">{member.total_spent.toLocaleString('fr-FR')} FCFA</span>
-                    </div>
-                    <div className="p-3 bg-[#FAF8F5] rounded-2xl border border-gray-100">
-                      <span className="text-[11px] text-gray-500 font-semibold block">Commandes Réglées</span>
-                      <span className="text-base font-black text-gray-900">{member.orders_count} commandes</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
 
             {/* Onglets de l'Espace Client Unifié */}
@@ -670,37 +630,7 @@ export function Loyalty() {
 
             {activeTab === 'profile' && (
               <div className="space-y-6">
-            {/* Barre de bienvenue & déconnexion */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-[#D4AF37]/15 text-[#D4AF37] flex items-center justify-center font-black text-base shadow-sm">
-                  {member.name.charAt(0)}
-                </div>
-                <div>
-                  <h2 className="text-lg font-black text-gray-900">Bonjour, {member.name} !</h2>
-                  <p className="text-xs text-gray-500 font-mono">📱 +226 {member.phone} • Membre depuis {new Date(member.created_at).toLocaleDateString('fr-FR')}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 w-full sm:w-auto">
-                <button
-                  onClick={() => navigate('/panier')}
-                  className="flex-1 sm:flex-none px-5 py-2.5 bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] border-2 border-[#F8BE40] font-bold text-xs rounded-full shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <ShoppingBag size={15} />
-                  <span>Mon Panier</span>
-                </button>
-                <button
-                  onClick={handleLogout}
-                  className="px-4 py-2.5 rounded-full border border-gray-200 text-gray-600 hover:text-red-600 hover:bg-red-50 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
-                >
-                  <LogOut size={14} />
-                  <span>Déconnexion</span>
-                </button>
-              </div>
-            </div>
-
-              <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-gray-100 max-w-xl">
+              <div id="profile-settings-card" className="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-gray-100 max-w-xl">
                 <h3 className="text-xl font-black text-gray-900 mb-4 flex items-center gap-2">
                   <Settings size={20} className="text-[#F8BE40]" />
                   <span>Paramètres de mon compte</span>
@@ -774,11 +704,80 @@ export function Loyalty() {
                   </button>
                 </form>
               </div>
+                {/* Barre nom, numéro & déconnexion */}
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
+                  <div>
+                    <h2 className="text-lg font-black text-gray-900">{member.name}</h2>
+                    <p className="text-xs text-gray-500 font-mono">📱 +226 {member.phone}</p>
+                  </div>
+
+                  <div className="flex items-center gap-3 w-full sm:w-auto">
+                    <button
+                      onClick={() => navigate('/panier')}
+                      className="flex-1 sm:flex-none px-5 py-2.5 bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] border-2 border-[#F8BE40] font-bold text-xs rounded-full shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <ShoppingBag size={15} />
+                      <span>Mon Panier</span>
+                    </button>
+                    <button
+                      onClick={handleLogout}
+                      className="px-4 py-2.5 rounded-full border border-gray-200 text-gray-600 hover:text-red-600 hover:bg-red-50 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <LogOut size={14} />
+                      <span>Déconnexion</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
 
             {activeTab === 'loyalty' && (
             <>
+              {/* Progression & Avantages du Palier */}
+            <div className="space-y-4">
+                <div className="bg-white p-7 rounded-3xl shadow-sm border border-gray-100">
+                  <h3 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
+                    <TrendingUp className="text-[#D4AF37]" size={20} />
+                    <span>Statut : {tierInfo.title}</span>
+                  </h3>
+
+                  {tierInfo.discount > 0 && (
+                    <div className="mb-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold">
+                      <CheckCircle2 size={15} />
+                      <span>Vous bénéficiez de {tierInfo.discount}% de réduction automatique permanente sur vos commandes !</span>
+                    </div>
+                  )}
+
+                  {tierInfo.next && (
+                    <div className="space-y-2 mt-4">
+                      <div className="flex justify-between text-xs font-semibold text-gray-600">
+                        <span>Progression vers <strong>{tierInfo.next}</strong></span>
+                        <span className="text-[#D4AF37] font-bold">{tierInfo.progress}%</span>
+                      </div>
+                      <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+                        <div
+                          className="bg-gradient-to-r from-amber-500 to-[#D4AF37] h-full rounded-full transition-all duration-700"
+                          style={{ width: `${tierInfo.progress}%` }}
+                        />
+                      </div>
+                      <p className="text-[11px] text-gray-500">
+                        Plus que <strong>{tierInfo.nextPoints} points</strong> pour atteindre le statut {tierInfo.next}.
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-gray-100">
+                    <div className="p-3 bg-[#FAF8F5] rounded-2xl border border-gray-100">
+                      <span className="text-[11px] text-gray-500 font-semibold block">Total Dépensé</span>
+                      <span className="text-base font-black text-gray-900">{member.total_spent.toLocaleString('fr-FR')} FCFA</span>
+                    </div>
+                    <div className="p-3 bg-[#FAF8F5] rounded-2xl border border-gray-100">
+                      <span className="text-[11px] text-gray-500 font-semibold block">Commandes Réglées</span>
+                      <span className="text-base font-black text-gray-900">{member.orders_count} commandes</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             {/* MES COUPONS PRÊTS À L'EMPLOI (fidelity.md §2) */}
             {myCoupons.filter(c => c.status === 'ACTIVE').length > 0 && (
               <div className="bg-white p-7 rounded-3xl shadow-sm border border-gray-100">
