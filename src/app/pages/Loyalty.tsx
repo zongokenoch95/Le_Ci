@@ -21,7 +21,8 @@ import {
   MapPin,
   Package,
   Settings,
-  RotateCcw
+  RotateCcw,
+  X
 } from 'lucide-react';
 import { 
   getLoyaltySettings, 
@@ -85,6 +86,7 @@ export function Loyalty() {
   // Onglets Espace Client
   const [activeTab, setActiveTab] = useState<'loyalty' | 'orders' | 'profile'>('loyalty');
   const [myOrders, setMyOrders] = useState<CustomerOrderSummary[]>([]);
+  const [selectedOrder, setSelectedOrder] = useState<CustomerOrderSummary | null>(null);
 
   // Édition profil
   const [profileName, setProfileName] = useState('');
@@ -697,12 +699,12 @@ export function Loyalty() {
                                 className="px-4 py-2 rounded-full bg-[#F8BE40] hover:bg-[#e5ac2e] text-xs font-extrabold text-[#2B1204] transition cursor-pointer inline-flex items-center gap-1.5 shadow-sm"
                               >
                                 <RotateCcw size={13} />
-                                <span>Relancer</span>
+                                <span>Commander</span>
                               </button>
                             )}
                             <button
                               type="button"
-                              onClick={() => navigate(`/paiement/${ord.id}`)}
+                              onClick={() => setSelectedOrder(ord)}
                               className="px-4 py-2 rounded-full bg-white border border-gray-200 hover:border-[#F8BE40] text-xs font-bold text-[#2B1204] transition cursor-pointer"
                             >
                               Voir détails
@@ -917,6 +919,166 @@ export function Loyalty() {
 
           </div>
         )}
+
+
+        {/* ========================================================================= */}
+        {/* FENÊTRE DÉTAILS DE COMMANDE */}
+        {/* ========================================================================= */}
+        <AnimatePresence>
+          {selectedOrder && (() => {
+            const itemsSubtotal = (selectedOrder.items || []).reduce((sum: number, item: any) => {
+              const price = Number(item.price ?? item.numericPrice ?? 0);
+              const qty = Math.max(1, Number(item.quantity || 1));
+              return sum + (Number.isFinite(price) ? price * qty : 0);
+            }, 0);
+            const hasCard = /Carte de v[œo]eux\s*\(\+200F\)/i.test(selectedOrder.notes || '');
+            const hasHalfDelivery = /Livraison -50%/i.test(selectedOrder.notes || '');
+            const expectedBeforeDiscount = itemsSubtotal + (hasCard ? 200 : 0);
+            const discountAmount = Math.max(0, expectedBeforeDiscount - Number(selectedOrder.totalAmount || 0));
+
+            return (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setSelectedOrder(null)}
+                className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
+              >
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 12 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 12 }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="bg-white rounded-3xl max-w-lg w-full max-h-[88vh] overflow-y-auto p-6 sm:p-7 shadow-2xl border-2 border-[#F8BE40] space-y-5"
+                >
+                  <div className="flex items-start justify-between gap-3 pb-3 border-b border-gray-100">
+                    <div>
+                      <span className="font-mono text-xs font-black text-[#581C87] bg-purple-100 px-2.5 py-0.5 rounded-full">
+                        {selectedOrder.codeReference || selectedOrder.id}
+                      </span>
+                      <p className="text-xs text-gray-500 mt-1.5">
+                        {new Date(selectedOrder.createdAt).toLocaleDateString('fr-FR', {
+                          day: '2-digit',
+                          month: 'long',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedOrder(null)}
+                      aria-label="Fermer"
+                      className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 transition cursor-pointer"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+
+                  {/* 1. Détails de la pâtisserie commandée */}
+                  <div className="space-y-2.5">
+                    <h4 className="text-[11px] font-black uppercase tracking-wider text-[#581C87]">
+                      1. Détails de la pâtisserie commandée
+                    </h4>
+                    {(selectedOrder.items || []).map((item: any, idx: number) => {
+                      const unitPrice = Number(item.price ?? item.numericPrice ?? 0);
+                      const qty = Math.max(1, Number(item.quantity || 1));
+                      return (
+                        <div key={idx} className="p-3 rounded-xl bg-[#FAF8F5] border border-gray-200 text-xs space-y-1">
+                          <div className="flex justify-between items-start gap-2">
+                            <span className="font-extrabold text-gray-900">{item.name || 'Article'}</span>
+                            <span className="font-black text-[#2B1204] shrink-0">
+                              {(unitPrice * qty).toLocaleString('fr-FR')} FCFA
+                            </span>
+                          </div>
+                          {item.flavor && (
+                            <div className="text-gray-600">
+                              <span className="font-semibold text-gray-700">Saveur :</span> {item.flavor}
+                            </div>
+                          )}
+                          {item.catalogModel && (
+                            <div className="text-gray-600">
+                              <span className="font-semibold text-gray-700">Modèle :</span> {item.catalogModel}
+                            </div>
+                          )}
+                          {item.description && (
+                            <div className="text-gray-600 text-[11px]">{item.description}</div>
+                          )}
+                          <div className="flex flex-wrap gap-4 pt-1 text-gray-800 font-bold">
+                            <span>Quantité : {qty}</span>
+                            {item.portion && (
+                              <span className="text-[#581C87]">Parts : {item.portion}</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* 2. Récapitulatif financier */}
+                  <div className="pt-3 border-t border-gray-200 space-y-1.5 text-xs sm:text-sm">
+                    <h4 className="text-[11px] font-black uppercase tracking-wider text-[#581C87] mb-2">
+                      2. Récapitulatif financier
+                    </h4>
+                    <div className="flex justify-between py-0.5">
+                      <span className="text-gray-600">Prix des pâtisseries :</span>
+                      <span className="font-bold text-gray-900">{itemsSubtotal.toLocaleString('fr-FR')} FCFA</span>
+                    </div>
+                    {hasCard && (
+                      <div className="flex justify-between py-0.5">
+                        <span className="text-gray-600">Carte de vœux :</span>
+                        <span className="font-bold text-[#581C87]">+200 FCFA</span>
+                      </div>
+                    )}
+                    {discountAmount > 0 && (
+                      <div className="flex justify-between py-0.5">
+                        <span className="text-emerald-700 font-semibold">Réduction fidélité :</span>
+                        <span className="font-extrabold text-emerald-700">
+                          -{discountAmount.toLocaleString('fr-FR')} FCFA
+                        </span>
+                      </div>
+                    )}
+                    {hasHalfDelivery && (
+                      <div className="flex justify-between py-0.5">
+                        <span className="text-amber-700 font-semibold">Avantage livraison :</span>
+                        <span className="font-extrabold text-amber-700">-50% sur la livraison</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between pt-2 border-t border-gray-200 font-black text-sm sm:text-base">
+                      <span className="text-gray-900">Montant total :</span>
+                      <span className="text-[#2B1204]">{Number(selectedOrder.totalAmount || 0).toLocaleString('fr-FR')} FCFA</span>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedOrder(null)}
+                      className="flex-1 py-2.5 px-4 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs transition cursor-pointer"
+                    >
+                      Fermer
+                    </button>
+                    {selectedOrder.items && selectedOrder.items.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const ord = selectedOrder;
+                          setSelectedOrder(null);
+                          handleReorder(ord);
+                        }}
+                        className="flex-1 py-2.5 px-4 rounded-full bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] border-2 border-[#F8BE40] font-extrabold text-xs shadow-md transition inline-flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <RotateCcw size={13} />
+                        <span>Commander</span>
+                      </button>
+                    )}
+                  </div>
+                </motion.div>
+              </motion.div>
+            );
+          })()}
+        </AnimatePresence>
 
       </div>
     </div>

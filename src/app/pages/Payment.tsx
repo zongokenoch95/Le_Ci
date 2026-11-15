@@ -441,9 +441,8 @@ export function Payment() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0 }}
-              className="bg-white rounded-3xl p-8 sm:p-10 shadow-2xl border-2 border-[#5DBA68] text-center relative overflow-hidden"
+              className="bg-white rounded-3xl p-8 sm:p-10 shadow-2xl border-2 border-[#F8BE40] text-center relative overflow-hidden"
             >
-              <div className="absolute top-0 left-0 w-full h-2 bg-[#5DBA68]" />
 
               <motion.div
                 initial={{ scale: 0 }}
@@ -495,7 +494,7 @@ export function Payment() {
                         }));
                         navigate('/fidelite');
                       }}
-                      className="w-full py-2.5 px-4 rounded-full bg-[#581C87] hover:bg-[#6B21A8] text-white font-extrabold text-xs shadow-md transition flex items-center justify-center gap-2"
+                      className="w-full py-2.5 px-4 rounded-full bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] border-2 border-[#F8BE40] font-extrabold text-xs shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <Gift size={16} />
                       <span>Accéder à mon Espace Fidélité</span>
@@ -503,7 +502,7 @@ export function Payment() {
                     </button>
                   </div>
                 ) : (
-                  <div className="bg-white p-6 rounded-3xl border-2 border-[#5DBA68] shadow-xl text-left relative overflow-hidden">
+                  <div className="bg-white p-6 rounded-3xl border-2 border-[#F8BE40] shadow-xl text-left relative overflow-hidden">
 
 
                     <h3 className="text-lg font-black text-gray-900 mb-1">
@@ -551,7 +550,7 @@ export function Payment() {
               </div>
 
               {/* Récapitulatif ticket (Reçu officiel en 3 sections) */}
-              <div className="bg-[#FAF8F5] rounded-2xl p-6 border border-[#5DBA68] text-left max-w-lg mx-auto mb-8 space-y-5">
+              <div className="bg-[#FAF8F5] rounded-2xl p-6 border-2 border-[#F8BE40] text-left max-w-lg mx-auto mb-8 space-y-5">
                 <div className="flex justify-between items-center text-xs pb-3 border-b border-gray-200">
                   <span className="font-mono font-bold text-gray-700">Commande {order.id}</span>
                   <span className="font-mono font-bold text-[#581C87] bg-purple-100 px-2.5 py-0.5 rounded-full">Réf : {order.codeReference}</span>
@@ -628,7 +627,7 @@ export function Payment() {
               <div className="flex justify-center">
                 <button
                   onClick={() => navigate('/catalogue')}
-                  className="inline-flex items-center gap-2 text-sm font-semibold text-[#2B1204]/80 hover:text-[#2B1204] transition cursor-pointer"
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] border-2 border-[#F8BE40] text-xs font-extrabold shadow-md transition cursor-pointer"
                 >
                   <ArrowLeft size={16} />
                   <span>Retourner à mes achats</span>
