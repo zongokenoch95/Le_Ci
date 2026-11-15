@@ -181,6 +181,7 @@ export function AdminDashboard() {
   const [orderSearch, setOrderSearch] = useState('');
   const [copiedRef, setCopiedRef] = useState<string | null>(null);
   const [statsPeriod, setStatsPeriod] = useState<'today' | '7d' | '30d' | 'all'>('30d');
+  const [loyaltySearch, setLoyaltySearch] = useState('');
 
   const toggleAdminTheme = () => {
     setAdminTheme((prev) => {
@@ -2963,6 +2964,129 @@ export function AdminDashboard() {
                   ✅ <strong>{couponValidationResult.message}</strong> — {couponValidationResult.coupon.reward_title}
                 </div>
               )}
+            </div>
+
+            {/* Liste des Clients Fidèles */}
+            <div className="p-5 sm:p-6 rounded-3xl bg-[#111827] border border-white/10 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-base font-black text-white flex items-center gap-2">
+                    <Users size={18} className="text-[#F8BE40]" />
+                    <span>Clients Fidèles ({loyaltyMembers.length})</span>
+                  </h3>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Classés par nombre de commandes et montant total dépensé.
+                  </p>
+                </div>
+
+                <div className="relative w-full sm:w-72">
+                  <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    value={loyaltySearch}
+                    onChange={(e) => setLoyaltySearch(e.target.value)}
+                    placeholder="Rechercher nom ou téléphone..."
+                    className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-[#0B1120] border border-white/10 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-[#F8BE40]"
+                  />
+                </div>
+              </div>
+
+              {(() => {
+                const q = loyaltySearch.trim().toLowerCase();
+                const sortedMembers = [...loyaltyMembers]
+                  .sort((a, b) => (b.orders_count - a.orders_count) || (b.total_spent - a.total_spent))
+                  .filter((m) => {
+                    if (!q) return true;
+                    return (
+                      (m.name || '').toLowerCase().includes(q) ||
+                      (m.phone || '').toLowerCase().includes(q)
+                    );
+                  });
+
+                if (sortedMembers.length === 0) {
+                  return (
+                    <div className="text-center py-10 text-xs text-gray-400">
+                      Aucun client fidèle trouvé.
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {sortedMembers.map((m) => {
+                      const ordersCount = Number(m.orders_count || 0);
+                      const cyclePos = ordersCount > 0 && ordersCount % 10 === 0 ? 10 : ordersCount % 10;
+                      const cycleNext = ordersCount % 10;
+                      const digits = (m.phone || '').replace(/\D/g, '');
+                      const waNum = digits.length === 8 ? `226${digits}` : digits;
+
+                      return (
+                        <div
+                          key={m.id || m.phone}
+                          className="p-4 rounded-2xl bg-[#0B1120] border border-white/10 flex flex-col justify-between gap-3"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-extrabold text-sm text-white truncate">{m.name}</span>
+                                {ordersCount >= 2 && (
+                                  <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-[#F8BE40] text-[10px] font-extrabold border border-amber-500/30">
+                                    Fidèle
+                                  </span>
+                                )}
+                                {cycleNext === 4 && (
+                                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 text-[10px] font-extrabold border border-emerald-500/30">
+                                    Prochaine : -10%
+                                  </span>
+                                )}
+                                {cycleNext === 9 && (
+                                  <span className="px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-400 text-[10px] font-extrabold border border-sky-500/30">
+                                    Prochaine : -50% liv.
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs font-mono text-gray-400 mt-0.5">+226 {m.phone}</p>
+                            </div>
+
+                            <span className="px-2.5 py-1 rounded-xl bg-white/5 border border-white/10 text-xs font-black text-[#F8BE40] shrink-0">
+                              {cyclePos} / 10
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-2 pt-2 border-t border-white/10 text-xs">
+                            <div className="space-x-3">
+                              <span className="text-gray-300">
+                                <strong className="text-white">{ordersCount}</strong> cmd
+                              </span>
+                              <span className="text-[#F8BE40] font-extrabold">
+                                {Number(m.total_spent || 0).toLocaleString('fr-FR')} FCFA
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-1.5">
+                              <a
+                                href={`tel:${digits}`}
+                                title="Appeler"
+                                className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-emerald-400 transition"
+                              >
+                                <Phone size={14} />
+                              </a>
+                              <a
+                                href={`https://wa.me/${waNum}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="px-2.5 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-400 text-[11px] font-extrabold transition"
+                              >
+                                WhatsApp
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}
