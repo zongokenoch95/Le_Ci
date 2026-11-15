@@ -288,17 +288,16 @@ export function Loyalty() {
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-10"
+          className="text-center mb-8"
         >
-
-          <h1 className="text-4xl sm:text-5xl font-black text-gray-900 tracking-tight mb-3">
+          <h1 className="text-xl sm:text-3xl font-black text-gray-900 tracking-tight mb-2 whitespace-nowrap truncate">
             {member ? `Bienvenue ${member.name}` : 'Espace Fidélité'}
           </h1>
-          <p className="text-gray-600 max-w-xl mx-auto text-sm">
-            {member
-              ? `Bienvenue dans votre espace personnel, ${member.name}. Retrouvez vos commandes, vos points et vos avantages.`
-              : 'Connectez-vous avec votre numéro WhatsApp (et votre mot de passe si vous en avez créé un) pour accéder à vos commandes et vos points fidélité.'}
-          </p>
+          {!member && (
+            <p className="text-gray-600 max-w-xl mx-auto text-sm">
+              Connectez-vous avec votre numéro WhatsApp (et votre mot de passe si vous en avez créé un) pour accéder à vos commandes et vos points fidélité.
+            </p>
+          )}
         </motion.div>
 
         {/* ========================================================================= */}
@@ -424,9 +423,33 @@ export function Loyalty() {
         {/* ESPACE PERSONNEL DU CLIENT CONNECTÉ */}
         {/* ========================================================================= */}
         {member && tierInfo && (
-          <div className="space-y-10">
+          <div className="space-y-8">
 
-            {/* CARTE VIP & PROGRESSION EN PREMIER */}
+            {/* Message urgent de protection par mot de passe */}
+            {!member.has_pin && (
+              <div className="bg-red-50 border-2 border-[#C20A0A] rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <ShieldCheck className="text-[#C20A0A] shrink-0 mt-0.5" size={20} />
+                  <div>
+                    <p className="text-xs font-extrabold text-[#C20A0A]">
+                      Protégez votre espace fidélité et vos points
+                    </p>
+                    <p className="text-[11px] text-[#C20A0A]/85">
+                      Créez un mot de passe dès maintenant pour éviter qu'un autre appareil accède à vos points.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('profile')}
+                  className="px-4 py-2 rounded-full bg-[#C20A0A] hover:bg-red-700 text-white text-xs font-bold shrink-0 cursor-pointer transition"
+                >
+                  Créer un mot de passe
+                </button>
+              </div>
+            )}
+
+            {/* CARTE VIP & PROGRESSION */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
               {/* Carte Numérique VIP */}
               <div className="lg:col-span-6 flex flex-col items-center">
@@ -700,29 +723,6 @@ export function Loyalty() {
 
             {activeTab === 'loyalty' && (
               <>
-                {!member.has_pin && (
-                  <div className="bg-amber-50 border border-[#F8BE40] rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-start gap-3">
-                      <ShieldCheck className="text-[#2B1204] shrink-0 mt-0.5" size={20} />
-                      <div>
-                        <p className="text-xs font-extrabold text-[#2B1204]">
-                          Protégez votre espace fidélité et vos points
-                        </p>
-                        <p className="text-[11px] text-[#2B1204]/75">
-                          Créez un mot de passe dans votre profil pour éviter qu'un autre appareil accède à vos points.
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('profile')}
-                      className="px-4 py-2 rounded-full bg-[#2B1204] text-[#FDF8F2] text-xs font-bold shrink-0 cursor-pointer"
-                    >
-                      Créer un mot de passe
-                    </button>
-                  </div>
-                )}
-
                 {/* MES COUPONS PRÊTS À L'EMPLOI (fidelity.md §2) */}
                 {myCoupons.filter(c => c.status === 'ACTIVE').length > 0 && (
                   <div className="bg-white p-7 rounded-3xl shadow-sm border border-gray-100">
