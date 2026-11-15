@@ -20,7 +20,8 @@ import {
   Lock,
   MapPin,
   Package,
-  Settings
+  Settings,
+  RotateCcw
 } from 'lucide-react';
 import { 
   getLoyaltySettings, 
@@ -98,7 +99,7 @@ export function Loyalty() {
   const [claimingRewardId, setClaimingRewardId] = useState<number | null>(null);
   const [claimSuccessMsg, setClaimSuccessMsg] = useState('');
 
-  const { openCart } = useCart();
+  const { addToCart, clearCart } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
   const initialNavMember = (location.state as { member?: LoyaltyMember } | null)?.member || null;
@@ -315,6 +316,36 @@ export function Loyalty() {
   const totalOrders = member?.orders_count || 0;
   const cardCount = totalOrders > 0 && totalOrders % 10 === 0 ? 10 : totalOrders % 10;
   const cycleProgress = totalOrders % 10;
+
+  const handleReorder = (ord: CustomerOrderSummary) => {
+    if (!ord.items || ord.items.length === 0) return;
+    clearCart();
+    ord.items.forEach((item: any, idx: number) => {
+      const unitPrice = Number(item.price ?? item.numericPrice ?? 0);
+      const qty = Math.max(1, Number(item.quantity || 1));
+      const itemId =
+        item.id && item.id !== 9999
+          ? item.id
+          : `reorder-${ord.id}-${idx}`;
+      addToCart(
+        {
+          id: itemId,
+          name: item.name || 'Article',
+          numericPrice: Number.isFinite(unitPrice) ? unitPrice : 0,
+          price: `${(Number.isFinite(unitPrice) ? unitPrice : 0).toLocaleString('fr-FR')} FCFA`,
+          image: item.image,
+          category: item.category,
+          description: item.description,
+          portion: item.portion,
+          flavor: item.flavor,
+          catalogModel: item.catalogModel,
+          isCake: item.isCake
+        },
+        qty
+      );
+    });
+    navigate('/panier');
+  };
 
   return (
     <div className="min-h-screen py-12 bg-[#FAF8F5]">
@@ -659,7 +690,18 @@ export function Loyalty() {
                             <span className="font-black text-sm text-[#2B1204]">
                               {ord.totalAmount.toLocaleString('fr-FR')} FCFA
                             </span>
+                            {ord.items && ord.items.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => handleReorder(ord)}
+                                className="px-4 py-2 rounded-full bg-[#F8BE40] hover:bg-[#e5ac2e] text-xs font-extrabold text-[#2B1204] transition cursor-pointer inline-flex items-center gap-1.5 shadow-sm"
+                              >
+                                <RotateCcw size={13} />
+                                <span>Relancer</span>
+                              </button>
+                            )}
                             <button
+                              type="button"
                               onClick={() => navigate(`/paiement/${ord.id}`)}
                               className="px-4 py-2 rounded-full bg-white border border-gray-200 hover:border-[#F8BE40] text-xs font-bold text-[#2B1204] transition cursor-pointer"
                             >
