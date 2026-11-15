@@ -103,7 +103,11 @@ export function Payment() {
   useEffect(() => {
     const targetPhone = order?.loyaltyPhone || order?.customerPhone || order?.payerPhone || '';
     if (order && (order.statut === 'EN_PREPARATION' || order.statut === 'PAYEE' || order.statut === 'PRETE')) {
-      setEnrollName(order.customerName || order.payerName || '');
+      const cleanCustomerName =
+        order.customerName && !order.customerName.startsWith('Client (')
+          ? order.customerName
+          : '';
+      setEnrollName(order.payerName || cleanCustomerName || '');
       setEnrollPhone(targetPhone);
 
       getLoyaltySettings().then(setLoyaltySettings).catch(() => null);

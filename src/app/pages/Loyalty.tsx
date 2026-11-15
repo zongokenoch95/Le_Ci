@@ -294,10 +294,6 @@ export function Loyalty() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-10"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#D4AF37]/15 border border-[#D4AF37]/30 text-[#D4AF37] text-xs font-extrabold uppercase tracking-widest mb-3">
-            <Crown size={15} />
-            <span>Programme de Fidélisation RestoBoost</span>
-          </div>
           <h1 className="text-xl sm:text-3xl font-black text-gray-900 tracking-tight mb-3 whitespace-nowrap truncate">
             {member ? `Bienvenue ${member.name}` : 'Mon Compte & Fidélité'}
           </h1>
@@ -748,6 +744,18 @@ export function Loyalty() {
                     </div>
                   )}
 
+                  {member.orders_count === 4 && (
+                    <div className="mb-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50 border border-[#F8BE40] text-[#2B1204] text-xs font-bold">
+                      <Gift size={15} className="text-[#C20A0A]" />
+                      <span>Votre prochaine commande (5ème commande) bénéficie de -10% automatiques !</span>
+                    </div>
+                  )}
+                  {member.orders_count < 4 && (
+                    <p className="text-xs text-gray-600 mb-3">
+                      Plus que <strong>{4 - member.orders_count}</strong> commande{4 - member.orders_count > 1 ? 's' : ''} pour débloquer <strong>-10%</strong> sur votre 5ème commande.
+                    </p>
+                  )}
+
                   {tierInfo.next && (
                     <div className="space-y-2 mt-4">
                       <div className="flex justify-between text-xs font-semibold text-gray-600">
@@ -789,7 +797,7 @@ export function Loyalty() {
                   {myCoupons.filter(c => c.status === 'ACTIVE').map(c => (
                     <div key={c.id} className="p-5 rounded-2xl bg-gradient-to-br from-[#111827] to-[#1F2937] text-white border border-[#D4AF37]/40 shadow-md flex flex-col justify-between">
                       <div>
-                        <span className="text-[10px] font-bold uppercase text-[#D4AF37]">Coupon RestoBoost</span>
+                        <span className="text-[10px] font-bold uppercase text-[#D4AF37]">Coupon Lê-Ci</span>
                         <h4 className="text-sm font-bold text-white mt-1">{c.reward_title}</h4>
                         <div className="mt-3 p-3 bg-white/10 rounded-xl text-center border border-white/15">
                           <span className="text-[10px] text-gray-300 block mb-0.5">Code à présenter en caisse :</span>

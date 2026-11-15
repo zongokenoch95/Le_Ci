@@ -317,7 +317,9 @@ export const Cart: React.FC = () => {
       : memberInfo?.tier === 'SILVER'
         ? memberInfo.settings?.silver_discount_percent || 5
         : 0;
-  const tierDiscountAmount = Math.round((totalAmount * tierDiscountPercent) / 100);
+  const isFifthOrder = Boolean(memberInfo && memberInfo.orders_count === 4);
+  const effectiveDiscountPercent = Math.max(tierDiscountPercent, isFifthOrder ? 10 : 0);
+  const tierDiscountAmount = Math.round((totalAmount * effectiveDiscountPercent) / 100);
   const effectiveGreetingCard = hasGreetingCard;
   const cardSupplement = effectiveGreetingCard ? 200 : 0;
 
@@ -1185,6 +1187,11 @@ export const Cart: React.FC = () => {
                         {memberInfo.points} pts)
                       </span>
                     </div>
+                    {isFifthOrder && tierDiscountAmount > 0 && (
+                      <div className="mb-2 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold">
+                        🎉 5ème commande : -10% appliqués (-{tierDiscountAmount.toLocaleString('fr-FR')} FCFA)
+                      </div>
+                    )}
                     {memberInfo.points >= (memberInfo.settings?.min_points_to_redeem || 50) && (
                       <label className="flex items-center gap-2 cursor-pointer text-xs text-gray-700">
                         <input
