@@ -57,7 +57,8 @@ import {
   Menu,
   Sun,
   Moon,
-  ExternalLink
+  ExternalLink,
+  Copy
 } from 'lucide-react';
 import { 
   getAdminOrders, 
@@ -175,6 +176,8 @@ export function AdminDashboard() {
     }
   });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [orderSearch, setOrderSearch] = useState('');
+  const [copiedRef, setCopiedRef] = useState<string | null>(null);
 
   const toggleAdminTheme = () => {
     setAdminTheme((prev) => {
@@ -1062,8 +1065,22 @@ export function AdminDashboard() {
   });
 
   const filteredOrders = visibleOrders.filter(o => {
-    if (filterStatus === 'ALL') return true;
-    return o.statut === filterStatus;
+    const matchesStatus = filterStatus === 'ALL' || o.statut === filterStatus;
+    if (!matchesStatus) return false;
+    const q = orderSearch.trim().toLowerCase();
+    if (!q) return true;
+    const haystack = [
+      o.codeReference,
+      o.id,
+      o.payerName,
+      o.customerName,
+      o.payerPhone,
+      o.customerPhone
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+    return haystack.includes(q);
   });
 
   const pendingOrdersCount = visibleOrders.filter(
@@ -1073,46 +1090,37 @@ export function AdminDashboard() {
   const renderSidebarContent = () => (
     <>
       <div className="overflow-y-auto flex-1">
-        {/* Logo & Info Session */}
-        <div className="p-5 sm:p-6 border-b border-white/10">
-          <div className="flex items-center justify-between gap-2 mb-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#D4AF37] to-[#F3E5AB] text-black flex items-center justify-center font-black shadow-lg shrink-0">
-                <UtensilsCrossed size={20} />
-              </div>
-              <div>
-                <h1 className="font-extrabold text-sm text-white tracking-wide">Les Douceurs de Lissi</h1>
-                <span className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">Back-Office Sécurisé</span>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={toggleAdminTheme}
-              title={adminTheme === 'dark' ? 'Passer en mode clair' : 'Passer en mode sombre'}
-              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-amber-400 transition cursor-pointer shrink-0"
-            >
-              {adminTheme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-            </button>
+        {/* Logo de la pâtisserie uniquement avec le nom */}
+        <div className="p-5 border-b border-white/10">
+          <div className="flex items-center gap-3 mb-4">
+            <img
+              src="/logo.png"
+              alt="Les Douceurs de Lê-Ci"
+              className="w-10 h-10 rounded-xl object-contain bg-white p-0.5 shadow-md shrink-0"
+            />
+            <h1 className="font-extrabold text-sm text-white tracking-wide leading-tight">
+              Les Douceurs de Lê-Ci
+            </h1>
           </div>
 
           {/* Badge Rôle Utilisateur */}
-          <div className="mt-3 p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold ${
-                isGerant ? 'bg-[#D4AF37]/20 text-[#D4AF37]' : 'bg-sky-500/20 text-sky-400'
+          <div className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 ${
+                isGerant ? 'bg-amber-500/20 text-[#F8BE40]' : 'bg-sky-500/20 text-sky-400'
               }`}>
                 {isGerant ? <Crown size={15} /> : <ChefHat size={15} />}
               </div>
-              <div className="truncate max-w-[130px]">
+              <div className="truncate">
                 <div className="text-xs font-bold text-white truncate">{currentUser?.name}</div>
-                <div className="text-[10px] text-gray-400 capitalize">{currentUser?.role === 'gerant' ? '👑 Gérant' : '👨‍🍳 Employé'}</div>
+                <div className="text-[10px] text-amber-400/90 capitalize">{currentUser?.role === 'gerant' ? '👑 Gérant' : '👨‍🍳 Employé'}</div>
               </div>
             </div>
             <button
               type="button"
               onClick={handleLogout}
               title="Se déconnecter"
-              className="p-2 text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition cursor-pointer"
+              className="p-2 text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition cursor-pointer shrink-0"
             >
               <LogOut size={16} />
             </button>
@@ -1125,8 +1133,9 @@ export function AdminDashboard() {
             type="button"
             onClick={() => selectTab('orders')}
             className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
-              activeTab === 'orders' ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30'
-                : 'text-gray-300 hover:bg-white/5 hover:text-white'
+              activeTab === 'orders'
+                ? 'bg-amber-500/15 text-[#F8BE40] border border-amber-500/35 shadow-sm'
+                : 'text-gray-300 hover:bg-white/5 hover:text-white border border-transparent'
             }`}
           >
             <div className="flex items-center gap-3">
@@ -1135,22 +1144,22 @@ export function AdminDashboard() {
             </div>
             {pendingOrdersCount > 0 && (
               <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${
-                activeTab === 'orders' ? 'bg-black text-white' : 'bg-[#D4AF37] text-black'
+                activeTab === 'orders' ? 'bg-[#F8BE40] text-[#111827]' : 'bg-white/10 text-white'
               }`}>
                 {pendingOrdersCount}
               </span>
             )}
           </button>
 
-          {/* Onglets réservés au Gérant */}
           {isGerant && (
             <>
               <button
                 type="button"
                 onClick={() => selectTab('menu')}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
-                  activeTab === 'menu' ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30'
-                    : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                  activeTab === 'menu'
+                    ? 'bg-amber-500/15 text-[#F8BE40] border border-amber-500/35 shadow-sm'
+                    : 'text-gray-300 hover:bg-white/5 hover:text-white border border-transparent'
                 }`}
               >
                 <UtensilsCrossed size={17} />
@@ -1161,8 +1170,9 @@ export function AdminDashboard() {
                 type="button"
                 onClick={() => selectTab('stats')}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
-                  activeTab === 'stats' ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30'
-                    : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                  activeTab === 'stats'
+                    ? 'bg-amber-500/15 text-[#F8BE40] border border-amber-500/35 shadow-sm'
+                    : 'text-gray-300 hover:bg-white/5 hover:text-white border border-transparent'
                 }`}
               >
                 <BarChart3 size={17} />
@@ -1175,23 +1185,24 @@ export function AdminDashboard() {
             type="button"
             onClick={() => selectTab('loyalty')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
-              activeTab === 'loyalty' ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30'
-                : 'text-gray-300 hover:bg-white/5 hover:text-white'
+              activeTab === 'loyalty'
+                ? 'bg-amber-500/15 text-[#F8BE40] border border-amber-500/35 shadow-sm'
+                : 'text-gray-300 hover:bg-white/5 hover:text-white border border-transparent'
             }`}
           >
             <Award size={17} />
             <span>Fidélité & Coupons</span>
           </button>
 
-          {/* Onglet Équipe - Réservé au Gérant */}
           {isGerant && (
             <>
               <button
                 type="button"
                 onClick={() => selectTab('team')}
                 className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
-                  activeTab === 'team' ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30'
-                    : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                  activeTab === 'team'
+                    ? 'bg-amber-500/15 text-[#F8BE40] border border-amber-500/35 shadow-sm'
+                    : 'text-gray-300 hover:bg-white/5 hover:text-white border border-transparent'
                 }`}
               >
                 <div className="flex items-center gap-3">
@@ -1208,11 +1219,11 @@ export function AdminDashboard() {
                 onClick={() => selectTab('banner')}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
                   activeTab === 'banner'
-                    ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30'
-                    : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                    ? 'bg-amber-500/15 text-[#F8BE40] border border-amber-500/35 shadow-sm'
+                    : 'text-gray-300 hover:bg-white/5 hover:text-white border border-transparent'
                 }`}
               >
-                <Sparkles size={17} className={activeTab === 'banner' ? 'text-purple-300' : ''} />
+                <Sparkles size={17} />
                 <span>Bandeau & Promo</span>
               </button>
 
@@ -1220,11 +1231,12 @@ export function AdminDashboard() {
                 type="button"
                 onClick={() => selectTab('simulator')}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
-                  activeTab === 'simulator' ? 'bg-[#581C87] text-white shadow-lg shadow-purple-900/30'
-                    : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                  activeTab === 'simulator'
+                    ? 'bg-amber-500/15 text-[#F8BE40] border border-amber-500/35 shadow-sm'
+                    : 'text-gray-300 hover:bg-white/5 hover:text-white border border-transparent'
                 }`}
               >
-                <Zap size={17} />
+                <Zap size={17} className="text-amber-400" />
                 <span>Simulateur OM</span>
               </button>
             </>
@@ -1233,7 +1245,16 @@ export function AdminDashboard() {
       </div>
 
       {/* Pied de sidebar */}
-      <div className="p-4 border-t border-white/10 space-y-3">
+      <div className="p-4 border-t border-white/10 space-y-2.5">
+        <button
+          type="button"
+          onClick={toggleAdminTheme}
+          className="w-full py-2.5 px-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-white transition flex items-center justify-center gap-2 cursor-pointer"
+        >
+          {adminTheme === 'dark' ? <Sun size={15} className="text-amber-400" /> : <Moon size={15} className="text-sky-600" />}
+          <span>{adminTheme === 'dark' ? 'Thème clair' : 'Thème sombre'}</span>
+        </button>
+
         <button
           type="button"
           onClick={() => {
@@ -1245,25 +1266,17 @@ export function AdminDashboard() {
           <ExternalLink size={15} />
           <span>Accéder à l'espace client</span>
         </button>
-
-        <div className="text-[11px] text-gray-500 flex flex-col gap-1 px-1">
-          <div className="flex items-center gap-1.5 text-emerald-500 font-semibold">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Connecté • RBAC Actif</span>
-          </div>
-          <span>Expiration automatique après 4h</span>
-        </div>
       </div>
     </>
   );
 
   return (
     <div
-      className="admin-shell min-h-screen bg-[#0F172A] text-white flex flex-col md:flex-row"
+      className="admin-shell min-h-screen bg-[#0B1120] text-white flex flex-col md:flex-row"
       data-admin-theme={adminTheme}
     >
       {/* HEADER MOBILE-FIRST AVEC MENU BURGER */}
-      <header className="md:hidden sticky top-0 z-30 admin-mobile-header bg-[#1E293B] border-b border-white/10 px-4 py-3 flex items-center justify-between gap-3">
+      <header className="md:hidden sticky top-0 z-30 admin-mobile-header bg-[#111827] border-b border-white/10 px-4 py-3 flex items-center justify-between gap-2">
         <button
           type="button"
           onClick={() => setMobileMenuOpen(true)}
@@ -1273,19 +1286,29 @@ export function AdminDashboard() {
           <Menu size={20} />
         </button>
 
-        <div className="text-center min-w-0 flex-1">
-          <p className="text-xs font-black text-white truncate">{tabTitles[activeTab]}</p>
-          <p className="text-[10px] text-gray-400 truncate">Les Douceurs de Lissi</p>
+        <div className="min-w-0 flex-1 px-1">
+          <p className="text-sm font-black text-white truncate">{tabTitles[activeTab]}</p>
+          <p className="text-[11px] font-bold text-[#F8BE40] truncate">Les Douceurs de Lê-Ci</p>
         </div>
 
-        <button
-          type="button"
-          onClick={toggleAdminTheme}
-          aria-label="Changer de thème"
-          className="w-11 h-11 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-amber-400 transition cursor-pointer shrink-0"
-        >
-          {adminTheme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={toggleAdminTheme}
+            aria-label="Changer de thème"
+            className="w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-amber-400 transition cursor-pointer"
+          >
+            {adminTheme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+          </button>
+          <button
+            type="button"
+            onClick={loadOrders}
+            aria-label="Actualiser"
+            className="w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-white transition cursor-pointer"
+          >
+            <RefreshCw size={17} className={loading ? 'animate-spin' : ''} />
+          </button>
+        </div>
       </header>
 
       {/* DRAWER BURGER MOBILE */}
@@ -1304,13 +1327,13 @@ export function AdminDashboard() {
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', damping: 28, stiffness: 280 }}
               onClick={(e) => e.stopPropagation()}
-              className="admin-mobile-drawer w-72 max-w-[85vw] h-full bg-[#1E293B] border-r border-white/10 flex flex-col justify-between relative"
+              className="admin-mobile-drawer w-72 max-w-[85vw] h-full bg-[#111827] border-r border-white/10 flex flex-col justify-between relative"
             >
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen(false)}
                 aria-label="Fermer le menu"
-                className="absolute top-3 right-3 z-10 p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 cursor-pointer"
+                className="absolute top-4 right-4 z-10 p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 cursor-pointer"
               >
                 <X size={16} />
               </button>
@@ -1321,7 +1344,7 @@ export function AdminDashboard() {
       </AnimatePresence>
 
       {/* SIDEBAR DESKTOP */}
-      <aside className="hidden md:flex md:w-72 md:sticky md:top-0 md:h-screen admin-sidebar bg-[#1E293B] border-r border-white/10 flex-col justify-between shrink-0">
+      <aside className="hidden md:flex md:w-64 lg:w-72 md:sticky md:top-0 md:h-screen admin-sidebar bg-[#111827] border-r border-white/10 flex-col justify-between shrink-0">
         {renderSidebarContent()}
       </aside>
 
@@ -1331,30 +1354,40 @@ export function AdminDashboard() {
         {/* ONGLET 1 : COMMANDES & KDS (ACCESSIBLE TOUS PROFILS)           */}
         {/* ============================================================ */}
         {activeTab === 'orders' && (
-          <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h2 className="text-2xl font-black text-white flex items-center gap-2">
-                  <span>Commande</span>
-                  {!isGerant && (
-                    <span className="text-xs px-3 py-1 rounded-full bg-sky-500/20 text-sky-400 font-semibold border border-sky-500/30">
-                      Vue Opérationnelle Employé
-                    </span>
-                  )}
-                </h2>
-                <p className="text-xs text-gray-400">
-                  {isGerant 
-                    ? 'Supervision globale de l\'activité, encaissements Orange Money et statut des commandes.'
+          <div className="space-y-5">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div className="hidden md:block">
+                <div className="flex items-center gap-2.5">
+                  <h2 className="text-2xl font-black text-white">Commande</h2>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[11px] font-bold">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    En direct
+                  </span>
+                </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  {isGerant
+                    ? "Supervision globale de l'activité, encaissements Orange Money et statut des commandes."
                     : 'Préparez les douceurs commandées et mettez à jour leur statut en temps réel.'}
                 </p>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5 w-full lg:w-auto">
+                <div className="relative flex-1 lg:w-72">
+                  <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    value={orderSearch}
+                    onChange={(e) => setOrderSearch(e.target.value)}
+                    placeholder="Réf (KHQL), client, tél..."
+                    className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-[#111827] border border-white/10 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-[#F8BE40]"
+                  />
+                </div>
                 <button
+                  type="button"
                   onClick={loadOrders}
-                  className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold transition flex items-center gap-2 cursor-pointer"
+                  className="hidden md:inline-flex px-4 py-2.5 rounded-2xl bg-[#111827] hover:bg-white/10 border border-white/10 text-xs font-bold transition items-center gap-2 cursor-pointer shrink-0"
                 >
-                  <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+                  <RefreshCw size={14} className={loading ? 'animate-spin text-[#F8BE40]' : 'text-[#F8BE40]'} />
                   <span>Actualiser</span>
                 </button>
               </div>
@@ -1446,256 +1479,289 @@ export function AdminDashboard() {
               </div>
             )}
 
-            {/* Filtres de statut */}
-            <div className="flex flex-wrap gap-2">
+            {/* Filtres de statut (scroll horizontal sur mobile) */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1">
               {[
-                { id: 'ALL', label: 'Toutes' },
-                { id: 'EN_ATTENTE_DE_PAIEMENT', label: 'En attente de validation' },
-                { id: 'EN_PREPARATION', label: 'En préparation' },
-                { id: 'PRETE', label: 'Prêtes' },
-                { id: 'LIVREE', label: 'Livrées' },
-                { id: 'ANNULEE', label: 'Annulées' }
-              ].map(f => (
-                <button
-                  key={f.id}
-                  onClick={() => setFilterStatus(f.id)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-                    filterStatus === f.id
-                      ? 'bg-[#D4AF37] text-black shadow-md'
-                      : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 border border-white/5'
-                  }`}
-                >
-                  {f.label}
-                </button>
-              ))}
+                { id: 'ALL', label: 'Toutes', count: visibleOrders.length },
+                { id: 'EN_ATTENTE_DE_PAIEMENT', label: 'En attente de validation', count: visibleOrders.filter(o => o.statut === 'EN_ATTENTE_DE_PAIEMENT').length },
+                { id: 'EN_PREPARATION', label: 'En préparation', count: visibleOrders.filter(o => o.statut === 'EN_PREPARATION').length },
+                { id: 'PRETE', label: 'Prêtes', count: visibleOrders.filter(o => o.statut === 'PRETE').length, green: true },
+                { id: 'LIVREE', label: 'Livrées', count: visibleOrders.filter(o => o.statut === 'LIVREE').length },
+                { id: 'ANNULEE', label: 'Annulées', count: visibleOrders.filter(o => o.statut === 'ANNULEE').length }
+              ].map(f => {
+                const isActive = filterStatus === f.id;
+                return (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => setFilterStatus(f.id)}
+                    className={`px-3.5 py-2 rounded-2xl text-xs font-bold transition cursor-pointer whitespace-nowrap inline-flex items-center gap-2 shrink-0 ${
+                      isActive
+                        ? 'bg-[#F8BE40] text-[#111827] shadow-md'
+                        : 'bg-[#111827] text-gray-300 hover:text-white hover:bg-white/10 border border-white/10'
+                    }`}
+                  >
+                    <span>{f.label}</span>
+                    {f.count > 0 && (
+                      <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+                        isActive
+                          ? 'bg-black/15 text-[#111827]'
+                          : f.green
+                            ? 'bg-emerald-500/20 text-emerald-400'
+                            : 'bg-white/10 text-gray-300'
+                      }`}>
+                        {f.count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
 
-            {/* Grille de cartes de commandes (Facture 3 sections + Payeur + Photo pâtisserie) */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Grille de cartes de commandes */}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
               {filteredOrders.map(order => {
                 const notesStr = order.notes || '';
                 const itemsSubtotal = (order.items || []).reduce((acc, it) => acc + (Number(it.price) || 0) * (Number(it.quantity) || 1), 0);
                 const hasCard = notesStr.includes('Carte de vœux');
-                const cardTextMatch = notesStr.match(/Carte de vœux\s*\(\+200F\):\s*«\s*([^»]+)\s*»/i);
                 const cardFee = hasCard ? 200 : 0;
-                const isDelivery = Boolean(order.deliveryFee || notesStr.includes('Livraison') || notesStr.includes('km'));
-                const calcDelivFee = order.deliveryFee !== undefined && order.deliveryFee > 0
-                  ? order.deliveryFee
-                  : (isDelivery ? Math.max(0, Number(order.montantTotal || 0) - itemsSubtotal - cardFee) : 0);
+                const expectedBeforeDiscount = itemsSubtotal + cardFee;
+                const discountAmount = Math.max(0, expectedBeforeDiscount - Number(order.montantTotal || 0));
+                const discountPercent = expectedBeforeDiscount > 0 && discountAmount > 0
+                  ? Math.round((discountAmount / expectedBeforeDiscount) * 100)
+                  : 0;
 
-                const backupPhoneMatch = notesStr.match(/Tél secours:\s*([^|\[]+)/i);
+                const isDelivery = Boolean(order.deliveryFee || notesStr.includes('Livraison') || notesStr.includes('km'));
                 const addrMatch = notesStr.match(/Adresse:\s*([^|\[]+(?:\|\s*Repère:[^|\[]+)?)/i);
                 const mapUrlMatch = notesStr.match(/(https?:\/\/[^\s|\]]+)/i);
                 const dateMatch = notesStr.match(/Date souhaitée:\s*([^|\[]+)/i);
+                const payerNameVal = order.payerName || (notesStr.match(/Payeur:\s*([^|(]+?)\s*\(/i)?.[1]?.trim()) || 'En attente';
+                const payerPhoneVal = order.payerPhone || (notesStr.match(/Payeur:[^)]*\(([^)]+)\)/i)?.[1]?.trim()) || '';
+                const receptionPhone = order.customerPhone || payerPhoneVal || '';
+                const waDigits = receptionPhone.replace(/\D/g, '');
+                const waPhone = waDigits.length === 8 ? `226${waDigits}` : waDigits;
 
-                const payerNameVal = order.payerName || (notesStr.match(/Payeur:\s*([^|(]+?)\s*\(/i)?.[1]?.trim()) || 'En attente de saisie';
-                const payerPhoneVal = order.payerPhone || (notesStr.match(/Payeur:[^)]*\(([^)]+)\)/i)?.[1]?.trim()) || 'En attente de saisie';
+                const statusBadgeStyle =
+                  order.statut === 'PRETE'
+                    ? 'bg-emerald-500 text-white'
+                    : order.statut === 'EN_PREPARATION'
+                    ? 'bg-amber-400 text-[#111827]'
+                    : order.statut === 'PAYEE'
+                    ? 'bg-blue-500 text-white'
+                    : order.statut === 'LIVREE'
+                    ? 'bg-slate-600 text-white'
+                    : order.statut === 'ANNULEE'
+                    ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                    : 'bg-amber-500/15 text-amber-300 border border-amber-500/30';
+
+                const statusText =
+                  order.statut === 'EN_ATTENTE_DE_PAIEMENT'
+                    ? 'EN ATTENTE'
+                    : order.statut === 'PRETE'
+                    ? 'PRÊTE'
+                    : order.statut === 'LIVREE'
+                    ? 'LIVRÉE'
+                    : order.statut === 'ANNULEE'
+                    ? 'ANNULÉE'
+                    : order.statut.replace(/_/g, ' ');
 
                 return (
                   <div
                     key={order.id}
-                    className={`p-5 sm:p-6 rounded-3xl border transition flex flex-col justify-between ${
-                      order.statut === 'EN_PREPARATION'
-                        ? 'bg-amber-500/5 border-amber-500/30 shadow-lg shadow-amber-500/5'
-                        : order.statut === 'PRETE'
-                        ? 'bg-emerald-500/5 border-emerald-500/30'
-                        : 'bg-[#1E293B] border-white/10'
-                    }`}
+                    className="p-4 sm:p-5 rounded-3xl bg-[#111827] border border-white/10 shadow-xl flex flex-col justify-between gap-4"
                   >
-                    <div className="space-y-4">
-                      {/* Header Carte */}
-                      <div className="flex justify-between items-start gap-2 pb-3 border-b border-white/10">
-                        <div>
+                    <div className="space-y-3.5">
+                      {/* Header Carte : Réf + Date + Statut */}
+                      <div className="flex justify-between items-start gap-2">
+                        <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-xs font-mono font-bold text-[#D4AF37]">{order.id}</span>
-                            {order.codeReference && (
-                              <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                                Réf : {order.codeReference}
-                              </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const refVal = order.codeReference || order.id;
+                                navigator.clipboard?.writeText(refVal);
+                                setCopiedRef(refVal);
+                                setTimeout(() => setCopiedRef(null), 1500);
+                              }}
+                              title="Copier la référence"
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-500/15 border border-amber-500/30 text-[#F8BE40] font-mono text-xs font-black cursor-pointer hover:bg-amber-500/25 transition"
+                            >
+                              <span>RÉF : {order.codeReference || order.id}</span>
+                              <Copy size={12} />
+                            </button>
+                            {copiedRef === (order.codeReference || order.id) && (
+                              <span className="text-[10px] text-emerald-400 font-bold">Copié !</span>
                             )}
-                            {order.statut === 'EN_ATTENTE_DE_PAIEMENT' && (() => {
-                              const createdMs = new Date(order.createdAt).getTime();
-                              const elapsedSec = Math.max(0, Math.floor((nowTick - createdMs) / 1000));
-                              const remSec = Math.max(0, 600 - elapsedSec);
-                              const mm = String(Math.floor(remSec / 60)).padStart(2, '0');
-                              const ss = String(remSec % 60).padStart(2, '0');
-                              return (
-                                <span className="inline-flex items-center gap-1 text-[11px] font-mono font-extrabold px-2.5 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-400/40">
-                                  <Clock size={12} className="animate-pulse" />
-                                  Temps restant : {mm}:{ss}
-                                </span>
-                              );
-                            })()}
+                            <span className="text-[11px] text-gray-400">
+                              {new Date(order.createdAt).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}
+                            </span>
                           </div>
-                          <div className="text-[11px] text-gray-400 mt-1">
-                            Créée le {new Date(order.createdAt).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}
+                          <div className="text-[10px] font-mono text-gray-500 mt-1 truncate">
+                            {order.id}
                           </div>
+                          {order.statut === 'EN_ATTENTE_DE_PAIEMENT' && (() => {
+                            const createdMs = new Date(order.createdAt).getTime();
+                            const elapsedSec = Math.max(0, Math.floor((nowTick - createdMs) / 1000));
+                            const remSec = Math.max(0, 600 - elapsedSec);
+                            const mm = String(Math.floor(remSec / 60)).padStart(2, '0');
+                            const ss = String(remSec % 60).padStart(2, '0');
+                            return (
+                              <span className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-mono font-extrabold px-2.5 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-400/40">
+                                <Clock size={12} className="animate-pulse" />
+                                Temps restant : {mm}:{ss}
+                              </span>
+                            );
+                          })()}
                         </div>
-                        <span className={`text-[11px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider shrink-0 ${
-                          order.statut === 'EN_PREPARATION'
-                            ? 'bg-amber-400 text-black animate-pulse'
-                            : order.statut === 'PRETE'
-                            ? 'bg-emerald-400 text-black'
-                            : order.statut === 'PAYEE'
-                            ? 'bg-blue-400 text-black'
-                            : order.statut === 'ANNULEE'
-                            ? 'bg-rose-500/20 text-rose-300'
-                            : 'bg-purple-500/20 text-purple-200 border border-purple-500/30'
-                        }`}>
-                          {order.statut === 'EN_ATTENTE_DE_PAIEMENT'
-                            ? 'EN ATTENTE DE VALIDATION'
-                            : order.statut.replace(/_/g, ' ')}
+                        <span className={`text-[11px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider shrink-0 ${statusBadgeStyle}`}>
+                          {statusText}
                         </span>
                       </div>
 
-                      {/* ENCADRÉ PAYEUR : Nom & Numéro de la personne qui paye la commande */}
-                      <div className="p-3.5 rounded-2xl bg-purple-950/40 border border-purple-500/30 flex flex-wrap items-center justify-between gap-2 text-xs">
-                        <div className="flex items-center gap-2 text-purple-200 font-bold">
-                          <CreditCard size={15} className="text-[#D4AF37] shrink-0" />
-                          <span>Personne qui paye :</span>
+                      {/* Bloc Livraison / Retrait */}
+                      <div className="p-3.5 rounded-2xl bg-[#0B1120] border border-white/10 space-y-2.5">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-[#F8BE40]">
+                            <Clock size={13} />
+                            <span>LIVRAISON / RETRAIT</span>
+                          </div>
+                          {dateMatch && (
+                            <span className="px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/25 text-[#F8BE40] text-[11px] font-bold">
+                              {dateMatch[1].trim()}
+                            </span>
+                          )}
                         </div>
-                        <div className="text-white font-extrabold">
-                          {payerNameVal} • <span className="font-mono text-[#D4AF37]">📞 {payerPhoneVal}</span>
+
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                          <div className="text-xs space-y-0.5 min-w-0">
+                            <div className="text-gray-300 truncate">
+                              <span className="text-gray-400">Lieu :</span>{' '}
+                              <span className="font-bold text-white">
+                                {addrMatch ? addrMatch[1].trim() : (isDelivery ? 'Livraison à domicile' : "Retrait à l'atelier")}
+                              </span>
+                            </div>
+                            <div className="text-gray-300">
+                              <span className="text-gray-400">Réception :</span>{' '}
+                              <strong className="font-mono text-white">{receptionPhone || 'Non renseigné'}</strong>
+                            </div>
+                            {mapUrlMatch && (
+                              <a
+                                href={mapUrlMatch[1]}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 text-[11px] text-[#F8BE40] hover:underline font-bold pt-0.5"
+                              >
+                                📍 Google Maps ↗
+                              </a>
+                            )}
+                          </div>
+
+                          {receptionPhone && (
+                            <div className="flex items-center gap-2 shrink-0">
+                              <a
+                                href={`tel:${receptionPhone.replace(/\s+/g, '')}`}
+                                title="Appeler"
+                                className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-emerald-400 transition"
+                              >
+                                <Phone size={15} />
+                              </a>
+                              <a
+                                href={`https://wa.me/${waPhone}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="px-3 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-400 text-xs font-extrabold transition"
+                              >
+                                WhatsApp
+                              </a>
+                            </div>
+                          )}
                         </div>
                       </div>
 
-                      {/* SECTION 1 : Désignation du produit, Photo de la pâtisserie, Saveur, Modèle catalogue, Quantité, Parts (si gâteau) */}
-                      <div className="space-y-2.5">
-                        <div className="text-[11px] font-black uppercase tracking-wider text-[#D4AF37]">
-                          1. Pâtisserie(s) commandée(s)
-                        </div>
-                        <div className="space-y-2.5">
-                          {order.items && order.items.map((item, idx) => {
-                            const desc = item.description || item.name || '';
-                            const isCake = Boolean(
-                              item.isCake ||
-                              item.category === 'Gâteaux' ||
-                              /gâteau|gateau|fraisier|layer|forêt noire|red velvet|number cake|pièce montée|entremet/i.test(item.name || '') ||
-                              /Format:|parts/i.test(desc)
-                            );
-                            const flavorMatch = desc.match(/Saveur:\s*([^|\]]+)/i);
-                            const modelMatch = desc.match(/Modèle(?:\s*catalogue)?:\s*([^|\]]+)/i);
-                            const portionMatch = desc.match(/Format:\s*([^|\]]+)/i) || (item.name || '').match(/\(([^)]*parts[^)]*)\)/i);
-                            const inscrMatch = desc.match(/Inscription:\s*([^|\]]+)/i);
-                            const eventMatch = desc.match(/Événement:\s*([^|\]]+)/i);
+                      {/* Liste des pâtisseries commandées */}
+                      <div className="space-y-2">
+                        {order.items && order.items.map((item, idx) => {
+                          const desc = item.description || item.name || '';
+                          const isCake = Boolean(
+                            item.isCake ||
+                            item.category === 'Gâteaux' ||
+                            /gâteau|gateau|fraisier|layer|forêt noire|red velvet|number cake|pièce montée|entremet/i.test(item.name || '') ||
+                            /Format:|parts/i.test(desc)
+                          );
+                          const flavorMatch = desc.match(/Saveur:\s*([^|\]]+)/i);
+                          const portionMatch = desc.match(/Format:\s*([^|\]]+)/i) || (item.name || '').match(/\(([^)]*parts[^)]*)\)/i);
+                          const cleanDesignation = (item.name || '').replace(/\s*\[.*\]$/, '');
+                          const flavor = item.flavor || (flavorMatch ? flavorMatch[1].trim() : (isCake ? 'Recette Signature Lê Ci' : 'Classique artisanale'));
+                          const portion = isCake ? (item.portion || (portionMatch ? portionMatch[1].trim() : '6 à 8 parts')) : null;
+                          const itemPhoto = item.image || '/products/gateau_1.jpeg';
 
-                            const cleanDesignation = (item.name || '').replace(/\s*\[.*\]$/, '');
-                            const flavor = item.flavor || (flavorMatch ? flavorMatch[1].trim() : (isCake ? 'Recette Signature Lê Ci' : 'Classique artisanale'));
-                            const catalogModel = item.catalogModel || (modelMatch ? modelMatch[1].replace(/^Modèle catalogue\s*:\s*/i, '').trim() : cleanDesignation);
-                            const portion = isCake ? (item.portion || (portionMatch ? portionMatch[1].trim() : '6 à 8 parts')) : null;
-                            const itemPhoto = item.image || '/products/gateau_1.jpeg';
-
-                            return (
-                              <div key={idx} className="p-3 rounded-2xl bg-[#0F172A]/80 border border-white/10 flex gap-3.5 items-start">
-                                {/* Photo de la pâtisserie */}
-                                <img
-                                  src={itemPhoto}
-                                  alt={cleanDesignation}
-                                  className="w-20 h-20 rounded-xl object-cover shrink-0 border border-white/15 bg-black/40 shadow-md"
-                                />
-                                <div className="flex-1 min-w-0 text-xs space-y-1">
-                                  <div className="flex justify-between items-start gap-2">
-                                    <span className="font-extrabold text-white text-sm leading-snug">{cleanDesignation}</span>
-                                    {isGerant && (
-                                      <span className="font-mono font-bold text-[#D4AF37] shrink-0">
-                                        {(item.price * item.quantity).toLocaleString('fr-FR')} F
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="text-gray-300">
-                                    <span className="text-gray-400 font-semibold">Saveur :</span> {flavor}
-                                  </div>
-                                  <div className="text-gray-300">
-                                    <span className="text-gray-400 font-semibold">Modèle catalogue :</span> {catalogModel}
-                                  </div>
-                                  <div className="flex flex-wrap items-center gap-3 pt-1">
-                                    <span className="px-2 py-0.5 rounded bg-white/10 text-white font-extrabold">
-                                      Quantité : {item.quantity}
+                          return (
+                            <div key={idx} className="p-3 rounded-2xl bg-[#0B1120] border border-white/10 flex gap-3 items-center">
+                              <img
+                                src={itemPhoto}
+                                alt={cleanDesignation}
+                                className="w-16 h-16 rounded-xl object-cover shrink-0 border border-white/10 bg-black/30"
+                              />
+                              <div className="flex-1 min-w-0 text-xs space-y-1">
+                                <div className="font-extrabold text-white text-sm leading-snug line-clamp-2">
+                                  {cleanDesignation}
+                                </div>
+                                <div className="text-gray-300 text-[11px]">
+                                  <span className="text-gray-400">Saveur :</span> {flavor}
+                                </div>
+                                <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                                  <span className="px-2 py-0.5 rounded-lg bg-white/10 text-white font-bold text-[11px]">
+                                    Qté : {item.quantity}
+                                  </span>
+                                  {isCake && portion && (
+                                    <span className="px-2 py-0.5 rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold text-[11px]">
+                                      {portion}
                                     </span>
-                                    {isCake && portion && (
-                                      <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-200 border border-purple-500/30 font-extrabold">
-                                        Parts : {portion}
-                                      </span>
-                                    )}
-                                  </div>
-                                  {(eventMatch || inscrMatch) && (
-                                    <div className="text-[11px] text-amber-300/90 pt-1">
-                                      {eventMatch ? `🎉 ${eventMatch[1].trim()} ` : ''}
-                                      {inscrMatch ? `• ✍️ ${inscrMatch[1].trim()}` : ''}
-                                    </div>
                                   )}
                                 </div>
                               </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* SECTION 2 : Détails financiers (Prix des pâtisseries, Carte de vœux, Montant total) */}
-                      <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1.5 text-xs">
-                        <div className="text-[11px] font-black uppercase tracking-wider text-[#D4AF37] mb-1">
-                          2. Détails de facturation
-                        </div>
-                        <div className="flex justify-between text-gray-300">
-                          <span>Prix des pâtisseries :</span>
-                          <span className="font-bold text-white">{itemsSubtotal.toLocaleString('fr-FR')} FCFA</span>
-                        </div>
-                        {hasCard && (
-                          <div className="flex justify-between text-gray-300">
-                            <span>Carte de vœux {cardTextMatch ? `(« ${cardTextMatch[1]} »)` : ''} :</span>
-                            <span className="font-bold text-purple-300">+200 FCFA</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between items-center pt-2 border-t border-white/10 font-black text-sm">
-                          <span className="text-white">Montant Total :</span>
-                          <span className="text-[#D4AF37] text-base">{Number(order.montantTotal).toLocaleString('fr-FR')} FCFA</span>
-                        </div>
-                      </div>
-
-                      {/* SECTION 3 : Coordonnées de la personne qui reçoit */}
-                      <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1 text-xs">
-                        <div className="text-[11px] font-black uppercase tracking-wider text-[#D4AF37] mb-1">
-                          3. Coordonnées de la personne qui reçoit
-                        </div>
-                        <div className="text-gray-200">
-                          <span className="text-gray-400 font-semibold">Téléphone de réception :</span>{' '}
-                          <strong className="font-mono text-white">{order.customerPhone || 'Non renseigné'}</strong>
-                        </div>
-                        {backupPhoneMatch && (
-                          <div className="text-gray-200">
-                            <span className="text-gray-400 font-semibold">Second numéro de secours :</span>{' '}
-                            <strong className="font-mono text-white">{backupPhoneMatch[1].trim()}</strong>
-                          </div>
-                        )}
-                        <div className="text-gray-200">
-                          <span className="text-gray-400 font-semibold">Lieu / Adresse :</span>{' '}
-                          <span>{addrMatch ? addrMatch[1].trim() : (isDelivery ? 'Livraison à domicile' : 'Retrait à l\'atelier')}</span>
-                          {mapUrlMatch && (
-                            <a
-                              href={mapUrlMatch[1]}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="ml-2 inline-flex items-center gap-1 text-[#D4AF37] hover:underline font-bold"
-                            >
-                              📍 Ouvrir dans Google Maps ↗
-                            </a>
-                          )}
-                        </div>
-                        {dateMatch && (
-                          <div className="text-gray-200">
-                            <span className="text-gray-400 font-semibold">Date & Heure :</span>{' '}
-                            <span className="text-amber-300 font-semibold">{dateMatch[1].trim()}</span>
-                          </div>
-                        )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
 
-                    {/* Actions Opérationnelles */}
-                    <div className="pt-4 mt-4 border-t border-white/10 flex gap-2">
+                    {/* Payeur + Total + Bouton d'action */}
+                    <div className="space-y-3 pt-1">
+                      <div className="flex items-center justify-between gap-2 text-xs flex-wrap">
+                        <div className="text-gray-300">
+                          <span className="text-gray-400">Payé par :</span>{' '}
+                          <strong className="text-white">{payerNameVal}</strong>
+                          {payerPhoneVal && (
+                            <span className="text-[#F8BE40] font-mono font-bold"> • {payerPhoneVal}</span>
+                          )}
+                        </div>
+                        {discountAmount > 0 && (
+                          <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-extrabold">
+                            -{discountPercent > 0 ? `${discountPercent}%` : `${discountAmount.toLocaleString('fr-FR')} F`} Fidélité
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="p-3.5 rounded-2xl bg-[#0B1120] border border-white/10 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-gray-300">Total réglé</span>
+                          {discountAmount > 0 && (
+                            <span className="text-[11px] text-gray-500 line-through">
+                              {expectedBeforeDiscount.toLocaleString('fr-FR')} FCFA
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-lg font-black text-[#F8BE40]">
+                          {Number(order.montantTotal).toLocaleString('fr-FR')} FCFA
+                        </span>
+                      </div>
+
                       {order.statut === 'EN_ATTENTE_DE_PAIEMENT' && isGerant && (
                         <button
+                          type="button"
                           onClick={() => handleValidateOrder(order.id)}
-                          className="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-black font-extrabold text-xs transition cursor-pointer"
+                          className="w-full py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-[#111827] font-extrabold text-xs transition cursor-pointer"
                         >
                           Valider Manuellement
                         </button>
@@ -1703,8 +1769,9 @@ export function AdminDashboard() {
 
                       {order.statut === 'EN_PREPARATION' && (
                         <button
+                          type="button"
                           onClick={() => handleFinishOrder(order.id)}
-                          className="flex-1 py-2.5 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-black font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-lg transition cursor-pointer"
+                          className="w-full py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-[#111827] font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-lg transition cursor-pointer"
                         >
                           <CheckCircle2 size={16} />
                           <span>Marquer Prête</span>
@@ -1713,13 +1780,15 @@ export function AdminDashboard() {
 
                       {order.statut === 'PRETE' && (
                         <button
+                          type="button"
                           onClick={async () => {
                             await finishOrder(order.id);
                             loadOrders();
                           }}
-                          className="flex-1 py-2.5 rounded-xl bg-blue-500/20 text-blue-300 border border-blue-500/30 text-xs font-bold hover:bg-blue-500/30 transition cursor-pointer"
+                          className="w-full py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-lg transition cursor-pointer"
                         >
-                          Commande Récupérée
+                          <Check size={16} />
+                          <span>Commande Récupérée</span>
                         </button>
                       )}
                     </div>

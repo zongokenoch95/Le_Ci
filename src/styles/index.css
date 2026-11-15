@@ -22,12 +22,14 @@
 
 .admin-shell[data-admin-theme='light'] .bg-\[\#0F172A\],
 .admin-shell[data-admin-theme='light'] .bg-\[\#0F172A\]\/60,
-.admin-shell[data-admin-theme='light'] .bg-\[\#0F172A\]\/80 {
+.admin-shell[data-admin-theme='light'] .bg-\[\#0F172A\]\/80,
+.admin-shell[data-admin-theme='light'] .bg-\[\#0B1120\] {
   background-color: #f1f5f9 !important;
 }
 
 .admin-shell[data-admin-theme='light'] .bg-\[\#1E293B\],
-.admin-shell[data-admin-theme='light'] .bg-\[\#1E293B\]\/80 {
+.admin-shell[data-admin-theme='light'] .bg-\[\#1E293B\]\/80,
+.admin-shell[data-admin-theme='light'] .bg-\[\#111827\] {
   background-color: #ffffff !important;
 }
 
@@ -56,8 +58,14 @@
 /* Preserve white text on solid colored buttons/badges in light mode */
 .admin-shell[data-admin-theme='light'] .bg-\[\#581C87\],
 .admin-shell[data-admin-theme='light'] .bg-\[\#581C87\] *,
+.admin-shell[data-admin-theme='light'] .bg-blue-600,
+.admin-shell[data-admin-theme='light'] .bg-blue-600 *,
+.admin-shell[data-admin-theme='light'] .bg-blue-500,
+.admin-shell[data-admin-theme='light'] .bg-blue-500 *,
+.admin-shell[data-admin-theme='light'] .bg-emerald-500,
 .admin-shell[data-admin-theme='light'] .bg-emerald-600,
 .admin-shell[data-admin-theme='light'] .bg-emerald-600 *,
+.admin-shell[data-admin-theme='light'] .bg-slate-600,
 .admin-shell[data-admin-theme='light'] .bg-rose-600,
 .admin-shell[data-admin-theme='light'] .bg-rose-600 *,
 .admin-shell[data-admin-theme='light'] .bg-sky-600,
