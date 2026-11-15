@@ -58,7 +58,8 @@ import {
   Sun,
   Moon,
   ExternalLink,
-  Copy
+  Copy,
+  Download
 } from 'lucide-react';
 import { 
   getAdminOrders, 
@@ -179,6 +180,7 @@ export function AdminDashboard() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [orderSearch, setOrderSearch] = useState('');
   const [copiedRef, setCopiedRef] = useState<string | null>(null);
+  const [statsPeriod, setStatsPeriod] = useState<'today' | '7d' | '30d' | 'all'>('30d');
 
   const toggleAdminTheme = () => {
     setAdminTheme((prev) => {
@@ -2551,81 +2553,376 @@ export function AdminDashboard() {
         {/* ============================================================ */}
         {/* ONGLET 4 : STATISTIQUES FINANCIÈRES (RÉSERVÉ GÉRANT)          */}
         {/* ============================================================ */}
-        {activeTab === 'stats' && isGerant && (
-          <div className="space-y-8">
-            <div>
-              <h2 className="text-2xl font-black text-white flex items-center gap-2">
-                <BarChart3 className="text-[#D4AF37]" size={26} />
-                <span>Statistiques Financières & Ventes</span>
-              </h2>
-              <p className="text-xs text-gray-400 mt-1">
-                Données financières confidentielles réservées au Gérant. Suivi du chiffre d'affaires et performances.
-              </p>
-            </div>
+        {activeTab === 'stats' && isGerant && (() => {
+          const nowDate = new Date();
+          const startOfToday = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate()).getTime();
+          const cutoffMs =
+            statsPeriod === 'today'
+              ? startOfToday
+              : statsPeriod === '7d'
+              ? nowDate.getTime() - 7 * 24 * 60 * 60 * 1000
+              : statsPeriod === '30d'
+              ? nowDate.getTime() - 30 * 24 * 60 * 60 * 1000
+              : 0;
 
-            {/* 4 Cartes KPIs */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="p-5 rounded-3xl bg-[#1E293B] border border-white/10">
-                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Chiffre d'Affaires</span>
-                <div className="text-2xl font-black text-[#D4AF37] mt-2">
-                  {(detailedStats?.kpis.totalRevenue || 0).toLocaleString('fr-FR')} FCFA
+          const periodOrders = orders.filter((o) => {
+            if (!cutoffMs) return true;
+            return new Date(o.createdAt).getTime() >= cutoffMs;
+          });
+
+          const paidStatuses = ['PAYEE', 'EN_PREPARATION', 'PRETE', 'LIVREE'];
+          const paidPeriodOrders = periodOrders.filter((o) => paidStatuses.includes(o.statut));
+          const cancelledPeriodOrders = periodOrders.filter((o) => o.statut === 'ANNULEE');
+
+          const totalRevenue = paidPeriodOrders.reduce((acc, o) => acc + Number(o.montantTotal || 0), 0);
+          const averageOrderValue = paidPeriodOrders.length > 0 ? Math.round(totalRevenue / paidPeriodOrders.length) : 0;
+          const totalFinishedOutcomes = paidPeriodOrders.length + cancelledPeriodOrders.length;
+          const conversionRate = totalFinishedOutcomes > 0
+            ? Math.round((paidPeriodOrders.length / totalFinishedOutcomes) * 100)
+            : 0;
+
+          // Clients récurrents (2+ commandes payées sur l'historique)
+          const customerOrderMap = new Map<string, number>();
+          orders
+            .filter((o) => paidStatuses.includes(o.statut))
+            .forEach((o) => {
+              const phone = (o.loyaltyPhone || o.payerPhone || o.customerPhone || '').replace(/\D/g, '').slice(-8);
+              if (phone.length >= 8) {
+                customerOrderMap.set(phone, (customerOrderMap.get(phone) || 0) + 1);
+              }
+            });
+          const repeatCustomersCount = Array.from(customerOrderMap.values()).filter((c) => c >= 2).length;
+
+          // Courbe des 7 derniers jours
+          const last7Days = Array.from({ length: 7 }, (_, idx) => {
+            const d = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate() - (6 - idx));
+            const dayKey = d.toISOString().slice(0, 10);
+            const dayOrders = orders.filter(
+              (o) => paidStatuses.includes(o.statut) && (o.createdAt || '').slice(0, 10) === dayKey
+            );
+            const dayRev = dayOrders.reduce((acc, o) => acc + Number(o.montantTotal || 0), 0);
+            return {
+              label: d.toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit' }),
+              revenue: dayRev,
+              count: dayOrders.length
+            };
+          });
+          const maxDayRevenue = Math.max(1, ...last7Days.map((d) => d.revenue));
+
+          // Livraison vs Retrait & Top Zones
+          let deliveryCount = 0;
+          let pickupCount = 0;
+          const zoneCounts = new Map<string, number>();
+
+          paidPeriodOrders.forEach((o) => {
+            const notesStr = o.notes || '';
+            const isDeliv = Boolean(o.deliveryFee || /Livraison|Adresse:/i.test(notesStr)) && !/Retrait boutique/i.test(notesStr);
+            if (isDeliv) {
+              deliveryCount += 1;
+              const addrMatch = notesStr.match(/Adresse:\s*([^|\[]+)/i);
+              if (addrMatch && addrMatch[1]) {
+                const rawZone = addrMatch[1].split(',')[0].trim();
+                if (rawZone) {
+                  zoneCounts.set(rawZone, (zoneCounts.get(rawZone) || 0) + 1);
+                }
+              }
+            } else {
+              pickupCount += 1;
+            }
+          });
+          const totalModeCount = Math.max(1, deliveryCount + pickupCount);
+          const deliveryPercent = Math.round((deliveryCount / totalModeCount) * 100);
+          const topZones = Array.from(zoneCounts.entries())
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 4);
+
+          // Impact Fidélité (remises -10% & livraisons -50%)
+          let loyaltyDiscountCount = 0;
+          let loyaltyDiscountTotal = 0;
+          let halfDeliveryCount = 0;
+
+          paidPeriodOrders.forEach((o) => {
+            const notesStr = o.notes || '';
+            const itemsSum = (o.items || []).reduce((acc, it) => acc + (Number(it.price) || 0) * (Number(it.quantity) || 1), 0);
+            const cardFee = notesStr.includes('Carte de vœux') ? 200 : 0;
+            const discount = Math.max(0, itemsSum + cardFee - Number(o.montantTotal || 0));
+            if (discount > 0) {
+              loyaltyDiscountCount += 1;
+              loyaltyDiscountTotal += discount;
+            }
+            if (/Livraison -50%/i.test(notesStr)) {
+              halfDeliveryCount += 1;
+            }
+          });
+
+          // Top produits sur la période sélectionnée
+          const productAgg = new Map<string, { name: string; quantitySold: number; totalRevenue: number }>();
+          paidPeriodOrders.forEach((o) => {
+            (o.items || []).forEach((it) => {
+              const name = (it.name || 'Article').replace(/\s*\[.*\]$/, '');
+              const qty = Math.max(1, Number(it.quantity || 1));
+              const rev = (Number(it.price) || 0) * qty;
+              const prev = productAgg.get(name) || { name, quantitySold: 0, totalRevenue: 0 };
+              productAgg.set(name, {
+                name,
+                quantitySold: prev.quantitySold + qty,
+                totalRevenue: prev.totalRevenue + rev
+              });
+            });
+          });
+          const topPeriodProducts = Array.from(productAgg.values())
+            .sort((a, b) => b.quantitySold - a.quantitySold)
+            .slice(0, 6);
+
+          const handleExportCsv = () => {
+            const headers = ['Date', 'Reference', 'ID', 'Payeur', 'Telephone', 'Mode', 'Montant_FCFA', 'Statut'];
+            const rows = paidPeriodOrders.map((o) => {
+              const notesStr = o.notes || '';
+              const mode = /Retrait boutique/i.test(notesStr) ? 'Retrait' : 'Livraison';
+              return [
+                new Date(o.createdAt).toLocaleString('fr-FR'),
+                o.codeReference || '',
+                o.id,
+                (o.payerName || o.customerName || '').replace(/;/g, ','),
+                o.payerPhone || o.customerPhone || '',
+                mode,
+                o.montantTotal,
+                o.statut
+              ].join(';');
+            });
+            const csvContent = '\uFEFF' + [headers.join(';'), ...rows].join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `ventes_les_douceurs_de_lissi_${statsPeriod}.csv`;
+            link.click();
+            URL.revokeObjectURL(url);
+          };
+
+          return (
+            <div className="space-y-6">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-2xl font-black text-white flex items-center gap-2">
+                    <BarChart3 className="text-[#F8BE40]" size={24} />
+                    <span>Statistiques & Ventes</span>
+                  </h2>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Pilotage financier, conversion paiement, zones de livraison et fidélisation.
+                  </p>
                 </div>
-                <div className="text-[11px] text-gray-400 mt-1">Total encaissé via Orange Money</div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {[
+                    { id: 'today', label: "Aujourd'hui" },
+                    { id: '7d', label: '7 jours' },
+                    { id: '30d', label: '30 jours' },
+                    { id: 'all', label: 'Tout' }
+                  ].map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => setStatsPeriod(p.id as typeof statsPeriod)}
+                      className={`px-3.5 py-2 rounded-2xl text-xs font-bold transition cursor-pointer ${
+                        statsPeriod === p.id
+                          ? 'bg-[#F8BE40] text-[#111827] shadow-md'
+                          : 'bg-[#111827] text-gray-300 hover:text-white border border-white/10'
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={handleExportCsv}
+                    className="px-3.5 py-2 rounded-2xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-400 text-xs font-extrabold inline-flex items-center gap-1.5 transition cursor-pointer"
+                  >
+                    <Download size={14} />
+                    <span>Exporter CSV</span>
+                  </button>
+                </div>
               </div>
 
-              <div className="p-5 rounded-3xl bg-[#1E293B] border border-white/10">
-                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Commandes Payées</span>
-                <div className="text-2xl font-black text-emerald-400 mt-2">
-                  {detailedStats?.kpis.paidOrdersCount || 0}
+              {/* 4 Cartes KPIs */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                <div className="p-5 rounded-3xl bg-[#111827] border border-white/10">
+                  <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Chiffre d'Affaires</span>
+                  <div className="text-2xl font-black text-[#F8BE40] mt-2">
+                    {totalRevenue.toLocaleString('fr-FR')} FCFA
+                  </div>
+                  <div className="text-[11px] text-gray-400 mt-1">
+                    {paidPeriodOrders.length} commande{paidPeriodOrders.length > 1 ? 's' : ''} encaissée{paidPeriodOrders.length > 1 ? 's' : ''}
+                  </div>
                 </div>
-                <div className="text-[11px] text-gray-400 mt-1">Validées sans commission</div>
+
+                <div className="p-5 rounded-3xl bg-[#111827] border border-white/10">
+                  <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Panier Moyen</span>
+                  <div className="text-2xl font-black text-white mt-2">
+                    {averageOrderValue.toLocaleString('fr-FR')} FCFA
+                  </div>
+                  <div className="text-[11px] text-gray-400 mt-1">Par commande réglée</div>
+                </div>
+
+                <div className="p-5 rounded-3xl bg-[#111827] border border-white/10">
+                  <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Taux de Paiement</span>
+                  <div className="text-2xl font-black text-emerald-400 mt-2">
+                    {conversionRate}%
+                  </div>
+                  <div className="text-[11px] text-gray-400 mt-1">
+                    {paidPeriodOrders.length} payées • {cancelledPeriodOrders.length} annulées/expirées
+                  </div>
+                </div>
+
+                <div className="p-5 rounded-3xl bg-[#111827] border border-white/10">
+                  <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Membres Fidélité</span>
+                  <div className="text-2xl font-black text-sky-400 mt-2">
+                    {detailedStats?.loyaltyStats.totalMembers || 0}
+                  </div>
+                  <div className="text-[11px] text-gray-400 mt-1">
+                    {repeatCustomersCount} client{repeatCustomersCount > 1 ? 's' : ''} récurrent{repeatCustomersCount > 1 ? 's' : ''} (2+ cmd)
+                  </div>
+                </div>
               </div>
 
-              <div className="p-5 rounded-3xl bg-[#1E293B] border border-white/10">
-                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Panier Moyen</span>
-                <div className="text-2xl font-black text-white mt-2">
-                  {(detailedStats?.kpis.averageOrderValue || 0).toLocaleString('fr-FR')} FCFA
+              {/* Courbe des ventes des 7 derniers jours */}
+              <div className="bg-[#111827] p-5 sm:p-6 rounded-3xl border border-white/10">
+                <div className="flex items-center justify-between gap-2 mb-5">
+                  <h3 className="font-extrabold text-white text-sm sm:text-base flex items-center gap-2">
+                    <TrendingUp className="text-[#F8BE40]" size={18} />
+                    <span>Ventes des 7 derniers jours</span>
+                  </h3>
+                  <span className="text-[11px] text-gray-400">Revenu journalier (FCFA)</span>
                 </div>
-                <div className="text-[11px] text-gray-400 mt-1">Par commande client</div>
-              </div>
 
-              <div className="p-5 rounded-3xl bg-[#1E293B] border border-white/10">
-                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Membres Fidélité</span>
-                <div className="text-2xl font-black text-sky-400 mt-2">
-                  {detailedStats?.loyaltyStats.totalMembers || 0}
-                </div>
-                <div className="text-[11px] text-gray-400 mt-1">{detailedStats?.loyaltyStats.totalPoints || 0} points distribués</div>
-              </div>
-            </div>
-
-            {/* Classement Meilleures Ventes */}
-            <div className="bg-[#1E293B] p-6 rounded-3xl border border-white/10">
-              <h3 className="font-extrabold text-white text-base mb-4 flex items-center gap-2">
-                <Flame className="text-[#D4AF37]" size={20} />
-                <span>Top des Pâtisseries les Plus Vendues</span>
-              </h3>
-
-              <div className="space-y-3">
-                {detailedStats?.topProducts && detailedStats.topProducts.map((p, i) => (
-                  <div key={i} className="p-3 rounded-2xl bg-white/5 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <span className="w-6 h-6 rounded-lg bg-[#D4AF37]/20 text-[#D4AF37] font-extrabold text-xs flex items-center justify-center">
-                        #{i + 1}
-                      </span>
-                      <span className="font-bold text-sm text-white">{p.name}</span>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-extrabold text-[#D4AF37] text-xs">
-                        {p.totalRevenue.toLocaleString('fr-FR')} FCFA
+                <div className="grid grid-cols-7 gap-2 sm:gap-4 items-end h-44 pt-4">
+                  {last7Days.map((day, idx) => {
+                    const heightPct = day.revenue > 0 ? Math.max(12, Math.round((day.revenue / maxDayRevenue) * 100)) : 4;
+                    return (
+                      <div key={idx} className="flex flex-col items-center justify-end h-full gap-1.5">
+                        <span className="text-[10px] font-bold text-[#F8BE40] text-center truncate w-full">
+                          {day.revenue > 0 ? `${Math.round(day.revenue / 1000)}k` : '0'}
+                        </span>
+                        <div className="w-full max-w-[38px] flex-1 flex items-end justify-center bg-white/5 rounded-xl overflow-hidden p-0.5">
+                          <div
+                            style={{ height: `${heightPct}%` }}
+                            title={`${day.label} : ${day.revenue.toLocaleString('fr-FR')} FCFA (${day.count} cmd)`}
+                            className={`w-full rounded-lg transition-all duration-500 ${
+                              day.revenue > 0 ? 'bg-gradient-to-t from-[#D4AF37] to-[#F8BE40]' : 'bg-white/10'
+                            }`}
+                          />
+                        </div>
+                        <span className="text-[10px] text-gray-400 capitalize text-center truncate w-full">
+                          {day.label}
+                        </span>
                       </div>
-                      <div className="text-[11px] text-gray-400">{p.quantitySold} vendus</div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Logistique Livraison vs Retrait & Impact Fidélité */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                <div className="bg-[#111827] p-5 sm:p-6 rounded-3xl border border-white/10 space-y-4">
+                  <h3 className="font-extrabold text-white text-sm sm:text-base flex items-center gap-2">
+                    <Truck className="text-[#F8BE40]" size={18} />
+                    <span>Livraison vs Retrait & Zones</span>
+                  </h3>
+
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-xs font-bold">
+                      <span className="text-emerald-400">Livraison : {deliveryCount} ({deliveryPercent}%)</span>
+                      <span className="text-sky-400">Retrait : {pickupCount} ({100 - deliveryPercent}%)</span>
+                    </div>
+                    <div className="w-full h-3 rounded-full bg-sky-500/30 overflow-hidden flex">
+                      <div
+                        style={{ width: `${deliveryPercent}%` }}
+                        className="h-full bg-emerald-500 transition-all duration-500"
+                      />
                     </div>
                   </div>
-                ))}
+
+                  <div className="pt-2 border-t border-white/10">
+                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">
+                      Quartiers / Zones les plus actifs
+                    </p>
+                    {topZones.length === 0 ? (
+                      <p className="text-xs text-gray-400">Aucune livraison enregistrée sur cette période.</p>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2">
+                        {topZones.map(([zone, count]) => (
+                          <div key={zone} className="p-2.5 rounded-xl bg-white/5 flex items-center justify-between text-xs">
+                            <span className="font-semibold text-white truncate pr-2">{zone}</span>
+                            <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-[#F8BE40] font-extrabold text-[10px]">
+                              {count}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-[#111827] p-5 sm:p-6 rounded-3xl border border-white/10 space-y-4">
+                  <h3 className="font-extrabold text-white text-sm sm:text-base flex items-center gap-2">
+                    <Award className="text-[#F8BE40]" size={18} />
+                    <span>Impact Programme de Fidélité</span>
+                  </h3>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase block">Remises -10% (5e cmd)</span>
+                      <span className="text-lg font-black text-emerald-400 mt-1 block">{loyaltyDiscountCount}</span>
+                      <span className="text-[11px] text-gray-400">-{loyaltyDiscountTotal.toLocaleString('fr-FR')} FCFA</span>
+                    </div>
+                    <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase block">Livraisons -50% (10e)</span>
+                      <span className="text-lg font-black text-[#F8BE40] mt-1 block">{halfDeliveryCount}</span>
+                      <span className="text-[11px] text-gray-400">Sur la période</span>
+                    </div>
+                    <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase block">Clients récurrents</span>
+                      <span className="text-lg font-black text-sky-400 mt-1 block">{repeatCustomersCount}</span>
+                      <span className="text-[11px] text-gray-400">2+ commandes réglées</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Classement Meilleures Ventes */}
+              <div className="bg-[#111827] p-5 sm:p-6 rounded-3xl border border-white/10">
+                <h3 className="font-extrabold text-white text-sm sm:text-base mb-4 flex items-center gap-2">
+                  <Flame className="text-[#F8BE40]" size={18} />
+                  <span>Top des Pâtisseries les Plus Vendues</span>
+                </h3>
+
+                {topPeriodProducts.length === 0 ? (
+                  <p className="text-xs text-gray-400">Aucune vente enregistrée sur cette période.</p>
+                ) : (
+                  <div className="space-y-2.5">
+                    {topPeriodProducts.map((p, i) => (
+                      <div key={p.name} className="p-3 rounded-2xl bg-white/5 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="w-6 h-6 rounded-lg bg-amber-500/20 text-[#F8BE40] font-extrabold text-xs flex items-center justify-center shrink-0">
+                            #{i + 1}
+                          </span>
+                          <span className="font-bold text-xs sm:text-sm text-white truncate">{p.name}</span>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div className="font-extrabold text-[#F8BE40] text-xs">
+                            {p.totalRevenue.toLocaleString('fr-FR')} FCFA
+                          </div>
+                          <div className="text-[11px] text-gray-400">{p.quantitySold} vendus</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ============================================================ */}
         {/* ONGLET 5 : FIDÉLITÉ & COUPONS                                */}
