@@ -42,7 +42,28 @@ import {
 } from '../services/api';
 import { validateBurkinaPhone } from '../utils/phoneValidation';
 import { useCart } from '../context/CartContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+
+function CupcakeIcon({ className = 'w-5 h-5' }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M12 3c.7 0 1.25.55 1.25 1.25S12.7 5.5 12 5.5s-1.25-.55-1.25-1.25S11.3 3 12 3z" />
+      <path d="M6.5 13.5c-1.4 0-2.5-1.05-2.5-2.4 0-1.15.8-2.1 1.9-2.35A3.5 3.5 0 0 1 9.25 6c1.05 0 2 .45 2.75 1.18A3.75 3.75 0 0 1 14.75 6a3.5 3.5 0 0 1 3.35 2.75c1.1.25 1.9 1.2 1.9 2.35 0 1.35-1.1 2.4-2.5 2.4H6.5z" />
+      <path d="M6.2 13.5 7.6 20a1.2 1.2 0 0 0 1.18.95h6.44a1.2 1.2 0 0 0 1.18-.95l1.4-6.5" />
+      <path d="M9.5 13.5 10.1 20.9" />
+      <path d="M14.5 13.5 13.9 20.9" />
+    </svg>
+  );
+}
 
 export function Loyalty() {
   const [settings, setSettings] = useState<LoyaltySettings | null>(null);
@@ -79,6 +100,9 @@ export function Loyalty() {
 
   const { openCart } = useCart();
   const navigate = useNavigate();
+  const location = useLocation();
+  const initialNavMember = (location.state as { member?: LoyaltyMember } | null)?.member || null;
+  const [checkingSession, setCheckingSession] = useState(!initialNavMember);
 
   const loadAuthenticatedMember = (m: LoyaltyMember) => {
     setMember(m);
@@ -93,11 +117,16 @@ export function Loyalty() {
     getLoyaltySettings().then(setSettings).catch(() => null);
     getLoyaltyRewards().then(setRewards).catch(() => []);
 
+    if (initialNavMember) {
+      loadAuthenticatedMember(initialNavMember);
+      setCheckingSession(false);
+    }
+
     getCustomerMe()
       .then((m) => {
         if (m) {
           loadAuthenticatedMember(m);
-        } else {
+        } else if (!initialNavMember) {
           try {
             const savedSession = localStorage.getItem('le_ci_customer_loyalty');
             if (savedSession) {
@@ -108,7 +137,8 @@ export function Loyalty() {
           } catch {}
         }
       })
-      .catch(() => null);
+      .catch(() => null)
+      .finally(() => setCheckingSession(false));
   }, []);
 
   const fetchCoupons = (phone: string) => {
@@ -282,7 +312,9 @@ export function Loyalty() {
   };
 
   const tierInfo = member ? getTierDetails(member.tier) : null;
-  const discountFcfa = member && settings ? member.points * settings.point_value_fcfa : 0;
+  const totalOrders = member?.orders_count || 0;
+  const cardCount = totalOrders > 0 && totalOrders % 10 === 0 ? 10 : totalOrders % 10;
+  const cycleProgress = totalOrders % 10;
 
   return (
     <div className="min-h-screen py-12 bg-[#FAF8F5]">
@@ -299,15 +331,15 @@ export function Loyalty() {
           </h1>
           <p className="text-gray-600 max-w-xl mx-auto text-sm">
             {member 
-              ? `Bienvenue dans votre espace personnel, ${member.name}. Retrouvez vos commandes, vos points et vos avantages.`
-              : 'Connectez-vous avec votre numéro WhatsApp (et votre mot de passe si vous en avez créé un) pour accéder à vos commandes et vos points fidélité.'}
+              ? `Bienvenue dans votre espace personnel, ${member.name}. Retrouvez vos commandes et vos avantages fidélité.`
+              : 'Connectez-vous avec votre numéro WhatsApp (et votre mot de passe si vous en avez créé un) pour accéder à vos commandes et vos avantages fidélité.'}
           </p>
         </motion.div>
 
         {/* ========================================================================= */}
         {/* PORTAIL 2 : FORMULAIRE DE CONNEXION / INSCRIPTION SI NON CONNECTÉ */}
         {/* ========================================================================= */}
-        {!member && (
+        {!member && !checkingSession && (
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -331,7 +363,7 @@ export function Loyalty() {
                   authMode === 'register' ? 'bg-[#D4AF37] text-white shadow-sm' : 'text-gray-500 hover:text-gray-900'
                 }`}
               >
-                S'inscrire (+{settings?.welcome_bonus_points || 50} pts)
+                S'inscrire
               </button>
             </div>
 
@@ -416,7 +448,7 @@ export function Loyalty() {
                   <span>Vérification...</span>
                 ) : (
                   <>
-                    <span>{authMode === 'login' ? 'Accéder à mon Espace' : `Rejoindre & Récupérer ${settings?.welcome_bonus_points || 50} pts`}</span>
+                    <span>{authMode === 'login' ? 'Accéder à mon Espace' : 'Rejoindre le programme'}</span>
                     <ArrowRight size={15} />
                   </>
                 )}
@@ -440,7 +472,7 @@ export function Loyalty() {
                       Protégez votre espace fidélité et vos points
                     </p>
                     <p className="text-[11px] text-[#C20A0A]/85">
-                      Créez un mot de passe dans votre profil pour éviter qu'un autre appareil accède à vos points.
+                      Créez un mot de passe dans votre profil pour éviter qu'un autre appareil accède à votre espace fidélité.
                     </p>
                   </div>
                 </div>
@@ -458,40 +490,59 @@ export function Loyalty() {
                 </button>
               </div>
             )}
-            {/* CARTE VIP & PROGRESSION */}
+            {/* CARTE FIDÉLITÉ (10 CUPCAKES) */}
             <div className="flex justify-center">
-              {/* Carte Numérique VIP */}
               <div className="w-full flex flex-col items-center">
-                <div className="w-full max-w-md aspect-[1.6/1] rounded-3xl p-7 relative overflow-hidden shadow-2xl bg-gradient-to-br from-[#1F2937] via-[#111827] to-[#030712] text-white border border-[#D4AF37]/30 flex flex-col justify-between group">
+                <div className="w-full max-w-md rounded-3xl p-6 sm:p-7 relative overflow-hidden shadow-2xl bg-gradient-to-br from-[#1F2937] via-[#111827] to-[#030712] text-white border border-[#D4AF37]/30 flex flex-col justify-between group">
                   <div className="absolute -right-20 -top-20 w-60 h-60 bg-[#D4AF37]/20 rounded-full blur-3xl pointer-events-none group-hover:scale-125 transition-transform duration-700" />
                   
-                  <div className="flex justify-between items-start relative z-10">
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block">Les Douceurs de Lê Ci</span>
-                      <h3 className="text-xl font-black text-[#D4AF37] tracking-wider mt-0.5">CARTE FIDÉLITÉ</h3>
-                    </div>
-                    <span className={`px-3 py-1 rounded-full text-[10px] font-extrabold uppercase shadow-sm ${tierInfo.badge}`}>
-                      {member.tier}
+                  <div className="flex justify-between items-center relative z-10">
+                    <h3 className="text-base sm:text-lg font-black text-white tracking-tight">
+                      Les Douceurs de Lissi
+                    </h3>
+                    <span className="text-base sm:text-lg font-black text-[#F8BE40] tracking-wide">
+                      {cardCount} / 10
                     </span>
                   </div>
 
-                  <div className="relative z-10 my-auto flex items-center justify-between">
-                    <div>
-                      <p className="text-[10px] text-gray-400 uppercase font-semibold">Solde de Points</p>
-                      <p className="text-4xl font-black text-white tracking-tight flex items-baseline gap-1.5">
-                        <span>{member.points.toLocaleString('fr-FR')}</span>
-                        <span className="text-sm font-bold text-[#D4AF37]">Pts</span>
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[10px] text-gray-400 uppercase font-semibold">Remise Équivalente</p>
-                      <p className="text-xl font-extrabold text-emerald-400">
-                        {discountFcfa.toLocaleString('fr-FR')} FCFA
-                      </p>
-                    </div>
+                  {/* 2 lignes de 5 cercles contenant chacun un cupcake */}
+                  <div className="relative z-10 my-6 grid grid-cols-5 gap-2.5 sm:gap-3.5 justify-items-center">
+                    {Array.from({ length: 10 }, (_, idx) => {
+                      const step = idx + 1;
+                      const isEarned = step <= cardCount;
+                      const isMilestone = step === 5 || step === 10;
+                      return (
+                        <div key={step} className="flex flex-col items-center gap-1">
+                          <div
+                            title={
+                              step === 5
+                                ? '5ème commande : -10%'
+                                : step === 10
+                                  ? '10ème commande : Livraison -50%'
+                                  : `Commande ${step}/10`
+                            }
+                            className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all ${
+                              isEarned
+                                ? 'bg-[#F8BE40] text-[#2B1204] border-2 border-[#F8BE40] shadow-md'
+                                : isMilestone
+                                  ? 'bg-white/5 text-[#F8BE40]/85 border-2 border-dashed border-[#F8BE40]/75'
+                                  : 'bg-white/5 text-white/40 border-2 border-white/25'
+                            }`}
+                          >
+                            <CupcakeIcon className="w-5 h-5 sm:w-6 sm:h-6" />
+                          </div>
+                          {step === 5 && (
+                            <span className="text-[9px] font-extrabold text-[#F8BE40] leading-none">-10%</span>
+                          )}
+                          {step === 10 && (
+                            <span className="text-[9px] font-extrabold text-[#F8BE40] leading-none">-50% liv.</span>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
 
-                  <div className="relative z-10 flex justify-between items-end pt-2 border-t border-white/10">
+                  <div className="relative z-10 flex justify-between items-end pt-3 border-t border-white/10">
                     <div>
                       <p className="text-sm font-bold text-white tracking-wide uppercase">{member.name}</p>
                       <p className="text-xs text-gray-400 font-mono">📱 +226 {member.phone}</p>
@@ -502,7 +553,6 @@ export function Loyalty() {
                   </div>
                 </div>
               </div>
-
             </div>
 
             {/* Onglets de l'Espace Client Unifié */}
@@ -729,52 +779,59 @@ export function Loyalty() {
 
             {activeTab === 'loyalty' && (
             <>
-              {/* Progression & Avantages du Palier */}
+              {/* Progression & Récompenses par nombre de commandes */}
             <div className="space-y-4">
                 <div className="bg-white p-7 rounded-3xl shadow-sm border border-gray-100">
-                  <h3 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
+                  <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
                     <TrendingUp className="text-[#D4AF37]" size={20} />
-                    <span>Statut : {tierInfo.title}</span>
+                    <span>Progression Fidélité ({cardCount} / 10)</span>
                   </h3>
 
-                  {tierInfo.discount > 0 && (
-                    <div className="mb-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold">
-                      <CheckCircle2 size={15} />
-                      <span>Vous bénéficiez de {tierInfo.discount}% de réduction automatique permanente sur vos commandes !</span>
-                    </div>
-                  )}
-
-                  {member.orders_count === 4 && (
+                  {cycleProgress === 4 && (
                     <div className="mb-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50 border border-[#F8BE40] text-[#2B1204] text-xs font-bold">
                       <Gift size={15} className="text-[#C20A0A]" />
                       <span>Votre prochaine commande (5ème commande) bénéficie de -10% automatiques !</span>
                     </div>
                   )}
-                  {member.orders_count < 4 && (
-                    <p className="text-xs text-gray-600 mb-3">
-                      Plus que <strong>{4 - member.orders_count}</strong> commande{4 - member.orders_count > 1 ? 's' : ''} pour débloquer <strong>-10%</strong> sur votre 5ème commande.
+                  {cycleProgress === 9 && (
+                    <div className="mb-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50 border border-[#F8BE40] text-[#2B1204] text-xs font-bold">
+                      <Gift size={15} className="text-[#C20A0A]" />
+                      <span>Votre prochaine commande (10ème commande) bénéficie de -50% sur la livraison !</span>
+                    </div>
+                  )}
+                  {cycleProgress < 4 && (
+                    <p className="text-xs text-gray-600 mb-4">
+                      Plus que <strong>{4 - cycleProgress}</strong> commande{4 - cycleProgress > 1 ? 's' : ''} pour débloquer <strong>-10%</strong> sur votre 5ème commande.
+                    </p>
+                  )}
+                  {cycleProgress >= 5 && cycleProgress < 9 && (
+                    <p className="text-xs text-gray-600 mb-4">
+                      Plus que <strong>{9 - cycleProgress}</strong> commande{9 - cycleProgress > 1 ? 's' : ''} pour débloquer <strong>-50% sur la livraison</strong> à votre 10ème commande.
                     </p>
                   )}
 
-                  {tierInfo.next && (
-                    <div className="space-y-2 mt-4">
-                      <div className="flex justify-between text-xs font-semibold text-gray-600">
-                        <span>Progression vers <strong>{tierInfo.next}</strong></span>
-                        <span className="text-[#D4AF37] font-bold">{tierInfo.progress}%</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                    <div className="p-3.5 rounded-2xl bg-[#FAF8F5] border border-gray-100 flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-[#F8BE40] text-[#2B1204] flex items-center justify-center shrink-0 font-black text-xs">
+                        5e
                       </div>
-                      <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
-                        <div
-                          className="bg-gradient-to-r from-amber-500 to-[#D4AF37] h-full rounded-full transition-all duration-700"
-                          style={{ width: `${tierInfo.progress}%` }}
-                        />
+                      <div>
+                        <p className="text-xs font-extrabold text-gray-900">5ème commande</p>
+                        <p className="text-[11px] text-gray-600">-10% de réduction sur la commande</p>
                       </div>
-                      <p className="text-[11px] text-gray-500">
-                        Plus que <strong>{tierInfo.nextPoints} points</strong> pour atteindre le statut {tierInfo.next}.
-                      </p>
                     </div>
-                  )}
+                    <div className="p-3.5 rounded-2xl bg-[#FAF8F5] border border-gray-100 flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-[#F8BE40] text-[#2B1204] flex items-center justify-center shrink-0 font-black text-xs">
+                        10e
+                      </div>
+                      <div>
+                        <p className="text-xs font-extrabold text-gray-900">10ème commande</p>
+                        <p className="text-[11px] text-gray-600">-50% sur les frais de livraison</p>
+                      </div>
+                    </div>
+                  </div>
 
-                  <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-gray-100">
+                  <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-100">
                     <div className="p-3 bg-[#FAF8F5] rounded-2xl border border-gray-100">
                       <span className="text-[11px] text-gray-500 font-semibold block">Total Dépensé</span>
                       <span className="text-base font-black text-gray-900">{member.total_spent.toLocaleString('fr-FR')} FCFA</span>
@@ -807,31 +864,6 @@ export function Loyalty() {
                       <p className="text-[10px] text-emerald-400 font-semibold mt-3 text-center">
                         ✓ Prêt à être validé par le personnel
                       </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* HISTORIQUE RÉCENT DES POINTS */}
-            {member.history && member.history.length > 0 && (
-              <div className="bg-white p-7 rounded-3xl shadow-sm border border-gray-100">
-                <h4 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-                  <Clock size={16} className="text-gray-400" />
-                  <span>Historique des Points & Coupons</span>
-                </h4>
-                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                  {member.history.map((h) => (
-                    <div key={h.id} className="flex justify-between items-center text-xs p-3 rounded-2xl bg-gray-50 border border-gray-100">
-                      <div>
-                        <p className="font-semibold text-gray-800">{h.description}</p>
-                        <span className="text-[10px] text-gray-400">
-                          {new Date(h.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                      <span className={`font-black text-sm ${h.points > 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
-                        {h.points > 0 ? `+${h.points}` : h.points} pts
-                      </span>
                     </div>
                   ))}
                 </div>

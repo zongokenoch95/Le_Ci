@@ -133,6 +133,7 @@ export function Payment() {
       });
       setLoyaltyMember(res.member);
       setEnrolledSuccess(true);
+      navigate('/fidelite', { state: { member: res.member } });
     } catch (err: any) {
       alert(err.message || 'Erreur lors de l\'inscription');
     } finally {
@@ -467,16 +468,23 @@ export function Payment() {
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2 text-purple-300 font-bold text-xs uppercase tracking-wider">
                         <Crown size={16} />
-                        <span>Club Fidélité ({loyaltyMember.tier})</span>
+                        <span>Les Douceurs de Lissi</span>
                       </div>
 
                     </div>
 
                     <h3 className="text-lg font-black text-white mb-1">
-                      {enrolledSuccess ? '🎉 Inscription Réussie !' : 'Vos Points ont été Crédités !'}
+                      {enrolledSuccess ? '🎉 Inscription Réussie !' : 'Commande enregistrée sur votre carte !'}
                     </h3>
                     <p className="text-xs text-gray-300 mb-4">
-                      Votre solde actuel est de <strong className="text-purple-300 text-sm">{loyaltyMember.points} points</strong>.
+                      Progression actuelle :{' '}
+                      <strong className="text-[#F8BE40] text-sm">
+                        {loyaltyMember.orders_count > 0 && loyaltyMember.orders_count % 10 === 0
+                          ? 10
+                          : loyaltyMember.orders_count % 10}{' '}
+                        / 10
+                      </strong>{' '}
+                      commandes.
                     </p>
 
                     <button
@@ -502,7 +510,7 @@ export function Payment() {
                       Rejoignez notre Club de Fidélité !
                     </h3>
                     <p className="text-xs text-gray-600 mb-4">
-                      Cette commande vous rapporte des points + <strong className="text-[#581C87]">{loyaltySettings?.welcome_bonus_points || 50} points de bienvenue</strong> offerts immédiatement.
+                      Cumulez vos commandes : <strong className="text-[#581C87]">-10% sur la 5ème commande</strong> et <strong className="text-[#581C87]">-50% sur la livraison à la 10ème commande</strong>.
                     </p>
 
                     <form onSubmit={handleEnrollLoyalty} className="space-y-3">

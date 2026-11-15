@@ -308,18 +308,18 @@ export const Cart: React.FC = () => {
     }
   }, [activeLoyaltyPhone, totalAmount]);
 
-  // Calcul réductions et suppléments
-  const pointValue = memberInfo?.settings?.point_value_fcfa || 1;
-  const loyaltyDiscount = useLoyaltyPoints ? pointsToUse * pointValue : 0;
-  const tierDiscountPercent =
-    memberInfo?.tier === 'GOLD'
-      ? memberInfo.settings?.gold_discount_percent || 10
-      : memberInfo?.tier === 'SILVER'
-        ? memberInfo.settings?.silver_discount_percent || 5
-        : 0;
-  const isFifthOrder = Boolean(memberInfo && memberInfo.orders_count === 4);
-  const effectiveDiscountPercent = Math.max(tierDiscountPercent, isFifthOrder ? 10 : 0);
+  // Calcul réductions et suppléments (règle fidélité : 5ème commande -10%, 10ème commande livraison -50%)
+  const loyaltyDiscount = 0;
+  const cycleOrders = memberInfo ? memberInfo.orders_count % 10 : 0;
+  const isFifthOrder = Boolean(memberInfo && cycleOrders === 4);
+  const isTenthOrder = Boolean(memberInfo && cycleOrders === 9);
+  const effectiveDiscountPercent = isFifthOrder ? 10 : 0;
   const tierDiscountAmount = Math.round((totalAmount * effectiveDiscountPercent) / 100);
+  const cardDisplayCount = memberInfo
+    ? memberInfo.orders_count > 0 && memberInfo.orders_count % 10 === 0
+      ? 10
+      : memberInfo.orders_count % 10
+    : 0;
   const effectiveGreetingCard = hasGreetingCard;
   const cardSupplement = effectiveGreetingCard ? 200 : 0;
 
@@ -499,8 +499,8 @@ export const Cart: React.FC = () => {
           : '',
         deliveryType === 'livraison' ? `Adresse: ${fullDeliveryAddress}` : 'Retrait boutique',
         effectiveGreetingCard ? `Carte de vœux (+200F): « ${cardMessage.trim()} »` : 'Sans carte',
-        useLoyaltyPoints ? `Fidélité: -${loyaltyDiscount} FCFA (${pointsToUse} pts)` : '',
-        tierDiscountPercent > 0 ? `Remise VIP ${memberInfo?.tier}: -${tierDiscountAmount} FCFA` : '',
+        isFifthOrder && tierDiscountAmount > 0 ? `Remise 5ème commande (-10%): -${tierDiscountAmount} FCFA` : '',
+        isTenthOrder && deliveryType === 'livraison' ? 'Livraison -50% (10ème commande fidélité)' : '',
         orderNotes.trim() ? `Notes spéciales: ${orderNotes.trim()}` : ''
       ]
         .filter(Boolean)
@@ -1183,8 +1183,7 @@ export const Cart: React.FC = () => {
                   <div className="py-4 border-b border-gray-100">
                     <div className="flex items-center justify-between text-xs mb-2">
                       <span className="font-extrabold text-purple-900 flex items-center gap-1">
-                        <Crown size={14} className="text-amber-500" /> Membre {memberInfo.tier} (
-                        {memberInfo.points} pts)
+                        <Crown size={14} className="text-amber-500" /> Carte Fidélité ({cardDisplayCount}/10)
                       </span>
                     </div>
                     {isFifthOrder && tierDiscountAmount > 0 && (
@@ -1192,18 +1191,10 @@ export const Cart: React.FC = () => {
                         🎉 5ème commande : -10% appliqués (-{tierDiscountAmount.toLocaleString('fr-FR')} FCFA)
                       </div>
                     )}
-                    {memberInfo.points >= (memberInfo.settings?.min_points_to_redeem || 50) && (
-                      <label className="flex items-center gap-2 cursor-pointer text-xs text-gray-700">
-                        <input
-                          type="checkbox"
-                          checked={useLoyaltyPoints}
-                          onChange={(e) => setUseLoyaltyPoints(e.target.checked)}
-                          className="rounded text-[#581C87] focus:ring-[#581C87]"
-                        />
-                        <span>
-                          Utiliser {pointsToUse} pts pour économiser {pointsToUse * pointValue} FCFA
-                        </span>
-                      </label>
+                    {isTenthOrder && deliveryType === 'livraison' && (
+                      <div className="mb-2 px-3 py-1.5 rounded-xl bg-amber-50 border border-[#F8BE40] text-[#2B1204] text-xs font-bold">
+                        🚚 10ème commande : -50% sur les frais de livraison !
+                      </div>
                     )}
                   </div>
                 )}
