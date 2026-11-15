@@ -220,11 +220,14 @@ export const Cart: React.FC = () => {
   // 4. Lieu de livraison (Quartier uniquement, champ géolocalisation supprimé)
   const [deliveryQuarter, setDeliveryQuarter] = useState<string>(savedPref?.deliveryQuarter || '');
 
+  const [connectedCustomer, setConnectedCustomer] = useState<LoyaltyMember | null>(null);
+
   // Pré-remplissage automatique depuis le compte client connecté (Compte = Fidélité)
   useEffect(() => {
     getCustomerMe()
       .then((m) => {
         if (!m) return;
+        setConnectedCustomer(m);
         setRecipientPhone((prev) => prev || m.phone || '');
         setRecipientName((prev) => prev || m.name || '');
         if (m.default_address) {
@@ -274,9 +277,14 @@ export const Cart: React.FC = () => {
     }
   };
 
-  // Recherche automatique membre fidélité dès 8 chiffres
+  // Recherche automatique membre fidélité (compte connecté ou numéro saisi en livraison)
+  const activeLoyaltyPhone =
+    deliveryType === 'livraison'
+      ? (recipientPhone.trim() || connectedCustomer?.phone || '')
+      : (connectedCustomer?.phone || '');
+
   useEffect(() => {
-    const cleanPhone = recipientPhone.replace(/\D/g, '').slice(-8);
+    const cleanPhone = activeLoyaltyPhone.replace(/\D/g, '').slice(-8);
     if (cleanPhone.length === 8) {
       getLoyaltyMember(cleanPhone)
         .then((m) => {
@@ -298,7 +306,7 @@ export const Cart: React.FC = () => {
       setMemberInfo(null);
       setUseLoyaltyPoints(false);
     }
-  }, [recipientPhone, totalAmount]);
+  }, [activeLoyaltyPhone, totalAmount]);
 
   // Calcul réductions et suppléments
   const pointValue = memberInfo?.settings?.point_value_fcfa || 1;
@@ -530,14 +538,15 @@ export const Cart: React.FC = () => {
         notes: finalNotes,
         deliveryType,
         deliveryFee: 0,
+        loyaltyPhone: connectedCustomer?.phone || '',
         hasGreetingCard: effectiveGreetingCard,
         discountAmount: loyaltyDiscount + tierDiscountAmount
       });
 
-      if (useLoyaltyPoints && pointsToUse > 0) {
+      if (useLoyaltyPoints && pointsToUse > 0 && activeLoyaltyPhone) {
         try {
           await redeemLoyaltyPoints({
-            phone: recipientPhone.trim(),
+            phone: activeLoyaltyPhone,
             pointsToRedeem: pointsToUse,
             orderId: order.id
           });

@@ -389,6 +389,9 @@ export async function initDb() {
     await run(`ALTER TABLE orders ADD COLUMN payer_phone TEXT DEFAULT ''`);
   } catch (e) {}
   try {
+    await run(`ALTER TABLE orders ADD COLUMN loyalty_phone TEXT DEFAULT ''`);
+  } catch (e) {}
+  try {
     await run(`ALTER TABLE orders ADD COLUMN delivery_fee INTEGER DEFAULT 0`);
   } catch (e) {}
   try {
@@ -821,6 +824,7 @@ export function formatOrder(row) {
     customerEmail: row.customer_email,
     payerName,
     payerPhone,
+    loyaltyPhone: row.loyalty_phone || '',
     deliveryFee,
     items,
     montantTotal: row.montant_total,
@@ -844,6 +848,7 @@ export async function checkAndExpireOrders() {
   if (rows && rows.length > 0) {
     for (const r of rows) {
       await run(`UPDATE orders SET statut = 'ANNULEE' WHERE id = ?`, [r.id]);
+      await refundOrderPoints(r.id);
     }
   }
   return rows ? rows.map(r => r.id) : [];
@@ -890,15 +895,17 @@ export async function createOrder(data = {}) {
   }
 
   const { payToken, payTokenHash } = generatePayToken();
+  const cleanLoyaltyPhone = normalizeBurkinaPhone(data.loyaltyPhone) || '';
 
   await run(`
-    INSERT INTO orders (id, customer_name, customer_phone, customer_email, items, montant_total, delivery_fee, statut, code_reference, mode_paiement, notes, created_at, expires_at, pay_token_hash, pay_token_expires_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO orders (id, customer_name, customer_phone, customer_email, loyalty_phone, items, montant_total, delivery_fee, statut, code_reference, mode_paiement, notes, created_at, expires_at, pay_token_hash, pay_token_expires_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `, [
     id,
     data.customerName || 'Client Les Douceurs de Lê Ci',
     data.customerPhone || '',
     data.customerEmail || '',
+    cleanLoyaltyPhone,
     itemsJson,
     finalAmount,
     serverDeliveryFee,
@@ -933,6 +940,7 @@ export async function getAllOrders() {
 
 export async function cancelOrder(id) {
   await run(`UPDATE orders SET statut = 'ANNULEE' WHERE id = ?`, [id]);
+  await refundOrderPoints(id);
   return getOrderById(id);
 }
 
@@ -1392,9 +1400,10 @@ export async function registerLoyaltyMember({ phone, name, pin, defaultAddress, 
       [name.trim(), pinHash, defaultAddress ? defaultAddress.trim() : null, now, cleanPhone]
     );
     if (orderId) {
+      await run('UPDATE orders SET loyalty_phone = ? WHERE id = ?', [cleanPhone, orderId]);
       const ord = await get('SELECT * FROM orders WHERE id = ?', [orderId]);
       if (ord && ['PAYEE', 'EN_PREPARATION', 'PRETE', 'LIVREE'].includes(ord.statut)) {
-        await creditOrderPoints({ ...ord, payerPhone: cleanPhone });
+        await creditOrderPoints({ ...ord, loyaltyPhone: cleanPhone });
       }
     }
     return getLoyaltyMember(cleanPhone);
@@ -1414,9 +1423,10 @@ export async function registerLoyaltyMember({ phone, name, pin, defaultAddress, 
   }
 
   if (orderId) {
+    await run('UPDATE orders SET loyalty_phone = ? WHERE id = ?', [cleanPhone, orderId]);
     const ord = await get('SELECT * FROM orders WHERE id = ?', [orderId]);
     if (ord && ['PAYEE', 'EN_PREPARATION', 'PRETE', 'LIVREE'].includes(ord.statut)) {
-      await creditOrderPoints({ ...ord, payerPhone: cleanPhone });
+      await creditOrderPoints({ ...ord, loyaltyPhone: cleanPhone });
     }
   }
 
@@ -1490,15 +1500,22 @@ export async function getCustomerOrders(rawPhone) {
   if (!cleanPhone) return [];
 
   const rows = await all(
-    `SELECT id, customer_name, customer_phone, items, montant_total, statut, code_reference, mode_paiement, notes, created_at, paid_at
+    `SELECT id, customer_name, customer_phone, payer_phone, loyalty_phone, items, montant_total, statut, code_reference, mode_paiement, notes, created_at, paid_at
      FROM orders
-     WHERE REPLACE(REPLACE(REPLACE(COALESCE(customer_phone, ''), ' ', ''), '+226', ''), '00226', '') LIKE ?
      ORDER BY created_at DESC
-     LIMIT 30`,
-    [`%${cleanPhone}`]
+     LIMIT 300`
   );
 
-  return (rows || []).map((row) => {
+  const matched = (rows || []).filter((row) => {
+    const candidates = [row.loyalty_phone, row.payer_phone, row.customer_phone];
+    return candidates.some((val) => {
+      if (!val) return false;
+      const norm = normalizeBurkinaPhone(val) || String(val).replace(/\D/g, '').slice(-8);
+      return norm === cleanPhone;
+    });
+  }).slice(0, 30);
+
+  return matched.map((row) => {
     let parsedItems = [];
     try {
       parsedItems = JSON.parse(row.items || '[]');
@@ -1526,7 +1543,13 @@ export async function getAllLoyaltyMembers() {
 
 export async function creditOrderPoints(order) {
   if (!order) return null;
-  const targetPhone = order.payerPhone || order.payer_phone || order.customerPhone || order.customer_phone;
+  const targetPhone =
+    order.loyaltyPhone ||
+    order.loyalty_phone ||
+    order.payerPhone ||
+    order.payer_phone ||
+    order.customerPhone ||
+    order.customer_phone;
   if (!targetPhone) return null;
 
   const settings = await getLoyaltySettings();
@@ -1605,11 +1628,12 @@ export async function redeemPoints({ phone, pointsToRedeem, orderId }) {
   const discountAmount = pointsToRedeem * (settings.point_value_fcfa || 1);
   const newPoints = member.points - pointsToRedeem;
   const now = new Date().toISOString();
-  const newTier = calculateTier(newPoints, settings);
+  // Conserver le palier VIP acquis (ne pas déclasser le client lorsqu'il dépense ses points)
+  const preservedTier = member.tier || 'BRONZE';
 
   await run(`
     UPDATE loyalty_members SET points = ?, tier = ?, updated_at = ? WHERE phone = ?
-  `, [newPoints, newTier, now, cleanPhone]);
+  `, [newPoints, preservedTier, now, cleanPhone]);
 
   await run(`
     INSERT INTO loyalty_history (phone, order_id, type, points, description, created_at)
@@ -1620,8 +1644,44 @@ export async function redeemPoints({ phone, pointsToRedeem, orderId }) {
     success: true,
     discountAmount,
     remainingPoints: newPoints,
-    tier: newTier
+    tier: preservedTier
   };
+}
+
+export async function refundOrderPoints(orderId) {
+  if (!orderId) return null;
+  const redeemRow = await get(
+    "SELECT * FROM loyalty_history WHERE order_id = ? AND type = 'REDEEM' LIMIT 1",
+    [orderId]
+  );
+  if (!redeemRow || redeemRow.points >= 0) return null;
+
+  const alreadyRefunded = await get(
+    "SELECT id FROM loyalty_history WHERE order_id = ? AND type = 'REFUND' LIMIT 1",
+    [orderId]
+  );
+  if (alreadyRefunded) return null;
+
+  const pointsToRestore = Math.abs(Number(redeemRow.points) || 0);
+  if (pointsToRestore <= 0) return null;
+
+  const member = await get('SELECT * FROM loyalty_members WHERE phone = ?', [redeemRow.phone]);
+  if (!member) return null;
+
+  const now = new Date().toISOString();
+  const newPoints = member.points + pointsToRestore;
+  await run('UPDATE loyalty_members SET points = ?, updated_at = ? WHERE phone = ?', [
+    newPoints,
+    now,
+    redeemRow.phone
+  ]);
+  await run(
+    `INSERT INTO loyalty_history (phone, order_id, type, points, description, created_at)
+     VALUES (?, ?, 'REFUND', ?, ?, ?)`,
+    [redeemRow.phone, orderId, pointsToRestore, `Remboursement des points suite à l'annulation de ${orderId}`, now]
+  );
+
+  return getLoyaltyMember(redeemRow.phone);
 }
 
 export async function adjustMemberPoints({ phone, name, pointsDelta, reason }) {

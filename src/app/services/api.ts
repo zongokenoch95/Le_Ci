@@ -19,6 +19,7 @@ export interface Order {
   customerEmail?: string;
   payerName?: string;
   payerPhone?: string;
+  loyaltyPhone?: string;
   deliveryFee?: number;
   items: OrderItem[];
   montantTotal: number;
@@ -105,6 +106,7 @@ export async function createOrder(data: {
   customerName: string;
   customerPhone?: string;
   customerEmail?: string;
+  loyaltyPhone?: string;
   items: OrderItem[];
   montantTotal: number;
   modePaiement?: string;

@@ -99,11 +99,11 @@ export function Payment() {
       .catch(() => null);
   }, []);
 
-  // Vérifier statut fidélité dès que la commande est payée (priorité au numéro de transfert)
+  // Vérifier statut fidélité dès que la commande est payée
   useEffect(() => {
-    const targetPhone = order?.payerPhone || order?.customerPhone || '';
+    const targetPhone = order?.loyaltyPhone || order?.customerPhone || order?.payerPhone || '';
     if (order && (order.statut === 'EN_PREPARATION' || order.statut === 'PAYEE' || order.statut === 'PRETE')) {
-      setEnrollName(order.payerName || order.customerName || '');
+      setEnrollName(order.customerName || order.payerName || '');
       setEnrollPhone(targetPhone);
 
       getLoyaltySettings().then(setLoyaltySettings).catch(() => null);
