@@ -368,7 +368,8 @@ export function Catalogue() {
       portion: portionLabel,
       catalogModel: product.name,
       isCake: isCakeProduct,
-      description: product.description
+      description: product.description,
+      composition: product.composition
     }, 1);
     setAddedProductId(product.id);
     setTimeout(() => setAddedProductId(null), 1500);

@@ -13,6 +13,8 @@ export interface CartItem {
   flavor?: string;
   catalogModel?: string;
   isCake?: boolean;
+  composition?: { name: string; count: number }[];
+  images?: string[];
 }
 
 export interface CartContextType {
@@ -29,6 +31,8 @@ export interface CartContextType {
     flavor?: string;
     catalogModel?: string;
     isCake?: boolean;
+    composition?: { name: string; count: number }[];
+    images?: string[];
   }, quantity?: number) => void;
   removeFromCart: (id: number | string) => void;
   updateQuantity: (id: number | string, delta: number) => void;
@@ -83,6 +87,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     flavor?: string;
     catalogModel?: string;
     isCake?: boolean;
+    composition?: { name: string; count: number }[];
+    images?: string[];
   }, quantity = 1) => {
     setItems((prev) => {
       const existingIndex = prev.findIndex((item) => String(item.id) === String(product.id));

@@ -248,6 +248,32 @@ export const Cart: React.FC = () => {
 
   // Notes additionnelles
   const [orderNotes] = useState<string>(savedPref?.notes || '');
+  const [activeThumbnails, setActiveThumbnails] = useState<Record<string, string>>({});
+
+  const extractComponentsList = (item: any): string[] => {
+    if (Array.isArray(item.composition) && item.composition.length > 0) {
+      return item.composition
+        .filter((c: any) => c && c.name)
+        .map((c: any) => `${c.count ? `${c.count} ` : ''}${c.name}`.trim());
+    }
+    const rawDesc = String(item.description || '').trim();
+    const cleaned = rawDesc
+      .replace(/^(Paquet constitué de|Composé de|Assortiment de|Contient)\s*:?\s*/i, '')
+      .replace(/\.$/, '');
+    const parts = cleaned
+      ? cleaned
+          .split(/\s*(?:\||\n|,|;|\set\s)\s*/i)
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : [];
+    if (item.flavor && !parts.some((p) => p.toLowerCase().includes(String(item.flavor).toLowerCase()))) {
+      parts.push(`Saveur : ${item.flavor}`);
+    }
+    if (item.portion && !parts.some((p) => p.toLowerCase().includes(String(item.portion).toLowerCase()))) {
+      parts.push(`Format : ${item.portion}`);
+    }
+    return parts;
+  };
 
   // États de soumission et erreurs de validation
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -651,39 +677,106 @@ export const Cart: React.FC = () => {
                   </Link>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {items.map((item) => {
-                    const descFlavorMatch = (item.description || '').match(/Saveur:\s*([^|\]]+)/i);
-                    const flavorLabel =
-                      item.flavor || (descFlavorMatch ? descFlavorMatch[1].trim() : '');
                     const safePrice = Number.isFinite(Number(item.numericPrice)) ? Number(item.numericPrice) : 0;
                     const safeQty = Math.max(1, Number.isFinite(Number(item.quantity)) ? Number(item.quantity) : 1);
+                    const mainFallback = item.image || '/products/gateau_1.jpeg';
+                    const gallery =
+                      Array.isArray(item.images) && item.images.length > 1
+                        ? item.images
+                        : [mainFallback];
+                    const currentMainImage = activeThumbnails[String(item.id)] || gallery[0];
+                    const componentsList = extractComponentsList(item);
+
                     return (
                       <div
                         key={`top-preview-${item.id}`}
-                        className="bg-[#FDF8F2] rounded-2xl p-3 sm:p-4 border border-[#F6C58E]/60 flex flex-col gap-3 shadow-xs"
+                        className="bg-[#FDF8F2] rounded-3xl p-4 sm:p-5 border border-[#F6C58E]/70 shadow-sm space-y-4"
                       >
-                        <div className="flex items-start gap-3.5 sm:gap-4">
-                          {/* 1. IMAGE MINIATURE EN PREMIER */}
-                          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-white border border-[#F6C58E]/40 shrink-0">
-                            <img
-                              src={item.image || '/products/gateau_1.jpeg'}
-                              alt={item.name}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
+                        {/* 1. Photo principale sans bulle ni bouton agrandir */}
+                        <div className="w-full aspect-[4/3] sm:aspect-[16/10] max-h-64 rounded-2xl overflow-hidden bg-white border border-[#F6C58E]/40">
+                          <img
+                            src={currentMainImage}
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
 
-                          {/* 2. TITRE, SAVEUR & PRIX EN ROUGE */}
-                          <div className="min-w-0 flex-1">
-                            <h3 className="text-sm sm:text-base font-black text-[#2B1204] leading-snug">
-                              {item.name}
-                            </h3>
-                            {flavorLabel && (
-                              <p className="text-xs text-[#2B1204]/75 mt-0.5">
-                                Saveur : <strong className="text-[#2B1204]">{flavorLabel}</strong>
-                              </p>
-                            )}
-                            <div className="text-[#C20A0A] text-sm sm:text-base font-black mt-1">
+                        {/* 2. Photos secondaires sans titres (si plusieurs images disponibles) */}
+                        {gallery.length > 1 && (
+                          <div className="grid grid-cols-3 gap-2.5">
+                            {gallery.slice(0, 3).map((thumbUrl, idx) => {
+                              const isSelected = currentMainImage === thumbUrl;
+                              return (
+                                <button
+                                  key={`${item.id}-thumb-${idx}`}
+                                  type="button"
+                                  onClick={() =>
+                                    setActiveThumbnails((prev) => ({
+                                      ...prev,
+                                      [String(item.id)]: thumbUrl
+                                    }))
+                                  }
+                                  className={`aspect-[4/3] rounded-xl overflow-hidden bg-white transition cursor-pointer ${
+                                    isSelected
+                                      ? 'border-2 border-[#C20A0A] shadow-sm'
+                                      : 'border border-[#F6C58E]/60 hover:border-[#F8BE40]'
+                                  }`}
+                                >
+                                  <img
+                                    src={thumbUrl}
+                                    alt=""
+                                    className="w-full h-full object-cover"
+                                  />
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {/* 3. Titre & liste simple des composants du produit */}
+                        <div className="space-y-2">
+                          <h3 className="text-base sm:text-lg font-black text-[#2B1204] leading-snug">
+                            {item.name}
+                          </h3>
+
+                          {componentsList.length > 0 && (
+                            <ul className="space-y-1 text-xs sm:text-sm text-[#2B1204]/85 list-disc pl-5">
+                              {componentsList.map((comp, idx) => (
+                                <li key={idx}>{comp}</li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+
+                        {/* 4. Compteur de quantité + prix juste à côté + supprimer */}
+                        <div className="flex items-center justify-between gap-3 pt-3 border-t border-[#F6C58E]/35">
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <div className="py-1.5 px-3 rounded-full border border-[#F8BE40] bg-white flex items-center gap-3 shadow-xs">
+                              <button
+                                type="button"
+                                onClick={() => updateQuantity(item.id, -1)}
+                                disabled={safeQty <= 1}
+                                className="w-6 h-6 rounded-full text-[#2B1204] hover:text-[#5DBA68] disabled:opacity-35 disabled:cursor-not-allowed font-bold flex items-center justify-center transition cursor-pointer"
+                                title="Diminuer la quantité"
+                              >
+                                <Minus size={13} strokeWidth={2.5} />
+                              </button>
+                              <span className="font-adapt text-sm font-black text-[#2B1204] min-w-[18px] text-center">
+                                {safeQty}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => updateQuantity(item.id, 1)}
+                                className="w-6 h-6 rounded-full text-[#2B1204] hover:text-[#5DBA68] font-bold flex items-center justify-center transition cursor-pointer"
+                                title="Augmenter la quantité"
+                              >
+                                <Plus size={13} strokeWidth={2.5} />
+                              </button>
+                            </div>
+
+                            <div className="text-[#C20A0A] text-base sm:text-lg font-black">
                               {(safePrice * safeQty).toLocaleString('fr-FR')} FCFA
                               {safeQty > 1 && (
                                 <span className="text-[11px] font-semibold text-[#C20A0A]/80 ml-1.5">
@@ -692,39 +785,14 @@ export const Cart: React.FC = () => {
                               )}
                             </div>
                           </div>
-                        </div>
 
-                        {/* 3. QUANTITÉ EN DESSOUS DE L'IMAGE & SUPPRIMER */}
-                        <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#F6C58E]/30">
-                          <div className="py-1 px-2.5 rounded-full border border-[#F8BE40] bg-white flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => updateQuantity(item.id, -1)}
-                              disabled={safeQty <= 1}
-                              className="w-6 h-6 rounded-full text-[#2B1204] hover:text-[#5DBA68] disabled:opacity-35 disabled:cursor-not-allowed font-bold flex items-center justify-center transition cursor-pointer"
-                              title="Diminuer la quantité"
-                            >
-                              <Minus size={12} strokeWidth={2.5} />
-                            </button>
-                            <span className="font-adapt text-xs sm:text-sm font-black text-[#2B1204] min-w-[16px] text-center">
-                              {safeQty}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => updateQuantity(item.id, 1)}
-                              className="w-6 h-6 rounded-full text-[#2B1204] hover:text-[#5DBA68] font-bold flex items-center justify-center transition cursor-pointer"
-                              title="Augmenter la quantité"
-                            >
-                              <Plus size={12} strokeWidth={2.5} />
-                            </button>
-                          </div>
                           <button
                             type="button"
                             onClick={() => removeFromCart(item.id)}
-                            className="w-8 h-8 rounded-full bg-white hover:bg-[#C20A0A] text-[#2B1204] hover:text-white flex items-center justify-center border border-[#F6C58E]/50 transition cursor-pointer"
+                            className="w-10 h-10 rounded-full bg-white hover:bg-[#C20A0A] text-[#2B1204] hover:text-white flex items-center justify-center border border-[#F6C58E]/60 transition cursor-pointer shrink-0"
                             title="Retirer cet article"
                           >
-                            <Trash2 size={14} />
+                            <Trash2 size={15} />
                           </button>
                         </div>
                       </div>
