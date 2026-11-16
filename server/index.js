@@ -987,6 +987,17 @@ app.get('/api/loyalty/members', async (req, res) => {
   }
 });
 
+// Ajout manuel d'une commande (+1 cupcake) sur la carte d'un client (WhatsApp / Boutique)
+app.post('/api/admin/loyalty/add-order', authenticateJwt, async (req, res) => {
+  try {
+    const { phone, amountFcfa, reason } = req.body || {};
+    const member = await db.creditLoyaltyOrderStamp({ phone, amountFcfa, reason });
+    res.json({ success: true, member });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
 // Utiliser des points pour une réduction (Panier)
 app.post('/api/loyalty/redeem', async (req, res) => {
   try {

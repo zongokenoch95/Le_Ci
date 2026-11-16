@@ -1542,8 +1542,35 @@ export async function getCustomerOrders(rawPhone) {
 }
 
 export async function getAllLoyaltyMembers() {
-  const members = await all('SELECT * FROM loyalty_members ORDER BY points DESC');
+  const members = await all('SELECT * FROM loyalty_members ORDER BY orders_count DESC, total_spent DESC');
   return members || [];
+}
+
+export async function creditLoyaltyOrderStamp({ phone, amountFcfa = 0, reason = 'Commande directe (WhatsApp / Boutique)' }) {
+  const cleanPhone = normalizeBurkinaPhone(phone) || String(phone || '').replace(/\D/g, '').slice(-8);
+  if (!cleanPhone || cleanPhone.length < 8) {
+    throw new Error('Numéro de téléphone client invalide.');
+  }
+  const existing = await get('SELECT * FROM loyalty_members WHERE phone = ?', [cleanPhone]);
+  if (!existing) {
+    throw new Error('Membre fidélité introuvable.');
+  }
+  const now = new Date().toISOString();
+  const safeAmount = Math.max(0, Math.round(Number(amountFcfa) || 0));
+  await run(
+    `UPDATE loyalty_members
+     SET orders_count = orders_count + 1,
+         total_spent = total_spent + ?,
+         updated_at = ?
+     WHERE phone = ?`,
+    [safeAmount, now, cleanPhone]
+  );
+  await run(
+    `INSERT INTO loyalty_history (phone, order_id, type, points, description, created_at)
+     VALUES (?, NULL, 'STAMP', 0, ?, ?)`,
+    [cleanPhone, `Ajout manuel +1 commande : ${reason}${safeAmount > 0 ? ` (${safeAmount} FCFA)` : ''}`, now]
+  );
+  return getLoyaltyMember(cleanPhone);
 }
 
 export async function creditOrderPoints(order) {
@@ -2277,6 +2304,7 @@ export default {
   getLoyaltySettings,
   updateLoyaltySettings,
   getLoyaltyMember,
+  creditLoyaltyOrderStamp,
   registerLoyaltyMember,
   loginLoyaltyMember,
   updateLoyaltyProfile,

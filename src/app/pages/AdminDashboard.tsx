@@ -80,6 +80,7 @@ import {
   getLoyaltySettings, 
   updateLoyaltySettings, 
   getAllLoyaltyMembers, 
+  addLoyaltyOrderStamp, 
   adjustLoyaltyMember, 
   getLoyaltyRewards, 
   createLoyaltyReward, 
@@ -167,6 +168,36 @@ export function AdminDashboard() {
   const [copiedRef, setCopiedRef] = useState<string | null>(null);
   const [statsPeriod, setStatsPeriod] = useState<'today' | '7d' | '30d' | 'all'>('30d');
   const [loyaltySearch, setLoyaltySearch] = useState('');
+  const [loyaltyFilter, setLoyaltyFilter] = useState<'all' | 'near_reward' | 'repeat' | 'inactive'>('all');
+  const [stampModalMember, setStampModalMember] = useState<LoyaltyMember | null>(null);
+  const [stampAmount, setStampAmount] = useState('');
+  const [stampReason, setStampReason] = useState('Commande directe (WhatsApp / Boutique)');
+  const [stamping, setStamping] = useState(false);
+
+  const handleConfirmStamp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!stampModalMember) return;
+    setStamping(true);
+    try {
+      const amountVal = Number(stampAmount) || 0;
+      const res = await addLoyaltyOrderStamp({
+        phone: stampModalMember.phone,
+        amountFcfa: amountVal,
+        reason: stampReason.trim() || 'Commande directe (WhatsApp / Boutique)'
+      });
+      if (res?.member) {
+        setLoyaltyMembers((prev) =>
+          prev.map((m) => (m.phone === res.member.phone ? { ...m, ...res.member } : m))
+        );
+      }
+      setStampModalMember(null);
+      setStampAmount('');
+    } catch (err: any) {
+      alert(err.message || "Erreur lors de l'ajout de la commande");
+    } finally {
+      setStamping(false);
+    }
+  };
 
   const toggleAdminTheme = () => {
     setAdminTheme((prev) => {
@@ -2880,101 +2911,145 @@ export function AdminDashboard() {
         {/* ============================================================ */}
         {/* ONGLET 5 : FIDÉLITÉ & COUPONS                                */}
         {/* ============================================================ */}
-        {activeTab === 'loyalty' && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-black text-white flex items-center gap-2">
-                <Award className="text-[#D4AF37]" size={26} />
-                <span>Programme de Fidélité & Validation Coupons</span>
-              </h2>
-              <p className="text-xs text-gray-400 mt-1">
-                Scannez ou saisissez un coupon présenté par un client en caisse pour le valider.
-              </p>
-            </div>
+        {activeTab === 'loyalty' && (() => {
+          const nowMs = Date.now();
+          const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
 
-            {/* Validation Rapide Coupon */}
-            <div className="p-6 rounded-3xl bg-[#1E293B] border border-white/10 max-w-xl">
-              <h3 className="text-sm font-bold text-white mb-3">Validation Coupon Caisse</h3>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={couponCodeInput}
-                  onChange={(e) => setCouponCodeInput(e.target.value.toUpperCase())}
-                  placeholder="ex: CPN-9X2A"
-                  className="flex-1 px-4 py-2.5 bg-[#0F172A] border border-gray-700 rounded-xl text-white font-mono text-sm focus:ring-2 focus:ring-[#D4AF37] focus:outline-none"
-                />
-                <button
-                  onClick={handleValidateCoupon}
-                  className="px-5 py-2.5 bg-[#D4AF37] text-black font-extrabold text-xs rounded-xl shadow transition cursor-pointer"
-                >
-                  Valider
-                </button>
+          const getLastOrderMs = (m: LoyaltyMember) => {
+            const clean = (m.phone || '').replace(/\D/g, '').slice(-8);
+            const matchedOrders = orders.filter((o) => {
+              const cands = [o.loyaltyPhone, o.payerPhone, o.customerPhone]
+                .filter(Boolean)
+                .map((v) => String(v).replace(/\D/g, '').slice(-8));
+              return clean && cands.includes(clean);
+            });
+            if (matchedOrders.length > 0) {
+              return Math.max(...matchedOrders.map((o) => new Date(o.createdAt).getTime()));
+            }
+            return m.updated_at ? new Date(m.updated_at).getTime() : 0;
+          };
+
+          const nearRewardCount = loyaltyMembers.filter((m) => {
+            const next = Number(m.orders_count || 0) % 10;
+            return next === 4 || next === 9;
+          }).length;
+          const repeatCount = loyaltyMembers.filter((m) => Number(m.orders_count || 0) >= 2).length;
+          const inactiveCount = loyaltyMembers.filter((m) => {
+            const lastMs = getLastOrderMs(m);
+            return lastMs > 0 && nowMs - lastMs > thirtyDaysMs;
+          }).length;
+
+          const q = loyaltySearch.trim().toLowerCase();
+          const filteredMembers = [...loyaltyMembers]
+            .sort((a, b) => (b.orders_count - a.orders_count) || (b.total_spent - a.total_spent))
+            .filter((m) => {
+              if (q && !(m.name || '').toLowerCase().includes(q) && !(m.phone || '').toLowerCase().includes(q)) {
+                return false;
+              }
+              const cnt = Number(m.orders_count || 0);
+              if (loyaltyFilter === 'near_reward') {
+                return cnt % 10 === 4 || cnt % 10 === 9;
+              }
+              if (loyaltyFilter === 'repeat') {
+                return cnt >= 2;
+              }
+              if (loyaltyFilter === 'inactive') {
+                const lastMs = getLastOrderMs(m);
+                return lastMs > 0 && nowMs - lastMs > thirtyDaysMs;
+              }
+              return true;
+            });
+
+          return (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-2xl font-black text-white flex items-center gap-2">
+                  <Award className="text-[#F8BE40]" size={24} />
+                  <span>Fidélité & Clients</span>
+                </h2>
+                <p className="text-xs text-gray-400 mt-1">
+                  Retrouvez vos clients fidèles, relancez ceux proches d'une récompense et créditez leurs commandes directes.
+                </p>
               </div>
 
-              {couponValidationResult && (
-                <div className="mt-4 p-4 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs">
-                  ✅ <strong>{couponValidationResult.message}</strong> — {couponValidationResult.coupon.reward_title}
-                </div>
-              )}
-            </div>
+              {/* Liste des Clients Fidèles */}
+              <div className="p-5 sm:p-6 rounded-3xl bg-[#111827] border border-white/10 space-y-4">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-base font-black text-white flex items-center gap-2">
+                      <Users size={18} className="text-[#F8BE40]" />
+                      <span>Clients Fidèles ({loyaltyMembers.length})</span>
+                    </h3>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Classés par nombre de commandes et montant total dépensé.
+                    </p>
+                  </div>
 
-            {/* Liste des Clients Fidèles */}
-            <div className="p-5 sm:p-6 rounded-3xl bg-[#111827] border border-white/10 space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-base font-black text-white flex items-center gap-2">
-                    <Users size={18} className="text-[#F8BE40]" />
-                    <span>Clients Fidèles ({loyaltyMembers.length})</span>
-                  </h3>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    Classés par nombre de commandes et montant total dépensé.
-                  </p>
+                  <div className="relative w-full lg:w-72">
+                    <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      value={loyaltySearch}
+                      onChange={(e) => setLoyaltySearch(e.target.value)}
+                      placeholder="Rechercher nom ou téléphone..."
+                      className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-[#0B1120] border border-white/10 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-[#F8BE40]"
+                    />
+                  </div>
                 </div>
 
-                <div className="relative w-full sm:w-72">
-                  <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    value={loyaltySearch}
-                    onChange={(e) => setLoyaltySearch(e.target.value)}
-                    placeholder="Rechercher nom ou téléphone..."
-                    className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-[#0B1120] border border-white/10 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-[#F8BE40]"
-                  />
-                </div>
-              </div>
-
-              {(() => {
-                const q = loyaltySearch.trim().toLowerCase();
-                const sortedMembers = [...loyaltyMembers]
-                  .sort((a, b) => (b.orders_count - a.orders_count) || (b.total_spent - a.total_spent))
-                  .filter((m) => {
-                    if (!q) return true;
+                {/* Filtres rapides */}
+                <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                  {[
+                    { id: 'all', label: 'Tous', count: loyaltyMembers.length },
+                    { id: 'near_reward', label: "À 1 cmd d'une récompense", count: nearRewardCount },
+                    { id: 'repeat', label: 'Fidèles (2+ cmd)', count: repeatCount },
+                    { id: 'inactive', label: 'Inactifs (30j+)', count: inactiveCount }
+                  ].map((f) => {
+                    const isActive = loyaltyFilter === f.id;
                     return (
-                      (m.name || '').toLowerCase().includes(q) ||
-                      (m.phone || '').toLowerCase().includes(q)
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => setLoyaltyFilter(f.id as typeof loyaltyFilter)}
+                        className={`px-3.5 py-2 rounded-2xl text-xs font-bold transition cursor-pointer whitespace-nowrap inline-flex items-center gap-2 shrink-0 ${
+                          isActive
+                            ? 'bg-[#F8BE40] text-[#111827] shadow-md'
+                            : 'bg-[#0B1120] text-gray-300 hover:text-white border border-white/10'
+                        }`}
+                      >
+                        <span>{f.label}</span>
+                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+                          isActive ? 'bg-black/15 text-[#111827]' : 'bg-white/10 text-gray-300'
+                        }`}>
+                          {f.count}
+                        </span>
+                      </button>
                     );
-                  });
+                  })}
+                </div>
 
-                if (sortedMembers.length === 0) {
-                  return (
-                    <div className="text-center py-10 text-xs text-gray-400">
-                      Aucun client fidèle trouvé.
-                    </div>
-                  );
-                }
-
-                return (
+                {filteredMembers.length === 0 ? (
+                  <div className="text-center py-10 text-xs text-gray-400">
+                    Aucun client fidèle dans cette catégorie.
+                  </div>
+                ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {sortedMembers.map((m) => {
+                    {filteredMembers.map((m) => {
                       const ordersCount = Number(m.orders_count || 0);
                       const cyclePos = ordersCount > 0 && ordersCount % 10 === 0 ? 10 : ordersCount % 10;
                       const cycleNext = ordersCount % 10;
                       const digits = (m.phone || '').replace(/\D/g, '');
                       const waNum = digits.length === 8 ? `226${digits}` : digits;
+                      const relanceText =
+                        cycleNext === 4
+                          ? `Bonjour ${m.name}, vous avez déjà 4 commandes chez Les Douceurs de Lê-Ci ! Plus qu'une commande pour profiter automatiquement de -10% sur votre 5ème commande 🎂✨`
+                          : cycleNext === 9
+                          ? `Bonjour ${m.name}, vous êtes à 9/10 sur votre carte fidélité Les Douceurs de Lê-Ci ! Votre prochaine commande bénéficie de -50% sur la livraison 🚚🍰`
+                          : `Bonjour ${m.name}, merci pour votre fidélité chez Les Douceurs de Lê-Ci ! Découvrez nos douceurs du jour ✨`;
 
                       return (
                         <div
-                          key={m.id || m.phone}
+                          key={m.phone}
                           className="p-4 rounded-2xl bg-[#0B1120] border border-white/10 flex flex-col justify-between gap-3"
                         >
                           <div className="flex items-start justify-between gap-2">
@@ -3005,7 +3080,7 @@ export function AdminDashboard() {
                             </span>
                           </div>
 
-                          <div className="flex items-center justify-between gap-2 pt-2 border-t border-white/10 text-xs">
+                          <div className="flex flex-wrap items-center justify-between gap-2 pt-2.5 border-t border-white/10 text-xs">
                             <div className="space-x-3">
                               <span className="text-gray-300">
                                 <strong className="text-white">{ordersCount}</strong> cmd
@@ -3015,7 +3090,20 @@ export function AdminDashboard() {
                               </span>
                             </div>
 
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setStampModalMember(m);
+                                  setStampAmount('');
+                                  setStampReason('Commande directe (WhatsApp / Boutique)');
+                                }}
+                                title="Créditer +1 commande directe (WhatsApp / Boutique)"
+                                className="px-2.5 py-1.5 rounded-lg bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#111827] text-[11px] font-extrabold transition inline-flex items-center gap-1 cursor-pointer"
+                              >
+                                <Plus size={12} />
+                                <span>+1 commande</span>
+                              </button>
                               <a
                                 href={`tel:${digits}`}
                                 title="Appeler"
@@ -3024,12 +3112,12 @@ export function AdminDashboard() {
                                 <Phone size={14} />
                               </a>
                               <a
-                                href={`https://wa.me/${waNum}`}
+                                href={`https://wa.me/${waNum}?text=${encodeURIComponent(relanceText)}`}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="px-2.5 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-400 text-[11px] font-extrabold transition"
                               >
-                                WhatsApp
+                                Relancer
                               </a>
                             </div>
                           </div>
@@ -3037,11 +3125,119 @@ export function AdminDashboard() {
                       );
                     })}
                   </div>
-                );
-              })()}
+                )}
+              </div>
+
+              {/* Validation Rapide Coupon (secondaire) */}
+              <div className="p-5 rounded-3xl bg-[#111827] border border-white/10 max-w-xl">
+                <h3 className="text-sm font-bold text-white mb-2">Validation Coupon Caisse (si existant)</h3>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={couponCodeInput}
+                    onChange={(e) => setCouponCodeInput(e.target.value.toUpperCase())}
+                    placeholder="ex: CPN-9X2A"
+                    className="flex-1 px-4 py-2.5 bg-[#0B1120] border border-white/10 rounded-xl text-white font-mono text-xs focus:ring-2 focus:ring-[#F8BE40] focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleValidateCoupon}
+                    className="px-5 py-2.5 bg-[#F8BE40] text-[#111827] font-extrabold text-xs rounded-xl shadow transition cursor-pointer"
+                  >
+                    Valider
+                  </button>
+                </div>
+
+                {couponValidationResult && (
+                  <div className="mt-4 p-4 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs">
+                    ✅ <strong>{couponValidationResult.message}</strong> — {couponValidationResult.coupon.reward_title}
+                  </div>
+                )}
+              </div>
+
+              {/* Modal +1 commande manuelle */}
+              <AnimatePresence>
+                {stampModalMember && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={() => setStampModalMember(null)}
+                    className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
+                  >
+                    <motion.form
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      onClick={(e) => e.stopPropagation()}
+                      onSubmit={handleConfirmStamp}
+                      className="bg-[#111827] border border-white/15 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <h4 className="text-base font-black text-white">Ajouter +1 commande</h4>
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            Client : <strong className="text-[#F8BE40]">{stampModalMember.name}</strong> (+226 {stampModalMember.phone})
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setStampModalMember(null)}
+                          className="p-1.5 rounded-lg bg-white/5 text-gray-400 hover:text-white cursor-pointer"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-gray-400 uppercase mb-1">
+                          Montant de la commande en FCFA (optionnel)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={stampAmount}
+                          onChange={(e) => setStampAmount(e.target.value)}
+                          placeholder="Ex: 15000"
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-[#0B1120] border border-white/10 text-white text-xs focus:outline-none focus:border-[#F8BE40]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-gray-400 uppercase mb-1">
+                          Motif
+                        </label>
+                        <input
+                          type="text"
+                          value={stampReason}
+                          onChange={(e) => setStampReason(e.target.value)}
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-[#0B1120] border border-white/10 text-white text-xs focus:outline-none focus:border-[#F8BE40]"
+                        />
+                      </div>
+
+                      <div className="flex gap-2 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setStampModalMember(null)}
+                          className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 text-xs font-bold cursor-pointer"
+                        >
+                          Annuler
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={stamping}
+                          className="flex-1 py-2.5 rounded-xl bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#111827] text-xs font-extrabold cursor-pointer disabled:opacity-50"
+                        >
+                          {stamping ? 'Ajout...' : 'Valider +1 commande'}
+                        </button>
+                      </div>
+                    </motion.form>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ============================================================ */}
         {/* ONGLET 6 : SIMULATEUR OM (RÉSERVÉ GÉRANT)                     */}

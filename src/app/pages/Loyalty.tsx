@@ -502,7 +502,7 @@ export function Loyalty() {
                   <ShieldCheck className="text-[#C20A0A] shrink-0 mt-0.5" size={20} />
                   <div>
                     <p className="text-xs font-extrabold text-[#C20A0A]">
-                      Protégez votre espace fidélité et vos points
+                      Protégez votre espace fidélité
                     </p>
                     <p className="text-[11px] text-[#C20A0A]/85">
                       Créez un mot de passe dans votre profil pour éviter qu'un autre appareil accède à votre espace fidélité.
@@ -523,6 +523,43 @@ export function Loyalty() {
                 </button>
               </div>
             )}
+            {/* NOTIFICATION DE RÉCOMPENSE DÉBLOQUÉE (4/10 ou 9/10) */}
+            {(cycleProgress === 4 || cycleProgress === 9) && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="max-w-xl mx-auto bg-gradient-to-r from-amber-50 via-[#FDF3E3] to-amber-50 border-2 border-[#F8BE40] rounded-3xl p-5 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-[#F8BE40] text-[#2B1204] flex items-center justify-center shrink-0">
+                    <Gift size={20} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-black text-[#2B1204]">
+                      {cycleProgress === 4
+                        ? `Bravo ${member.name} ! -10% débloqués !`
+                        : `Bravo ${member.name} ! -50% sur la livraison débloqués !`}
+                    </p>
+                    <p className="text-xs text-[#2B1204]/80 mt-0.5">
+                      {cycleProgress === 4
+                        ? 'Votre prochaine commande (5ème) bénéficie automatiquement de -10% de réduction dans votre panier.'
+                        : 'Votre prochaine commande (10ème) bénéficie automatiquement de -50% sur les frais de livraison.'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate('/catalogue')}
+                  className="px-5 py-2.5 rounded-full bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] border-2 border-[#F8BE40] font-extrabold text-xs shadow-sm transition inline-flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
+                >
+                  <span>
+                    {cycleProgress === 4 ? 'Profiter de mes -10%' : 'Profiter des -50% liv.'}
+                  </span>
+                  <ArrowRight size={14} />
+                </button>
+              </motion.div>
+            )}
+
             {/* CARTE FIDÉLITÉ (10 CUPCAKES) */}
             <div className="flex justify-center">
               <div className="w-full flex flex-col items-center">
@@ -887,6 +924,88 @@ export function Loyalty() {
                   </div>
                 </div>
               </div>
+
+              {/* Historique des récompenses obtenues */}
+              {(() => {
+                const fifthCount = Math.floor((member.orders_count + 5) / 10);
+                const tenthCount = Math.floor(member.orders_count / 10);
+                const rewardedOrders = myOrders.filter((ord) => {
+                  const notesStr = ord.notes || '';
+                  const itemsSum = (ord.items || []).reduce((acc: number, it: any) => {
+                    const p = Number(it.price ?? it.numericPrice ?? 0);
+                    const q = Math.max(1, Number(it.quantity || 1));
+                    return acc + (Number.isFinite(p) ? p * q : 0);
+                  }, 0);
+                  const hasCard = /Carte de v[œo]eux\s*\(\+200F\)/i.test(notesStr);
+                  const saved = Math.max(0, itemsSum + (hasCard ? 200 : 0) - Number(ord.totalAmount || 0));
+                  return saved > 0 || /Livraison -50%/i.test(notesStr);
+                });
+
+                if (fifthCount === 0 && tenthCount === 0 && rewardedOrders.length === 0) {
+                  return null;
+                }
+
+                return (
+                  <div className="bg-white p-6 sm:p-7 rounded-3xl shadow-sm border border-gray-100 space-y-4">
+                    <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                      <Sparkles className="text-[#D4AF37]" size={18} />
+                      <span>Mes Récompenses Déjà Obtenues</span>
+                    </h3>
+
+                    <div className="flex flex-wrap gap-2">
+                      {fifthCount > 0 && (
+                        <span className="px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-extrabold">
+                          🎉 -10% (5ème commande) obtenu {fifthCount} fois
+                        </span>
+                      )}
+                      {tenthCount > 0 && (
+                        <span className="px-3 py-1.5 rounded-full bg-amber-50 border border-[#F8BE40] text-[#2B1204] text-xs font-extrabold">
+                          🚚 -50% livraison (10ème commande) obtenu {tenthCount} fois
+                        </span>
+                      )}
+                    </div>
+
+                    {rewardedOrders.length > 0 && (
+                      <div className="space-y-2 pt-2">
+                        {rewardedOrders.map((ord) => {
+                          const notesStr = ord.notes || '';
+                          const itemsSum = (ord.items || []).reduce((acc: number, it: any) => {
+                            const p = Number(it.price ?? it.numericPrice ?? 0);
+                            const q = Math.max(1, Number(it.quantity || 1));
+                            return acc + (Number.isFinite(p) ? p * q : 0);
+                          }, 0);
+                          const hasCard = /Carte de v[œo]eux\s*\(\+200F\)/i.test(notesStr);
+                          const saved = Math.max(0, itemsSum + (hasCard ? 200 : 0) - Number(ord.totalAmount || 0));
+                          const hasHalfDeliv = /Livraison -50%/i.test(notesStr);
+                          return (
+                            <div
+                              key={ord.id}
+                              className="p-3 rounded-2xl bg-[#FAF8F5] border border-gray-100 flex items-center justify-between gap-3 text-xs"
+                            >
+                              <div>
+                                <p className="font-bold text-gray-900">
+                                  Commande {ord.codeReference || ord.id}
+                                </p>
+                                <p className="text-[11px] text-gray-500">
+                                  {new Date(ord.createdAt).toLocaleDateString('fr-FR', {
+                                    day: '2-digit',
+                                    month: 'short',
+                                    year: 'numeric'
+                                  })}
+                                </p>
+                              </div>
+                              <div className="text-right font-extrabold text-emerald-700">
+                                {saved > 0 && <div>-{saved.toLocaleString('fr-FR')} FCFA (-10%)</div>}
+                                {hasHalfDeliv && <div className="text-[#2B1204]">Livraison -50%</div>}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             {/* MES COUPONS PRÊTS À L'EMPLOI (fidelity.md §2) */}
             {myCoupons.filter(c => c.status === 'ACTIVE').length > 0 && (
               <div className="bg-white p-7 rounded-3xl shadow-sm border border-gray-100">

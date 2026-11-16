@@ -373,6 +373,21 @@ export async function getAllLoyaltyMembers(): Promise<LoyaltyMember[]> {
   return res.json();
 }
 
+export async function addLoyaltyOrderStamp(data: {
+  phone: string;
+  amountFcfa?: number;
+  reason?: string;
+}): Promise<{ success: boolean; member: LoyaltyMember }> {
+  const res = await fetch(`${API_BASE}/admin/loyalty/add-order`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify(data)
+  });
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(payload.error || 'Erreur ajout commande fidélité');
+  return payload;
+}
+
 export async function redeemLoyaltyPoints(data: {
   phone: string;
   pointsToRedeem: number;
