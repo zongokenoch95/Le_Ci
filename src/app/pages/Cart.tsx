@@ -134,27 +134,20 @@ export const Cart: React.FC = () => {
     [deliveryDate, minDate]
   );
 
-  // Liste des créneaux horaires fixes selon le jour (Lun-Sam: 09h..18h, Dimanche: 10h30, 11h, 12h)
+  // Liste des créneaux horaires par pas de 30 minutes selon le jour (Lun-Sam: 09h00..18h00, Dimanche: 10h30..12h00)
   const baseTimeOptionsForSelectedDate = useMemo(() => {
-    if (selectedDateWindow.isSunday) {
-      return [
-        { value: '10:30', label: '10h30' },
-        { value: '11:00', label: '11h00' },
-        { value: '12:00', label: '12h00' }
-      ];
+    const startMins = selectedDateWindow.isSunday ? 10 * 60 + 30 : 9 * 60;
+    const endMins = selectedDateWindow.isSunday ? 12 * 60 : 18 * 60;
+    const slots: { value: string; label: string }[] = [];
+    for (let m = startMins; m <= endMins; m += 30) {
+      const hh = String(Math.floor(m / 60)).padStart(2, '0');
+      const mm = String(m % 60).padStart(2, '0');
+      slots.push({
+        value: `${hh}:${mm}`,
+        label: `${hh}h${mm}`
+      });
     }
-    return [
-      { value: '09:00', label: '09h00' },
-      { value: '10:00', label: '10h00' },
-      { value: '11:00', label: '11h00' },
-      { value: '12:00', label: '12h00' },
-      { value: '13:00', label: '13h00' },
-      { value: '14:00', label: '14h00' },
-      { value: '15:00', label: '15h00' },
-      { value: '16:00', label: '16h00' },
-      { value: '17:00', label: '17h00' },
-      { value: '18:00', label: '18h00' }
-    ];
+    return slots;
   }, [selectedDateWindow.isSunday]);
 
   // Heure minimale et maximale autorisées pour la date actuellement sélectionnée
