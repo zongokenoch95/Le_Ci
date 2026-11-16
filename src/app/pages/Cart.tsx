@@ -19,7 +19,9 @@ import {
   Gift,
   Sparkles,
   CreditCard,
-  Loader2
+  Loader2,
+  ZoomIn,
+  X
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import {
@@ -249,6 +251,7 @@ export const Cart: React.FC = () => {
   // Notes additionnelles
   const [orderNotes] = useState<string>(savedPref?.notes || '');
   const [activeThumbnails, setActiveThumbnails] = useState<Record<string, string>>({});
+  const [zoomedImage, setZoomedImage] = useState<{ src: string; alt: string } | null>(null);
 
   const extractComponentsList = (item: any): string[] => {
     if (Array.isArray(item.composition) && item.composition.length > 0) {
@@ -662,29 +665,25 @@ export const Cart: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             {/* COLONNE GAUCHE (7 cols) : Image du produit en premier + Formulaire de commande */}
             <div className="lg:col-span-7 space-y-8">
-              {/* EN PREMIER DANS LE PANIER : L'IMAGE ET LA CARTE DU PRODUIT SÉLECTIONNÉ */}
-              <div className="bg-white rounded-3xl p-5 sm:p-7 border border-[#F6C58E]/60 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-base sm:text-lg font-black text-[#2B1204] flex items-center gap-2">
-                    <ShoppingBag size={18} className="text-[#C20A0A]" />
-                    <span>Votre sélection</span>
-                  </h2>
-                  <Link
-                    to="/catalogue"
-                    className="text-xs font-extrabold text-[#C20A0A] hover:underline"
-                  >
-                    + Ajouter d'autres douceurs
-                  </Link>
-                </div>
-
-                <div className="space-y-4">
+              {/* EN PREMIER DANS LE PANIER : LA CARTE DU PRODUIT SÉLECTIONNÉ */}
+              <div className="space-y-4">
+                <div className="space-y-5">
                   {items.map((item) => {
                     const safePrice = Number.isFinite(Number(item.numericPrice)) ? Number(item.numericPrice) : 0;
                     const safeQty = Math.max(1, Number.isFinite(Number(item.quantity)) ? Number(item.quantity) : 1);
                     const mainFallback = item.image || '/products/gateau_1.jpeg';
+                    const isPlateauFeuilletes = /plateau\s+feuillet[eé]s\s+sal[eé]s/i.test(item.name || '');
+                    const defaultSavoryGallery = [
+                      mainFallback,
+                      '/products/salee_2.jpeg',
+                      '/products/salee_3.jpeg',
+                      '/products/salee_1.jpeg'
+                    ].filter((v, i, arr) => Boolean(v) && arr.indexOf(v) === i).slice(0, 3);
                     const gallery =
                       Array.isArray(item.images) && item.images.length > 1
                         ? item.images
+                        : isPlateauFeuilletes
+                        ? defaultSavoryGallery
                         : [mainFallback];
                     const currentMainImage = activeThumbnails[String(item.id)] || gallery[0];
                     const componentsList = extractComponentsList(item);
@@ -692,112 +691,127 @@ export const Cart: React.FC = () => {
                     return (
                       <div
                         key={`top-preview-${item.id}`}
-                        className="bg-[#FDF8F2] rounded-3xl p-4 sm:p-5 border border-[#F6C58E]/70 shadow-sm space-y-4"
+                        className="bg-white rounded-3xl border border-[#F6C58E]/70 shadow-sm overflow-hidden"
                       >
-                        {/* 1. Photo principale sans bulle ni bouton agrandir */}
-                        <div className="w-full aspect-[4/3] sm:aspect-[16/10] max-h-64 rounded-2xl overflow-hidden bg-white border border-[#F6C58E]/40">
+                        {/* 1. Photo principale sans gouttières (coins supérieurs = carte, coins inférieurs = rectangulaires) */}
+                        <div className="relative w-full aspect-[4/3] sm:aspect-[16/10] max-h-72 overflow-hidden bg-[#FDF8F2] rounded-none">
                           <img
                             src={currentMainImage}
                             alt={item.name}
                             className="w-full h-full object-cover"
                           />
-                        </div>
-
-                        {/* 2. Photos secondaires sans titres (si plusieurs images disponibles) */}
-                        {gallery.length > 1 && (
-                          <div className="grid grid-cols-3 gap-2.5">
-                            {gallery.slice(0, 3).map((thumbUrl, idx) => {
-                              const isSelected = currentMainImage === thumbUrl;
-                              return (
-                                <button
-                                  key={`${item.id}-thumb-${idx}`}
-                                  type="button"
-                                  onClick={() =>
-                                    setActiveThumbnails((prev) => ({
-                                      ...prev,
-                                      [String(item.id)]: thumbUrl
-                                    }))
-                                  }
-                                  className={`aspect-[4/3] rounded-xl overflow-hidden bg-white transition cursor-pointer ${
-                                    isSelected
-                                      ? 'border-2 border-[#C20A0A] shadow-sm'
-                                      : 'border border-[#F6C58E]/60 hover:border-[#F8BE40]'
-                                  }`}
-                                >
-                                  <img
-                                    src={thumbUrl}
-                                    alt=""
-                                    className="w-full h-full object-cover"
-                                  />
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
-
-                        {/* 3. Titre & liste simple des composants du produit */}
-                        <div className="space-y-2">
-                          <h3 className="text-base sm:text-lg font-black text-[#2B1204] leading-snug">
-                            {item.name}
-                          </h3>
-
-                          {componentsList.length > 0 && (
-                            <ul className="space-y-1 text-xs sm:text-sm text-[#2B1204]/85 list-disc pl-5">
-                              {componentsList.map((comp, idx) => (
-                                <li key={idx}>{comp}</li>
-                              ))}
-                            </ul>
-                          )}
-                        </div>
-
-                        {/* 4. Compteur de quantité + prix juste à côté + supprimer */}
-                        <div className="flex items-center justify-between gap-3 pt-3 border-t border-[#F6C58E]/35">
-                          <div className="flex items-center gap-3 flex-wrap">
-                            <div className="py-1.5 px-3 rounded-full border border-[#F8BE40] bg-white flex items-center gap-3 shadow-xs">
-                              <button
-                                type="button"
-                                onClick={() => updateQuantity(item.id, -1)}
-                                disabled={safeQty <= 1}
-                                className="w-6 h-6 rounded-full text-[#2B1204] hover:text-[#5DBA68] disabled:opacity-35 disabled:cursor-not-allowed font-bold flex items-center justify-center transition cursor-pointer"
-                                title="Diminuer la quantité"
-                              >
-                                <Minus size={13} strokeWidth={2.5} />
-                              </button>
-                              <span className="font-adapt text-sm font-black text-[#2B1204] min-w-[18px] text-center">
-                                {safeQty}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => updateQuantity(item.id, 1)}
-                                className="w-6 h-6 rounded-full text-[#2B1204] hover:text-[#5DBA68] font-bold flex items-center justify-center transition cursor-pointer"
-                                title="Augmenter la quantité"
-                              >
-                                <Plus size={13} strokeWidth={2.5} />
-                              </button>
-                            </div>
-
-                            <div className="text-[#C20A0A] text-base sm:text-lg font-black">
-                              {(safePrice * safeQty).toLocaleString('fr-FR')} FCFA
-                              {safeQty > 1 && (
-                                <span className="text-[11px] font-semibold text-[#C20A0A]/80 ml-1.5">
-                                  ({safePrice.toLocaleString('fr-FR')} F / u)
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
                           <button
                             type="button"
-                            onClick={() => removeFromCart(item.id)}
-                            className="w-10 h-10 rounded-full bg-white hover:bg-[#C20A0A] text-[#2B1204] hover:text-white flex items-center justify-center border border-[#F6C58E]/60 transition cursor-pointer shrink-0"
-                            title="Retirer cet article"
+                            onClick={() => setZoomedImage({ src: currentMainImage, alt: item.name })}
+                            className="absolute bottom-3 right-3 px-3.5 py-1.5 rounded-full bg-white/95 hover:bg-white text-[#2B1204] text-xs font-extrabold shadow-md inline-flex items-center gap-1.5 transition cursor-pointer"
                           >
-                            <Trash2 size={15} />
+                            <ZoomIn size={13} className="text-[#C20A0A]" />
+                            <span>Agrandir</span>
                           </button>
+                        </div>
+
+                        <div className="p-4 sm:p-6 space-y-4">
+                          {/* 2. Photos secondaires sans titres */}
+                          {gallery.length > 1 && (
+                            <div className="grid grid-cols-3 gap-2.5">
+                              {gallery.slice(0, 3).map((thumbUrl, idx) => {
+                                const isSelected = currentMainImage === thumbUrl;
+                                return (
+                                  <button
+                                    key={`${item.id}-thumb-${idx}`}
+                                    type="button"
+                                    onClick={() =>
+                                      setActiveThumbnails((prev) => ({
+                                        ...prev,
+                                        [String(item.id)]: thumbUrl
+                                      }))
+                                    }
+                                    className={`aspect-[4/3] rounded-xl overflow-hidden bg-[#FDF8F2] transition cursor-pointer ${
+                                      isSelected
+                                        ? 'border-2 border-[#C20A0A] shadow-sm'
+                                        : 'border border-[#F6C58E]/60 hover:border-[#F8BE40]'
+                                    }`}
+                                  >
+                                    <img
+                                      src={thumbUrl}
+                                      alt=""
+                                      className="w-full h-full object-cover"
+                                    />
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {/* 3. Titre & liste simple des composants du produit */}
+                          <div className="space-y-2">
+                            <h3 className="text-base sm:text-lg font-black text-[#2B1204] leading-snug">
+                              {item.name}
+                            </h3>
+
+                            {componentsList.length > 0 && (
+                              <ul className="space-y-1 text-xs sm:text-sm text-[#2B1204]/85 list-disc pl-5">
+                                {componentsList.map((comp, idx) => (
+                                  <li key={idx}>{comp}</li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+
+                          {/* 4. Compteur de quantité + nouveau prix juste à côté + supprimer */}
+                          <div className="flex items-center justify-between gap-3 pt-3 border-t border-[#F6C58E]/35">
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <div className="py-1.5 px-3 rounded-full border border-[#F8BE40] bg-[#FDF8F2] flex items-center gap-3 shadow-xs">
+                                <button
+                                  type="button"
+                                  onClick={() => updateQuantity(item.id, -1)}
+                                  disabled={safeQty <= 1}
+                                  className="w-6 h-6 rounded-full text-[#2B1204] hover:text-[#5DBA68] disabled:opacity-35 disabled:cursor-not-allowed font-bold flex items-center justify-center transition cursor-pointer"
+                                  title="Diminuer la quantité"
+                                >
+                                  <Minus size={13} strokeWidth={2.5} />
+                                </button>
+                                <span className="font-adapt text-sm font-black text-[#2B1204] min-w-[18px] text-center">
+                                  {safeQty}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => updateQuantity(item.id, 1)}
+                                  className="w-6 h-6 rounded-full text-[#2B1204] hover:text-[#5DBA68] font-bold flex items-center justify-center transition cursor-pointer"
+                                  title="Augmenter la quantité"
+                                >
+                                  <Plus size={13} strokeWidth={2.5} />
+                                </button>
+                              </div>
+
+                              <div className="text-[#C20A0A] text-base sm:text-lg font-black">
+                                {(safePrice * safeQty).toLocaleString('fr-FR')} FCFA
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => removeFromCart(item.id)}
+                              className="w-10 h-10 rounded-full bg-[#FDF8F2] hover:bg-[#C20A0A] text-[#2B1204] hover:text-white flex items-center justify-center border border-[#F6C58E]/60 transition cursor-pointer shrink-0"
+                              title="Retirer cet article"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );
                   })}
+                </div>
+
+                {/* Lien Ajouter d'autres douceurs déplacé en bas et centré */}
+                <div className="flex justify-center pt-1">
+                  <Link
+                    to="/catalogue"
+                    className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-extrabold text-[#C20A0A] hover:underline"
+                  >
+                    + Ajouter d'autres douceurs
+                  </Link>
                 </div>
               </div>
 
@@ -1328,6 +1342,33 @@ export const Cart: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Modal Zoom Image (Agrandir) */}
+      {zoomedImage && (
+        <div
+          onClick={() => setZoomedImage(null)}
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative max-w-2xl w-full bg-white rounded-3xl overflow-hidden shadow-2xl border-2 border-[#F8BE40]"
+          >
+            <button
+              type="button"
+              onClick={() => setZoomedImage(null)}
+              aria-label="Fermer l'image"
+              className="absolute top-3 right-3 z-10 w-9 h-9 rounded-full bg-white/95 hover:bg-white text-[#2B1204] shadow-md flex items-center justify-center cursor-pointer"
+            >
+              <X size={18} />
+            </button>
+            <img
+              src={zoomedImage.src}
+              alt={zoomedImage.alt}
+              className="w-full max-h-[80vh] object-contain bg-[#FDF8F2]"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
