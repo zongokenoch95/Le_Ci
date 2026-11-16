@@ -434,112 +434,44 @@ export function Home() {
 
           {/* Grille des 2 produits phares */}
           <div className="grid grid-cols-2 gap-4 sm:gap-7 max-w-2xl mx-auto">
-            {signatureCreations.slice(0, 2).map((item, idx) => {
-              const cartQty = getSignatureCartQuantity(item.id);
-              return (
-                <motion.div
-                  key={item.id}
-                  initial={{ opacity: 0, y: 25 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.45, delay: idx * 0.08 }}
-                  className="bg-white text-[#2B1204] p-1 rounded-xl shadow-[0_4px_16px_rgba(43,18,4,0.08)] hover:shadow-[0_8px_24px_rgba(43,18,4,0.14)] transition-all duration-300 flex flex-col justify-between group hover:-translate-y-1"
-                >
-                  <div>
-                    {/* 1. Photo */}
-                    <div className="relative aspect-[4/5] rounded-lg overflow-hidden bg-[#FDF8F2]">
-                      <ImageWithFallback
-                        src={item.image}
-                        alt={item.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                      />
-                    </div>
+            {signatureCreations.slice(0, 2).map((item, idx) => (
+              <motion.div
+                key={item.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => handleAddSignatureToCart(item, true)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleAddSignatureToCart(item, true);
+                  }
+                }}
+                initial={{ opacity: 0, y: 25 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.45, delay: idx * 0.08 }}
+                className="bg-white text-[#2B1204] p-1 rounded-xl shadow-[0_4px_16px_rgba(43,18,4,0.08)] hover:shadow-[0_8px_24px_rgba(43,18,4,0.14)] transition-all duration-300 flex flex-col justify-between group hover:-translate-y-1 cursor-pointer"
+              >
+                {/* 1. Photo */}
+                <div className="relative aspect-[4/5] rounded-lg overflow-hidden bg-[#FDF8F2]">
+                  <ImageWithFallback
+                    src={item.image}
+                    alt={item.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                  />
+                </div>
 
-                    {/* 2. Nom */}
-                    <h3 className="font-fredoka text-center text-xs sm:text-base font-extrabold text-[#2B1204] mt-4 mb-1.5 line-clamp-2 min-h-[2.2rem] sm:min-h-[2.6rem] flex items-center justify-center">
-                      {item.name}
-                    </h3>
+                {/* 2. Nom */}
+                <h3 className="font-fredoka text-center text-xs sm:text-base font-extrabold text-[#2B1204] mt-3 mb-1.5 px-2 line-clamp-2 min-h-[2.2rem] sm:min-h-[2.6rem] flex items-center justify-center">
+                  {item.name}
+                </h3>
 
-                    {/* 3. Prix */}
-                    <div className="font-adapt text-center text-sm sm:text-base font-black text-[#C20A0A] mb-2">
-                      {item.numericPrice.toLocaleString('fr-FR')} FCFA
-                    </div>
-
-                    {/* 4. Description */}
-                    <p className="font-fredoka text-[11px] sm:text-xs text-center text-[#2B1204]/75 font-normal mb-4 line-clamp-2 leading-relaxed">
-                      {item.description}
-                    </p>
-                  </div>
-
-                  {/* 5. Boutons rectangulaires à coins légèrement arrondis */}
-                  <div className="pt-1 flex flex-col gap-2">
-                    {item.isCake ? (
-                      <>
-                        <Link
-                          to="/sur-commande"
-                          className="w-full py-1.5 sm:py-2 px-3 rounded-md font-bold text-[11px] sm:text-xs border border-[#F8BE40] text-[#2B1204] hover:bg-[#F8BE40]/15 transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center"
-                        >
-                          <Cake size={13} />
-                          <span>Personnaliser</span>
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={() => handleAddSignatureToCart(item, true)}
-                          className="w-full py-1.5 sm:py-2 px-3 rounded-md font-extrabold text-[11px] sm:text-xs bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] border border-[#F8BE40] shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                        >
-                          <ShoppingBag size={13} />
-                          <span>Commander</span>
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        {cartQty > 0 ? (
-                          <div className="w-full py-0.5 px-2.5 rounded-md border border-[#F8BE40] bg-[#FDF8F2] flex items-center justify-between">
-                            <button
-                              type="button"
-                              onClick={() => updateQuantity(`prod-${item.id}`, -1)}
-                              disabled={cartQty <= 1}
-                              className="w-6 h-6 rounded flex items-center justify-center text-[#2B1204] hover:text-[#C20A0A] disabled:opacity-35 disabled:cursor-not-allowed font-bold transition cursor-pointer"
-                              aria-label="Diminuer la quantité"
-                            >
-                              <Minus size={12} strokeWidth={2.5} />
-                            </button>
-                            <span className="font-adapt text-xs sm:text-sm font-black text-[#2B1204]">
-                              {cartQty}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => updateQuantity(`prod-${item.id}`, 1)}
-                              className="w-6 h-6 rounded flex items-center justify-center text-[#2B1204] hover:text-[#C20A0A] font-bold transition cursor-pointer"
-                              aria-label="Augmenter la quantité"
-                            >
-                              <Plus size={12} strokeWidth={2.5} />
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => handleAddSignatureToCart(item, false)}
-                            className="w-full py-1.5 sm:py-2 px-3 rounded-md font-bold text-[11px] sm:text-xs border border-[#F8BE40] text-[#2B1204] hover:bg-[#F8BE40]/15 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                          >
-                            <span>Ajouter</span>
-                          </button>
-                        )}
-
-                        <button
-                          type="button"
-                          onClick={() => handleAddSignatureToCart(item, true)}
-                          className="w-full py-1.5 sm:py-2 px-3 rounded-md font-extrabold text-[11px] sm:text-xs bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] border border-[#F8BE40] shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                        >
-                          <ShoppingBag size={13} />
-                          <span>Commander</span>
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </motion.div>
-              );
-            })}
+                {/* 3. Prix */}
+                <div className="font-adapt text-center text-sm sm:text-base font-black text-[#C20A0A] pb-3">
+                  {item.numericPrice.toLocaleString('fr-FR')} FCFA
+                </div>
+              </motion.div>
+            ))}
           </div>
 
           {/* Lien vers la catégorie Signature du catalogue */}
