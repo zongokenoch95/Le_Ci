@@ -1,4 +1,5 @@
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { ArrowRight } from 'lucide-react';
 import { Header } from './components/Header';
 import { ScrollToTop } from './components/ScrollToTop';
 import { Footer } from './components/Footer';
@@ -18,11 +19,11 @@ import { About } from './pages/About';
 import { LegalMentions } from './pages/LegalMentions';
 import { Cart } from './pages/Cart';
 import { BackButton } from '../components/BackButton.jsx';
-import { Breadcrumbs } from '../components/Breadcrumbs.jsx';
 import '../styles/index.css';
 
 function AppShell() {
   const location = useLocation();
+  const navigate = useNavigate();
   const isAdminRoute = location.pathname.startsWith('/admin');
   const showSecondaryNav = !isAdminRoute && location.pathname !== '/';
 
@@ -32,9 +33,16 @@ function AppShell() {
       <main className="flex-1">
         {showSecondaryNav && (
           <div className="bg-[#FDF8F2] border-b border-[#F6C58E]/50">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center gap-3 sm:gap-4">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-3">
               <BackButton />
-              <Breadcrumbs />
+              <button
+                type="button"
+                onClick={() => navigate(1)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white hover:bg-[#F8BE40]/20 text-[#2B1204] border border-[#F6C58E] text-xs font-extrabold shadow-xs transition cursor-pointer shrink-0"
+              >
+                <span>Suivant</span>
+                <ArrowRight size={14} strokeWidth={2.5} />
+              </button>
             </div>
           </div>
         )}

@@ -422,14 +422,6 @@ export function Payment() {
     <div className="min-h-screen py-10 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-[#FDFBF7] to-[#F5F0E6] text-gray-900">
       <div className="max-w-3xl mx-auto">
 
-        {/* Navigation retour */}
-        <button
-          onClick={() => navigate('/catalogue')}
-          className="inline-flex items-center gap-2 text-xs font-semibold text-gray-500 hover:text-gray-900 mb-6 transition cursor-pointer"
-        >
-          <ArrowLeft size={16} /> Retour au catalogue
-        </button>
-
         <AnimatePresence mode="wait">
 
           {/* ========================================================================= */}
@@ -673,8 +665,23 @@ export function Payment() {
               exit={{ opacity: 0, y: -15 }}
               className="bg-white rounded-3xl shadow-2xl border-2 border-[#F8BE40] overflow-hidden font-fredoka"
             >
-              {/* Corps du formulaire de paiement (directement au choix du moyen de paiement mobile) */}
-              <div className="p-6 sm:p-8 space-y-8">
+              {/* Corps du formulaire de paiement (références commande + choix du moyen de paiement mobile) */}
+              <div className="p-6 sm:p-8 space-y-6">
+                {/* Petite section Références de la commande avant le choix de paiement */}
+                <div className="bg-[#FDF8F2] rounded-2xl p-4 border border-[#F6C58E] flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-[#2B1204]/70 uppercase">Commande :</span>
+                    <span className="font-mono font-bold text-[#2B1204]">{order.id}</span>
+                  </div>
+                  {order.codeReference && (
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono font-black text-[#581C87] bg-purple-100 px-3 py-1 rounded-full">
+                        RÉF : {order.codeReference}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
                 <form onSubmit={handleConfirmPaymentDetails} className="space-y-8">
                   {/* 1. Choix du moyen de paiement mobile */}
                   <div>
@@ -814,13 +821,12 @@ export function Payment() {
                       type="button"
                       onClick={handleOpenOtherPayment}
                       disabled={openingOtherPay}
-                      className="w-full py-3.5 px-6 rounded-full border-2 border-[#F8BE40] bg-white hover:bg-[#FDF8F2] text-[#2B1204] font-extrabold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                      className="w-full py-3.5 px-6 rounded-full border-2 border-[#F8BE40] bg-white hover:bg-[#FDF8F2] text-[#2B1204] font-extrabold text-xs sm:text-sm transition-all flex items-center justify-center cursor-pointer disabled:opacity-50"
                     >
-                      <Share2 size={16} />
                       <span>
                         {openingOtherPay
                           ? 'Ouverture du lien sécurisé...'
-                          : 'Payer avec un autre numéro / Faire payer par un proche'}
+                          : 'Payer avec un autre numéro'}
                       </span>
                     </button>
                   </div>
@@ -840,8 +846,8 @@ export function Payment() {
               exit={{ opacity: 0, y: -15 }}
               className="bg-white rounded-3xl shadow-2xl border-2 border-[#F8BE40] overflow-hidden font-fredoka"
             >
-              {/* En-tête épuré Charte Brun Cacao & Or (sans informations de commande ni minuteur) */}
-              <div className="bg-[#2B1204] text-[#FDF8F2] p-6 sm:p-8 border-b-2 border-[#F8BE40]">
+              {/* En-tête Charte Brun Cacao & Or avec références de la commande */}
+              <div className="bg-[#2B1204] text-[#FDF8F2] p-6 sm:p-8 border-b-2 border-[#F8BE40] space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="text-sm font-bold text-[#F6C58E]">
                     Validation du paiement
@@ -850,45 +856,43 @@ export function Payment() {
                     {amount.toLocaleString('fr-FR')} FCFA
                   </div>
                 </div>
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-white/10 text-xs">
+                  <span className="font-mono text-[#FDF8F2]/80">{order.id}</span>
+                  {order.codeReference && (
+                    <span className="font-mono font-black text-[#2B1204] bg-[#F8BE40] px-3 py-0.5 rounded-full">
+                      RÉF : {order.codeReference}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Corps de la page d'attente */}
               <div className="p-6 sm:p-8 space-y-8">
-                {/* Rappel des coordonnées de transfert saisies + Bouton Payer avec un autre numéro */}
+                {/* Rappel des coordonnées de transfert saisies + Bouton Payer avec un autre numéro (sans bouton Modifier) */}
                 <div className="bg-[#FDF8F2] p-4 rounded-2xl border border-[#F6C58E] flex flex-col gap-3 text-xs sm:text-sm">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 p-1 rounded-lg bg-white border border-[#F6C58E] flex items-center justify-center shadow-xs shrink-0 overflow-hidden">
-                        {selectedOperator === 'orange' && (
-                          <img src="/img/Orange.jpg" alt="Orange Money" className="w-full h-full object-contain" />
-                        )}
-                        {selectedOperator === 'moov' && (
-                          <img src="/img/moov.jpg" alt="Moov Money" className="w-full h-full object-contain" />
-                        )}
-                        {selectedOperator === 'wave' && (
-                          <img src="/img/wave.png" alt="Wave" className="w-full h-full object-contain" />
-                        )}
-                      </div>
-                      <div>
-                        <span className="text-gray-500 block text-xs">Paiement attendu depuis :</span>
-                        <span className="font-extrabold text-gray-900">
-                          {payerPhone} • via{' '}
-                          {selectedOperator === 'orange'
-                            ? 'Orange Money'
-                            : selectedOperator === 'moov'
-                              ? 'Moov Money'
-                              : 'Wave'}
-                        </span>
-                      </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 p-1 rounded-lg bg-white border border-[#F6C58E] flex items-center justify-center shadow-xs shrink-0 overflow-hidden">
+                      {selectedOperator === 'orange' && (
+                        <img src="/img/Orange.jpg" alt="Orange Money" className="w-full h-full object-contain" />
+                      )}
+                      {selectedOperator === 'moov' && (
+                        <img src="/img/moov.jpg" alt="Moov Money" className="w-full h-full object-contain" />
+                      )}
+                      {selectedOperator === 'wave' && (
+                        <img src="/img/wave.png" alt="Wave" className="w-full h-full object-contain" />
+                      )}
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setIsPaymentConfirmed(false)}
-                      className="inline-flex items-center gap-1 text-xs font-bold text-[#581C87] hover:underline cursor-pointer"
-                    >
-                      <RefreshCw size={13} />
-                      <span>Modifier</span>
-                    </button>
+                    <div>
+                      <span className="text-gray-500 block text-xs">Paiement attendu depuis :</span>
+                      <span className="font-extrabold text-gray-900">
+                        {payerPhone} • via{' '}
+                        {selectedOperator === 'orange'
+                          ? 'Orange Money'
+                          : selectedOperator === 'moov'
+                            ? 'Moov Money'
+                            : 'Wave'}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="pt-3 border-t border-[#F6C58E]/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -899,9 +903,8 @@ export function Payment() {
                       type="button"
                       onClick={handleOpenOtherPayment}
                       disabled={openingOtherPay}
-                      className="px-4 py-2 rounded-full bg-white hover:bg-[#FDF8F2] text-[#2B1204] border-2 border-[#F8BE40] font-bold text-xs inline-flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer disabled:opacity-50"
+                      className="px-4 py-2 rounded-full bg-white hover:bg-[#FDF8F2] text-[#2B1204] border-2 border-[#F8BE40] font-bold text-xs inline-flex items-center justify-center shadow-sm transition cursor-pointer disabled:opacity-50"
                     >
-                      <Share2 size={13} />
                       <span>{openingOtherPay ? 'Ouverture...' : 'Payer avec un autre numéro'}</span>
                     </button>
                   </div>
@@ -964,36 +967,27 @@ export function Payment() {
                       </a>
                     )}
 
-                    {/* Syntaxe USSD brute copiable */}
-                    <div className="text-xs text-gray-500 flex items-center justify-center gap-2">
-                      <span className="font-mono bg-white px-2.5 py-1 rounded-lg border border-gray-200">
-                        {selectedOperator === 'orange'
-                          ? omUssdMarchand
-                          : selectedOperator === 'moov'
-                            ? moovUssd
-                            : 'Paiement Wave'}
-                      </span>
-                      <button
-                        onClick={() => copyCode(selectedOperator === 'orange' ? omUssdMarchand : moovUssd)}
-                        className="text-gray-400 hover:text-gray-900 cursor-pointer"
-                        title="Copier la commande USSD"
-                      >
-                        <Copy size={14} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Desktop QR Code */}
-                  <div className="pt-6 border-t border-gray-200/60 max-w-xs mx-auto">
-                    <p className="text-xs font-semibold text-gray-500 mb-3 flex items-center justify-center gap-1.5">
-                      <QrCode size={16} /> Ou scannez depuis votre smartphone
-                    </p>
-                    {qrCodeDataUrl ? (
-                      <div className="bg-white p-3 rounded-2xl shadow-sm border border-gray-200 inline-block">
-                        <img src={qrCodeDataUrl} alt="QR Code Paiement" className="w-44 h-44 mx-auto" />
+                    {/* Code USSD suivant avec bouton Copier (sans QR Code) */}
+                    {selectedOperator !== 'wave' && (
+                      <div className="pt-2 space-y-2">
+                        <p className="text-xs font-semibold text-gray-600">
+                          Ou composez le code USSD suivant :
+                        </p>
+                        <div className="text-xs text-gray-700 flex items-center justify-center gap-2 flex-wrap">
+                          <span className="font-mono font-bold bg-white px-3 py-1.5 rounded-xl border border-gray-200">
+                            {selectedOperator === 'orange' ? omUssdMarchand : moovUssd}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => copyCode(selectedOperator === 'orange' ? omUssdMarchand : moovUssd)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#F8BE40] hover:bg-[#e5ac2e] text-[#2B1204] font-extrabold text-xs transition cursor-pointer shadow-xs"
+                            title="Copier le code USSD"
+                          >
+                            <Copy size={13} />
+                            <span>{copied ? 'Copié !' : 'Copier'}</span>
+                          </button>
+                        </div>
                       </div>
-                    ) : (
-                      <div className="w-44 h-44 bg-gray-100 rounded-2xl animate-pulse mx-auto" />
                     )}
                   </div>
                 </div>
