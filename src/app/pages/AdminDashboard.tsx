@@ -1517,12 +1517,13 @@ export function AdminDashboard() {
               })}
             </div>
 
-            {/* Grille de cartes de commandes */}
+            {/* Grille de cartes de commandes (4 blocs structurés) */}
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
               {filteredOrders.map(order => {
                 const notesStr = order.notes || '';
                 const itemsSubtotal = (order.items || []).reduce((acc, it) => acc + (Number(it.price) || 0) * (Number(it.quantity) || 1), 0);
-                const hasCard = notesStr.includes('Carte de vœux');
+                const hasCard = Boolean(order.hasGreetingCard || /Carte de v[œo]eux\s*\(\+200F\)/i.test(notesStr));
+                const cardTextMatch = notesStr.match(/Carte de v[œo]eux\s*\(\+200F\):\s*«\s*([^»]*)\s*»/i);
                 const cardFee = hasCard ? 200 : 0;
                 const expectedBeforeDiscount = itemsSubtotal + cardFee;
                 const discountAmount = Math.max(0, expectedBeforeDiscount - Number(order.montantTotal || 0));
@@ -1530,11 +1531,16 @@ export function AdminDashboard() {
                   ? Math.round((discountAmount / expectedBeforeDiscount) * 100)
                   : 0;
 
-                const isDelivery = Boolean(order.deliveryFee || notesStr.includes('Livraison') || notesStr.includes('km'));
+                const isPickup = /Retrait boutique|Sans livraison/i.test(notesStr) && !order.deliveryFee;
+                const isDelivery = !isPickup;
+                const hasHalfDelivery = /Livraison -50%/i.test(notesStr);
                 const addrMatch = notesStr.match(/Adresse:\s*([^|\[]+(?:\|\s*Repère:[^|\[]+)?)/i);
                 const mapUrlMatch = notesStr.match(/(https?:\/\/[^\s|\]]+)/i);
                 const dateMatch = notesStr.match(/Date souhaitée:\s*([^|\[]+)/i);
-                const payerNameVal = order.payerName || (notesStr.match(/Payeur:\s*([^|(]+?)\s*\(/i)?.[1]?.trim()) || 'En attente';
+                const backupPhoneMatch = notesStr.match(/Tél secours:\s*([^|\[]+)/i);
+                const notesSpecialMatch = notesStr.match(/Notes spéciales:\s*([^|\[]+)/i);
+
+                const payerNameVal = order.payerName || (notesStr.match(/Payeur:\s*([^|(]+?)\s*\(/i)?.[1]?.trim()) || '';
                 const payerPhoneVal = order.payerPhone || (notesStr.match(/Payeur:[^)]*\(([^)]+)\)/i)?.[1]?.trim()) || '';
                 const receptionPhone = order.customerPhone || payerPhoneVal || '';
                 const waDigits = receptionPhone.replace(/\D/g, '');
@@ -1570,79 +1576,114 @@ export function AdminDashboard() {
                     className="p-4 sm:p-5 rounded-3xl bg-[#111827] border border-white/10 shadow-xl flex flex-col justify-between gap-4"
                   >
                     <div className="space-y-3.5">
-                      {/* Header Carte : Réf + Date + Statut */}
-                      <div className="flex justify-between items-start gap-2">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const refVal = order.codeReference || order.id;
-                                navigator.clipboard?.writeText(refVal);
-                                setCopiedRef(refVal);
-                                setTimeout(() => setCopiedRef(null), 1500);
-                              }}
-                              title="Copier la référence"
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-500/15 border border-amber-500/30 text-[#F8BE40] font-mono text-xs font-black cursor-pointer hover:bg-amber-500/25 transition"
-                            >
-                              <span>RÉF : {order.codeReference || order.id}</span>
-                              <Copy size={12} />
-                            </button>
-                            {copiedRef === (order.codeReference || order.id) && (
-                              <span className="text-[10px] text-emerald-400 font-bold">Copié !</span>
-                            )}
-                            <span className="text-[11px] text-gray-400">
-                              {new Date(order.createdAt).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}
-                            </span>
-                          </div>
-                          <div className="text-[10px] font-mono text-gray-500 mt-1 truncate">
-                            {order.id}
-                          </div>
-                          {order.statut === 'EN_ATTENTE_DE_PAIEMENT' && (() => {
-                            const createdMs = new Date(order.createdAt).getTime();
-                            const elapsedSec = Math.max(0, Math.floor((nowTick - createdMs) / 1000));
-                            const remSec = Math.max(0, 600 - elapsedSec);
-                            const mm = String(Math.floor(remSec / 60)).padStart(2, '0');
-                            const ss = String(remSec % 60).padStart(2, '0');
-                            return (
-                              <span className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-mono font-extrabold px-2.5 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-400/40">
-                                <Clock size={12} className="animate-pulse" />
-                                Temps restant : {mm}:{ss}
+                      {/* BLOC 1 : TOUTES LES RÉFÉRENCES DE LA COMMANDE (RÉF, CMD, PAYEUR ASSOCIÉ) */}
+                      <div className="p-3.5 rounded-2xl bg-[#0B1120] border border-white/10 space-y-2">
+                        <div className="flex justify-between items-start gap-2">
+                          <div className="min-w-0 space-y-1.5">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const refVal = order.codeReference || order.id;
+                                  navigator.clipboard?.writeText(refVal);
+                                  setCopiedRef(refVal);
+                                  setTimeout(() => setCopiedRef(null), 1500);
+                                }}
+                                title="Copier la référence"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-500/15 border border-amber-500/30 text-[#F8BE40] font-mono text-xs font-black cursor-pointer hover:bg-amber-500/25 transition"
+                              >
+                                <span>RÉF : {order.codeReference || order.id}</span>
+                                <Copy size={12} />
+                              </button>
+                              {copiedRef === (order.codeReference || order.id) && (
+                                <span className="text-[10px] text-emerald-400 font-bold">Copié !</span>
+                              )}
+                              <span className="text-[11px] text-gray-400">
+                                {new Date(order.createdAt).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}
                               </span>
-                            );
-                          })()}
-                        </div>
-                        <span className={`text-[11px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider shrink-0 ${statusBadgeStyle}`}>
-                          {statusText}
-                        </span>
-                      </div>
+                            </div>
 
-                      {/* Bloc Livraison / Retrait */}
-                      <div className="p-3.5 rounded-2xl bg-[#0B1120] border border-white/10 space-y-2.5">
-                        <div className="flex items-center justify-between gap-2 flex-wrap">
-                          <div className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-[#F8BE40]">
-                            <Clock size={13} />
-                            <span>LIVRAISON / RETRAIT</span>
+                            <div className="text-[11px] font-mono text-gray-300 truncate">
+                              <span className="text-gray-400">CMD :</span> {order.id}
+                            </div>
                           </div>
-                          {dateMatch && (
-                            <span className="px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/25 text-[#F8BE40] text-[11px] font-bold">
-                              {dateMatch[1].trim()}
+
+                          <span className={`text-[11px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider shrink-0 ${statusBadgeStyle}`}>
+                            {statusText}
+                          </span>
+                        </div>
+
+                        <div className="pt-2 border-t border-white/10 flex flex-wrap items-center justify-between gap-2 text-xs">
+                          <div className="text-gray-300">
+                            <span className="text-gray-400">Payeur associé :</span>{' '}
+                            <strong className="font-mono text-[#F8BE40]">
+                              {payerPhoneVal || 'En attente de saisie'}
+                            </strong>
+                            {payerNameVal && (
+                              <span className="text-white font-semibold ml-1.5">({payerNameVal})</span>
+                            )}
+                          </div>
+                          {order.loyaltyPhone && order.loyaltyPhone !== payerPhoneVal && (
+                            <span className="text-[11px] font-mono text-sky-400">
+                              Fidélité : {order.loyaltyPhone}
                             </span>
                           )}
                         </div>
 
+                        {order.statut === 'EN_ATTENTE_DE_PAIEMENT' && (() => {
+                          const createdMs = new Date(order.createdAt).getTime();
+                          const elapsedSec = Math.max(0, Math.floor((nowTick - createdMs) / 1000));
+                          const remSec = Math.max(0, 600 - elapsedSec);
+                          const mm = String(Math.floor(remSec / 60)).padStart(2, '0');
+                          const ss = String(remSec % 60).padStart(2, '0');
+                          return (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-mono font-extrabold px-2.5 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-400/40">
+                              <Clock size={12} className="animate-pulse" />
+                              Temps restant : {mm}:{ss}
+                            </span>
+                          );
+                        })()}
+                      </div>
+
+                      {/* BLOC 2 : TOUTES LES INFORMATIONS DE LA LIVRAISON */}
+                      <div className="p-3.5 rounded-2xl bg-[#0B1120] border border-white/10 space-y-2.5">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-[#F8BE40]">
+                            <Truck size={13} />
+                            <span>{isDelivery ? 'LIVRAISON À DOMICILE' : 'RETRAIT BOUTIQUE'}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {hasHalfDelivery && (
+                              <span className="px-2 py-0.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-extrabold">
+                                Livraison -50% (10e)
+                              </span>
+                            )}
+                            {dateMatch && (
+                              <span className="px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/25 text-[#F8BE40] text-[11px] font-bold">
+                                {dateMatch[1].trim()}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
                         <div className="flex items-center justify-between gap-3 flex-wrap">
-                          <div className="text-xs space-y-0.5 min-w-0">
-                            <div className="text-gray-300 truncate">
-                              <span className="text-gray-400">Lieu :</span>{' '}
+                          <div className="text-xs space-y-1 min-w-0">
+                            <div className="text-gray-300">
+                              <span className="text-gray-400">Lieu / Adresse :</span>{' '}
                               <span className="font-bold text-white">
                                 {addrMatch ? addrMatch[1].trim() : (isDelivery ? 'Livraison à domicile' : "Retrait à l'atelier")}
                               </span>
                             </div>
                             <div className="text-gray-300">
-                              <span className="text-gray-400">Réception :</span>{' '}
+                              <span className="text-gray-400">Téléphone réception :</span>{' '}
                               <strong className="font-mono text-white">{receptionPhone || 'Non renseigné'}</strong>
                             </div>
+                            {backupPhoneMatch && (
+                              <div className="text-gray-300">
+                                <span className="text-gray-400">Tél secours :</span>{' '}
+                                <strong className="font-mono text-white">{backupPhoneMatch[1].trim()}</strong>
+                              </div>
+                            )}
                             {mapUrlMatch && (
                               <a
                                 href={mapUrlMatch[1]}
@@ -1650,7 +1691,7 @@ export function AdminDashboard() {
                                 rel="noreferrer"
                                 className="inline-flex items-center gap-1 text-[11px] text-[#F8BE40] hover:underline font-bold pt-0.5"
                               >
-                                📍 Google Maps ↗
+                                📍 Ouvrir dans Google Maps ↗
                               </a>
                             )}
                           </div>
@@ -1677,83 +1718,144 @@ export function AdminDashboard() {
                         </div>
                       </div>
 
-                      {/* Liste des pâtisseries commandées */}
-                      <div className="space-y-2">
-                        {order.items && order.items.map((item, idx) => {
-                          const desc = item.description || item.name || '';
-                          const isCake = Boolean(
-                            item.isCake ||
-                            item.category === 'Gâteaux' ||
-                            /gâteau|gateau|fraisier|layer|forêt noire|red velvet|number cake|pièce montée|entremet/i.test(item.name || '') ||
-                            /Format:|parts/i.test(desc)
-                          );
-                          const flavorMatch = desc.match(/Saveur:\s*([^|\]]+)/i);
-                          const portionMatch = desc.match(/Format:\s*([^|\]]+)/i) || (item.name || '').match(/\(([^)]*parts[^)]*)\)/i);
-                          const cleanDesignation = (item.name || '').replace(/\s*\[.*\]$/, '');
-                          const flavor = item.flavor || (flavorMatch ? flavorMatch[1].trim() : (isCake ? 'Recette Signature Lê Ci' : 'Classique artisanale'));
-                          const portion = isCake ? (item.portion || (portionMatch ? portionMatch[1].trim() : '6 à 8 parts')) : null;
-                          const itemPhoto = item.image || '/products/gateau_1.jpeg';
+                      {/* BLOC 3 : TOUTES LES INFORMATIONS DE LA PÂTISSERIE & EXIGENCES DU CLIENT */}
+                      <div className="p-3.5 rounded-2xl bg-[#0B1120] border border-white/10 space-y-3">
+                        <div className="text-[11px] font-black uppercase tracking-wider text-[#F8BE40] flex items-center gap-1.5">
+                          <ChefHat size={13} />
+                          <span>PÂTISSERIE & EXIGENCES CLIENT</span>
+                        </div>
 
-                          return (
-                            <div key={idx} className="p-3 rounded-2xl bg-[#0B1120] border border-white/10 flex gap-3 items-center">
-                              <img
-                                src={itemPhoto}
-                                alt={cleanDesignation}
-                                className="w-16 h-16 rounded-xl object-cover shrink-0 border border-white/10 bg-black/30"
-                              />
-                              <div className="flex-1 min-w-0 text-xs space-y-1">
-                                <div className="font-extrabold text-white text-sm leading-snug line-clamp-2">
-                                  {cleanDesignation}
-                                </div>
-                                <div className="text-gray-300 text-[11px]">
-                                  <span className="text-gray-400">Saveur :</span> {flavor}
-                                </div>
-                                <div className="flex flex-wrap items-center gap-2 pt-0.5">
-                                  <span className="px-2 py-0.5 rounded-lg bg-white/10 text-white font-bold text-[11px]">
-                                    Qté : {item.quantity}
-                                  </span>
-                                  {isCake && portion && (
-                                    <span className="px-2 py-0.5 rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold text-[11px]">
-                                      {portion}
+                        <div className="space-y-2.5">
+                          {order.items && order.items.map((item, idx) => {
+                            const desc = item.description || '';
+                            const isCake = Boolean(
+                              item.isCake ||
+                              item.category === 'Gâteaux' ||
+                              /gâteau|gateau|fraisier|layer|forêt noire|red velvet|number cake|pièce montée|entremet/i.test(item.name || '') ||
+                              /Format|parts/i.test(desc)
+                            );
+                            const flavorMatch = desc.match(/Saveur:\s*([^|\]]+)/i);
+                            const portionMatch = desc.match(/Format(?:\/Taille)?:\s*([^|\]]+)/i) || (item.name || '').match(/\(([^)]*parts[^)]*)\)/i);
+                            const modelMatch = desc.match(/Modèle(?:\s*catalogue)?:\s*([^|\]]+)/i);
+                            const supplMatch = desc.match(/Suppléments:\s*([^|\]]+)/i);
+                            const cakeMsgMatch = desc.match(/(?:Message sur gâteau|Inscription):\s*([^|\]]+)/i);
+                            const catMatch = desc.match(/Catégorie:\s*([^|\]]+)/i);
+                            const cleanDesignation = (item.name || '').replace(/\s*\[.*\]$/, '');
+                            const flavor = item.flavor || (flavorMatch ? flavorMatch[1].trim() : (isCake ? 'Recette Signature Lê Ci' : 'Classique artisanale'));
+                            const portion = isCake ? (item.portion || (portionMatch ? portionMatch[1].trim() : '6 à 8 parts')) : null;
+                            const catalogModel = item.catalogModel || (modelMatch ? modelMatch[1].trim() : '');
+                            const itemPhoto = item.image || '/products/gateau_1.jpeg';
+
+                            return (
+                              <div key={idx} className="p-3 rounded-xl bg-white/5 border border-white/10 flex gap-3 items-start">
+                                <img
+                                  src={itemPhoto}
+                                  alt={cleanDesignation}
+                                  className="w-16 h-16 rounded-xl object-cover shrink-0 border border-white/10 bg-black/30"
+                                />
+                                <div className="flex-1 min-w-0 text-xs space-y-1">
+                                  <div className="font-extrabold text-white text-sm leading-snug">
+                                    {cleanDesignation}
+                                  </div>
+                                  {catalogModel && catalogModel !== cleanDesignation && (
+                                    <div className="text-gray-300 text-[11px]">
+                                      <span className="text-gray-400">Modèle :</span> {catalogModel}
+                                    </div>
+                                  )}
+                                  <div className="text-gray-300 text-[11px]">
+                                    <span className="text-gray-400">Saveur :</span> {flavor}
+                                  </div>
+                                  <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                                    <span className="px-2 py-0.5 rounded-lg bg-white/10 text-white font-bold text-[11px]">
+                                      Qté : {item.quantity}
                                     </span>
+                                    {isCake && portion && (
+                                      <span className="px-2 py-0.5 rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold text-[11px]">
+                                        {portion}
+                                      </span>
+                                    )}
+                                    {catMatch && (
+                                      <span className="px-2 py-0.5 rounded-lg bg-amber-500/15 text-[#F8BE40] font-bold text-[11px]">
+                                        {catMatch[1].trim()}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {supplMatch && supplMatch[1].trim() !== 'Sans supplément' && (
+                                    <div className="text-[11px] text-amber-300 pt-0.5">
+                                      <span className="font-bold">Suppléments :</span> {supplMatch[1].trim()}
+                                    </div>
+                                  )}
+                                  {cakeMsgMatch && (
+                                    <div className="text-[11px] text-emerald-300 pt-0.5">
+                                      <span className="font-bold">✍️ Message sur gâteau :</span> {cakeMsgMatch[1].trim()}
+                                    </div>
                                   )}
                                 </div>
                               </div>
-                            </div>
-                          );
-                        })}
+                            );
+                          })}
+                        </div>
+
+                        {/* Exigences globales : Carte de vœux (+200 F) & Notes spéciales */}
+                        {(hasCard || notesSpecialMatch) && (
+                          <div className="pt-2 border-t border-white/10 space-y-2">
+                            {hasCard && (
+                              <div className="p-2.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-xs space-y-0.5">
+                                <div className="font-extrabold text-[#F8BE40] flex items-center gap-1.5">
+                                  <Gift size={13} />
+                                  <span>Carte de vœux (+200 FCFA) demandée</span>
+                                </div>
+                                {cardTextMatch && cardTextMatch[1].trim() && (
+                                  <p className="text-white text-xs italic">
+                                    « {cardTextMatch[1].trim()} »
+                                  </p>
+                                )}
+                              </div>
+                            )}
+
+                            {notesSpecialMatch && (
+                              <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-gray-200">
+                                <span className="font-bold text-[#F8BE40]">Notes client :</span>{' '}
+                                {notesSpecialMatch[1].trim()}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
 
-                    {/* Payeur + Total + Bouton d'action */}
+                    {/* BLOC 4 : NUMÉRO QUI A PAYÉ SUIVI DU MONTANT + BOUTON D'ACTION */}
                     <div className="space-y-3 pt-1">
-                      <div className="flex items-center justify-between gap-2 text-xs flex-wrap">
-                        <div className="text-gray-300">
-                          <span className="text-gray-400">Payé par :</span>{' '}
-                          <strong className="text-white">{payerNameVal}</strong>
-                          {payerPhoneVal && (
-                            <span className="text-[#F8BE40] font-mono font-bold"> • {payerPhoneVal}</span>
-                          )}
-                        </div>
-                        {discountAmount > 0 && (
-                          <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-extrabold">
-                            -{discountPercent > 0 ? `${discountPercent}%` : `${discountAmount.toLocaleString('fr-FR')} F`} Fidélité
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="p-3.5 rounded-2xl bg-[#0B1120] border border-white/10 flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-semibold text-gray-300">Total réglé</span>
-                          {discountAmount > 0 && (
-                            <span className="text-[11px] text-gray-500 line-through">
-                              {expectedBeforeDiscount.toLocaleString('fr-FR')} FCFA
+                      <div className="p-3.5 rounded-2xl bg-[#0B1120] border border-white/10 flex flex-wrap items-center justify-between gap-2">
+                        <div className="text-xs min-w-0">
+                          <span className="text-gray-400 block text-[10px] uppercase font-bold">Numéro qui a payé</span>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-mono font-black text-sm text-white">
+                              {payerPhoneVal || 'En attente'}
                             </span>
-                          )}
+                            {payerNameVal && (
+                              <span className="text-xs text-gray-300">({payerNameVal})</span>
+                            )}
+                          </div>
                         </div>
-                        <span className="text-lg font-black text-[#F8BE40]">
-                          {Number(order.montantTotal).toLocaleString('fr-FR')} FCFA
-                        </span>
+
+                        <div className="text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {discountAmount > 0 && (
+                              <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-extrabold">
+                                -{discountPercent > 0 ? `${discountPercent}%` : `${discountAmount.toLocaleString('fr-FR')} F`} Fidélité
+                              </span>
+                            )}
+                            {discountAmount > 0 && (
+                              <span className="text-[11px] text-gray-500 line-through">
+                                {expectedBeforeDiscount.toLocaleString('fr-FR')} FCFA
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-lg font-black text-[#F8BE40] block">
+                            {Number(order.montantTotal).toLocaleString('fr-FR')} FCFA
+                          </span>
+                        </div>
                       </div>
 
                       {order.statut === 'EN_ATTENTE_DE_PAIEMENT' && isGerant && (
