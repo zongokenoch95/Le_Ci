@@ -273,11 +273,10 @@ export function Home() {
         {/* Photo de couverture (baniere1) */}
         <div className="absolute inset-0 z-0">
           <img
-            src="/img/baniere1.jpg"
+            src="/img/h6.png"
             alt="Création signature Les Douceurs de Lê Ci"
             className="w-full h-full object-cover object-center scale-105 transform animate-fade-in"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#2B1204]/75 via-[#2B1204]/50 to-[#2B1204]/85" />
         </div>
 
         <motion.div
